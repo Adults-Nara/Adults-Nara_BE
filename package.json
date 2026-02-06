@@ -1,0 +1,25 @@
+{
+  "name": "asn_fe",
+  "version": "1.0.0",
+  "description": "어른들나라 프론트엔드 레포지토리입니다.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky && git config core.hooksPath .husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adults-Nara/Adults-Nara_FE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Adults-Nara/Adults-Nara_FE/issues"
+  },
+  "homepage": "https://github.com/Adults-Nara/Adults-Nara_FE#readme",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

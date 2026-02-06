@@ -1,0 +1,30 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+MSG_FILE="$1"
+BRANCH="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+[ -z "$BRANCH" ] && exit 0
+
+TICKET="$(printf "%s" "$BRANCH" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -n 1 || true)"
+[ -z "$TICKET" ] && exit 0
+
+MSG="$(cat "$MSG_FILE")"
+printf "%s" "$MSG" | grep -qE "^\[$TICKET\]" && exit 0
+
+FIRST_LINE="$(printf "%s" "$MSG" | sed -n '1p')"
+REST_LINES="$(printf "%s" "$MSG" | sed -n '2,$p')"
+
+if [ -z "$FIRST_LINE" ]; then
+  NEW_FIRST="[$TICKET]"
+else
+  NEW_FIRST="[$TICKET] $FIRST_LINE"
+fi
+
+if [ -n "$REST_LINES" ]; then
+  {
+    printf "%s\n" "$NEW_FIRST"
+    printf "%s\n" "$REST_LINES"
+  } > "$MSG_FILE"
+else
+  printf "%s\n" "$NEW_FIRST" > "$MSG_FILE"
+fi
