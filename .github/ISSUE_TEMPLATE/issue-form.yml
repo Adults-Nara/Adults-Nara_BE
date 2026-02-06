@@ -13,6 +13,15 @@ body:
       required: true
 
   - type: input
+    id: branch
+    attributes:
+      label: Branch base name (optional)
+      description: "예: feature/users/login 또는 fix/auth/token"
+      placeholder: "feature/users/login"
+      validations:
+        required: false
+
+  - type: input
     id: description
     attributes:
       label: '📝 상세 내용(Description)'
