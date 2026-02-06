@@ -125,7 +125,7 @@ jobs:
                 "1) PR 본문에 `Jira Ticket: ASN-2` 같은 줄 추가",
                 "2) 브랜치명을 `feature/ASN-2-...`, `fix/ASN-2-...` 형태로 생성",
                 "",
-                "키가 확인되면 PR 제목이 자동으로 `[TR1L-2] ...` 형태로 갱신됩니다.",
+                "키가 확인되면 PR 제목이 자동으로 `[ASN-2] ...` 형태로 갱신됩니다.",
               ].join("\n");
 
               await github.rest.issues.createComment({
