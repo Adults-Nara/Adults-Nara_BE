@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: core-api
+  profiles:
+    active: local
+  jpa:
+    open-in-view: false
+
+server:
+  port: ${CORE_API_PORT:8080}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] %logger{36} - %msg%n"
