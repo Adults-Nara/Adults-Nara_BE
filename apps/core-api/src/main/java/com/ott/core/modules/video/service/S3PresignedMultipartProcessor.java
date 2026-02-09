@@ -20,6 +20,7 @@ import java.util.List;
 public class S3PresignedMultipartProcessor implements PresignedMultipartProcessor {
     private static final long DEFAULT_TTL_SECONDS = 30 * 60; // 30분
     private static final int DEFAULT_PART_SIZE = 8 * 1024 * 1024; // 기본 파트 사이즈
+    private static final long MAX_OBJECT_SIZE_BYTES = DEFAULT_PART_SIZE * 10000L;
 
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -32,6 +33,7 @@ public class S3PresignedMultipartProcessor implements PresignedMultipartProcesso
     @Override
     public MultipartInitResult initMultipart(Long videoId, String bucket, String objectKey, String contentType, long sizeBytes) {
         if (sizeBytes <= 0) throw new IllegalArgumentException("sizeBytes must be > 0");
+        if (sizeBytes > MAX_OBJECT_SIZE_BYTES) throw new IllegalArgumentException("sizeBytes exceeds max allowed");
 
         int partSize = DEFAULT_PART_SIZE;
         int partCount = (int) Math.ceil((double) sizeBytes / (double) partSize);

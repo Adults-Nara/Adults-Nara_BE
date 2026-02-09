@@ -18,7 +18,7 @@ public class AwsS3Config {
                 .build();
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     public S3Client s3Client(@Value("${aws.region}") String region) {
         return S3Client.builder()
                 .region(Region.of(region))
