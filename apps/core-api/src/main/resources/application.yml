@@ -12,3 +12,10 @@ server:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-}] %logger{36} - %msg%n"
+
+aws:
+  region: ap-northeast-2
+  s3:
+    source-bucket: sinna-bucket
+  presign:
+    put-ttl-seconds: 1200

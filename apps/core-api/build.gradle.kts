@@ -26,5 +26,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core:10.22.0")
     implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
 
+    // AWS S3
+    implementation("software.amazon.awssdk:s3:2.41.23");
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
