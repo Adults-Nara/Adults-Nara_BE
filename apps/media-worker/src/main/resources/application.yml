@@ -20,7 +20,7 @@ spring:
       ack-mode: manual
 
 server:
-  port: ${MEDIA_WORKER_PORT:8081}
+  port: 8081
 
 logging:
   pattern:
