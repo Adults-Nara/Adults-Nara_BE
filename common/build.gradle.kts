@@ -10,4 +10,6 @@ dependencies {
     // 엔티티 컴파일에 필요한 최소 의존성만
     api("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
+    implementation("io.hypersistence:hypersistence-utils-hibernate-60:3.5.1") // TSID
+
 }
