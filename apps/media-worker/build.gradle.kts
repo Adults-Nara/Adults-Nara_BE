@@ -15,8 +15,13 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter")
 
-    // 메시지 큐를 Kafka로 갈 거면
-    //implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.kafka:spring-kafka")
+
+    compileOnly ("org.projectlombok:lombok:1.18.34")
+    annotationProcessor ("org.projectlombok:lombok:1.18.34")
+
+    testCompileOnly ("org.projectlombok:lombok:1.18.34")
+    testAnnotationProcessor ("org.projectlombok:lombok:1.18.34")
 
     // S3 접근(초기엔 AWS SDK v2 권장)
     implementation("software.amazon.awssdk:s3:2.25.62")

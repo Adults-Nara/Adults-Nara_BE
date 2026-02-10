@@ -20,6 +20,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
 
+    compileOnly ("org.projectlombok:lombok:1.18.34")
+    annotationProcessor ("org.projectlombok:lombok:1.18.34")
+
+    testCompileOnly ("org.projectlombok:lombok:1.18.34")
+    testAnnotationProcessor ("org.projectlombok:lombok:1.18.34")
+
     // 보안 필요 시(로그인/회원가입)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
