@@ -30,7 +30,7 @@ public class WatchHistory {
     private boolean completed;
 
     @Column(nullable = false)
-    private boolean disliked;
+    private boolean deleted;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -45,7 +45,7 @@ public class WatchHistory {
         this.videoMetadata = videoMetadata;
         this.lastPosition = 0;
         this.completed = false;
-        this.disliked = false;
+        this.deleted = false;
         this.createdAt = OffsetDateTime.now();
         this.updatedAt = OffsetDateTime.now();
     }
@@ -67,8 +67,8 @@ public class WatchHistory {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    public void setDisliked(boolean disliked) {
-        this.disliked = disliked;
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
         this.updatedAt = OffsetDateTime.now();
     }
 }
