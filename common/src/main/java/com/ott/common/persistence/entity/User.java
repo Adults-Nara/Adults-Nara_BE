@@ -22,7 +22,6 @@ public class User {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    // 프로필 이미지 URL (S3)
     @Column(name = "profile_image_url", columnDefinition = "TEXT")
     private String profileImageUrl;
 
@@ -30,9 +29,8 @@ public class User {
     @Column(nullable = false, length = 20, columnDefinition = "user_role")
     private UserRole role;
 
-    // OAuth 정보
     @Column(name = "oauth_provider", length = 20)
-    private String oauthProvider;  // "KAKAO"
+    private String oauthProvider;
 
     @Column(name = "oauth_id", length = 255)
     private String oauthId;
@@ -61,8 +59,6 @@ public class User {
 
     protected User() {}
 
-    // ===== 생성자 (일반 회원가입) =====
-
     public User(Long id, String email, String passwordHash, String nickname, UserRole role) {
         this.id = id;
         this.email = email;
@@ -76,14 +72,12 @@ public class User {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    // ===== 생성자 (OAuth 회원가입) =====
-
     public User(Long id, String email, String nickname, String oauthProvider, String oauthId) {
         this.id = id;
         this.email = email;
-        this.passwordHash = null;  // OAuth는 비밀번호 없음
+        this.passwordHash = null;
         this.nickname = nickname;
-        this.role = UserRole.VIEWER;  // OAuth는 VIEWER만
+        this.role = UserRole.VIEWER;
         this.oauthProvider = oauthProvider;
         this.oauthId = oauthId;
         this.banned = BanStatus.ACTIVE;
@@ -91,7 +85,13 @@ public class User {
         this.updatedAt = OffsetDateTime.now();
     }
 
-    // ===== 비즈니스 메서드 =====
+    // ✅ JPA 생명주기 콜백 - 엔티티 업데이트 시 자동 호출
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    // ===== 비즈니스 메서드 (updatedAt 수동 설정 제거) =====
 
     public void suspend7Days(String reason, Long adminId) {
         this.banned = BanStatus.SUSPENDED_7;
@@ -99,7 +99,7 @@ public class User {
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
         this.bannedBy = adminId;
-        this.updatedAt = OffsetDateTime.now();
+        // ✅ updatedAt 수동 설정 제거 (@PreUpdate가 자동 처리)
     }
 
     public void suspend15Days(String reason, Long adminId) {
@@ -108,7 +108,6 @@ public class User {
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
         this.bannedBy = adminId;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void suspend30Days(String reason, Long adminId) {
@@ -117,7 +116,6 @@ public class User {
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
         this.bannedBy = adminId;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void banPermanently(String reason, Long adminId) {
@@ -126,7 +124,6 @@ public class User {
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
         this.bannedBy = adminId;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void activate() {
@@ -135,7 +132,6 @@ public class User {
         this.banReason = null;
         this.bannedAt = null;
         this.bannedBy = null;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void deactivate() {
@@ -143,7 +139,6 @@ public class User {
         this.bannedUntil = null;
         this.banReason = "사용자 요청";
         this.bannedAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void delete(String reason) {
@@ -151,13 +146,11 @@ public class User {
         this.bannedUntil = null;
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
         this.email = "deleted_" + this.id + "@deleted.com";
     }
 
     public void updateNickname(String newNickname) {
         this.nickname = newNickname;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void updatePassword(String newPasswordHash) {
@@ -165,12 +158,10 @@ public class User {
             throw new IllegalStateException("OAuth 사용자는 비밀번호를 변경할 수 없습니다.");
         }
         this.passwordHash = newPasswordHash;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void updateProfileImage(String newProfileImageUrl) {
         this.profileImageUrl = newProfileImageUrl;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public boolean isOAuthUser() {
@@ -189,8 +180,7 @@ public class User {
         return this.banned.isSuspended();
     }
 
-    // ===== Getter =====
-
+    // Getter
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }

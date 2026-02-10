@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,8 +29,7 @@ public class UserController {
     }
 
     /**
-     * 사용자 생성 (회원가입)
-     * POST /api/v1/users
+     * 일반 회원가입 (VIEWER만 생성)
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -38,10 +39,23 @@ public class UserController {
     }
 
     /**
-     * 사용자 목록 조회 (페이징)
-     * GET /api/v1/users?page=0&size=10&sort=createdAt,desc
+     * 업로더 회원가입 (초대 코드 필요)
+     */
+    @PostMapping("/uploader")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<UserResponse> createUploader(
+            @Valid @RequestBody CreateUserRequest request,
+            @RequestParam String inviteCode
+    ) {
+        UserResponse response = userService.createUploader(request, inviteCode);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 사용자 목록 조회 (ADMIN만 가능)
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Page<UserResponse>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -54,10 +68,10 @@ public class UserController {
     }
 
     /**
-     * 역할별 사용자 목록 조회
-     * GET /api/v1/users/role/VIEWER?page=0&size=10
+     * 역할별 사용자 목록 조회 (ADMIN만 가능)
      */
     @GetMapping("/role/{role}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Page<UserResponse>> getUsersByRole(
             @PathVariable UserRole role,
             @RequestParam(defaultValue = "0") int page,
@@ -71,20 +85,20 @@ public class UserController {
     }
 
     /**
-     * 사용자 상세 조회
-     * GET /api/v1/users/{userId}
+     * 사용자 상세 조회 (본인 또는 ADMIN)
      */
     @GetMapping("/{userId}")
+    @PreAuthorize("authentication.principal == #userId.toString() or hasRole('ADMIN')")
     public ApiResponse<UserDetailResponse> getUserDetail(@PathVariable Long userId) {
         UserDetailResponse response = userService.getUserDetail(userId);
         return ApiResponse.success(response);
     }
 
     /**
-     * 사용자 정보 수정
-     * PATCH /api/v1/users/{userId}
+     * 사용자 정보 수정 (본인만 가능)
      */
     @PatchMapping("/{userId}")
+    @PreAuthorize("authentication.principal == #userId.toString()")
     public ApiResponse<UserResponse> updateUser(
             @PathVariable Long userId,
             @Valid @RequestBody UpdateUserRequest request
@@ -94,34 +108,35 @@ public class UserController {
     }
 
     /**
-     * 사용자 정지 (관리자 전용)
-     * POST /api/v1/users/{userId}/ban?adminId=999
+     * 사용자 정지 (ADMIN만 가능)
      */
     @PostMapping("/{userId}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<?> banUser(
             @PathVariable Long userId,
             @Valid @RequestBody BanUserRequest request,
-            @RequestParam Long adminId
+            Authentication authentication  // ✅ SecurityContext에서 안전하게 가져옴
     ) {
+        Long adminId = Long.parseLong(authentication.getName());
         userService.banUser(userId, request, adminId);
         return ApiResponse.success();
     }
 
     /**
-     * 사용자 정지 해제 (관리자 전용)
-     * POST /api/v1/users/{userId}/unban
+     * 사용자 정지 해제 (ADMIN만 가능)
      */
     @PostMapping("/{userId}/unban")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<?> unbanUser(@PathVariable Long userId) {
         userService.unbanUser(userId);
         return ApiResponse.success();
     }
 
     /**
-     * 사용자 삭제 (소프트 삭제)
-     * DELETE /api/v1/users/{userId}?reason=회원 탈퇴 요청
+     * 사용자 삭제 (본인 또는 ADMIN)
      */
     @DeleteMapping("/{userId}")
+    @PreAuthorize("authentication.principal == #userId.toString() or hasRole('ADMIN')")
     public ApiResponse<?> deleteUser(
             @PathVariable Long userId,
             @RequestParam String reason
@@ -131,10 +146,10 @@ public class UserController {
     }
 
     /**
-     * 사용자 비활성화 (본인 요청)
-     * POST /api/v1/users/{userId}/deactivate
+     * 사용자 비활성화 (본인만 가능)
      */
     @PostMapping("/{userId}/deactivate")
+    @PreAuthorize("authentication.principal == #userId.toString()")
     public ApiResponse<?> deactivateUser(@PathVariable Long userId) {
         userService.deactivateUser(userId);
         return ApiResponse.success();
