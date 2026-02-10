@@ -26,6 +26,9 @@ dependencies {
     implementation("org.flywaydb:flyway-core:10.22.0")
     implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
 
+    // Kafka
+    implementation("org.springframework.kafka:spring-kafka")
+
     // AWS S3
     implementation("software.amazon.awssdk:s3:2.41.23");
 
