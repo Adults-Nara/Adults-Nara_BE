@@ -8,9 +8,11 @@ import com.ott.common.persistence.enums.Visibility;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
+import com.ott.core.modules.video.event.VideoTranscodeRequestedEvent;
 import com.ott.core.modules.video.repository.VideoRepository;
 import com.ott.core.modules.video.repository.VideoUploadSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +29,21 @@ public class VideoService {
     private final PresignedMultipartProcessor presignedMultipartProcessor;
     private final ObjectStorageVerifier objectStorageVerifier;
 
+    private final ApplicationEventPublisher eventPublisher;
+
     @Value("${aws.s3.source-bucket}")
     private String bucket;
 
     public VideoService(VideoRepository videoRepository,
                         VideoUploadSessionRepository sessionRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
-                        ObjectStorageVerifier objectStorageVerifier) {
+                        ObjectStorageVerifier objectStorageVerifier,
+                        ApplicationEventPublisher eventPublisher) {
         this.videoRepository = videoRepository;
         this.sessionRepository = sessionRepository;
         this.presignedMultipartProcessor = presignedMultipartProcessor;
         this.objectStorageVerifier = objectStorageVerifier;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -111,6 +117,7 @@ public class VideoService {
         v.setProcessingStatus(ProcessingStatus.UPLOADED);
 
         // todo: kafka uploaded 메시지 발송
+        eventPublisher.publishEvent(new VideoTranscodeRequestedEvent(videoId));
     }
 
     @Transactional
