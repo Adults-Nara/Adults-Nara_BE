@@ -18,7 +18,6 @@ public record UserDetailResponse(
         OffsetDateTime bannedUntil,
         String banReason,
         OffsetDateTime bannedAt,
-        Long bannedBy,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -35,7 +34,6 @@ public record UserDetailResponse(
                 user.getBannedUntil(),
                 user.getBanReason(),
                 user.getBannedAt(),
-                user.getBannedBy(),
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );

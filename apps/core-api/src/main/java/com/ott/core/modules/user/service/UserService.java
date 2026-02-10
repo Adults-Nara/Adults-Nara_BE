@@ -16,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.ott.common.persistence.enums.BanStatus.*;
+
 @Service
 public class UserService {
 
@@ -38,13 +40,11 @@ public class UserService {
 
         String passwordHash = passwordEncoder.encode(request.password());
 
-        Long userId = IdGenerator.generate();
-
         // ✅ 일반 회원가입은 항상 VIEWER로 생성
-        User user = new User(userId, request.email(), passwordHash, request.nickname(), UserRole.VIEWER);
+        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.VIEWER);
 
         if (request.profileImageUrl() != null && !request.profileImageUrl().isBlank()) {
-            user.updateProfileImage(request.profileImageUrl());
+            user.changeProfileImage(request.profileImageUrl());
         }
 
         userRepository.save(user);
@@ -69,10 +69,10 @@ public class UserService {
         String passwordHash = passwordEncoder.encode(request.password());
         Long userId = IdGenerator.generate();
 
-        User user = new User(userId, request.email(), passwordHash, request.nickname(), UserRole.UPLOADER);
+        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
 
         if (request.profileImageUrl() != null) {
-            user.updateProfileImage(request.profileImageUrl());
+            user.changeProfileImage(request.profileImageUrl());
         }
 
         userRepository.save(user);
@@ -94,9 +94,7 @@ public class UserService {
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
-        Long userId = IdGenerator.generate();
-
-        User user = new User(userId, request.email(), passwordHash, request.nickname(), UserRole.ADMIN);
+        User user = new User(request.email(),request.nickname(), passwordHash, UserRole.ADMIN);
 
         userRepository.save(user);
         return UserResponse.from(user);
@@ -132,16 +130,16 @@ public class UserService {
         }
 
         if (request.nickname() != null) {
-            user.updateNickname(request.nickname());
+            user.changeNickname(request.nickname());
         }
 
         if (request.password() != null) {
             String newPasswordHash = passwordEncoder.encode(request.password());
-            user.updatePassword(newPasswordHash);
+            user.setPasswordHash(newPasswordHash);
         }
 
         if (request.profileImageUrl() != null) {
-            user.updateProfileImage(request.profileImageUrl());
+            user.changeProfileImage(request.profileImageUrl());
         }
 
         return UserResponse.from(user);
@@ -157,10 +155,10 @@ public class UserService {
         }
 
         switch (request.banStatus()) {
-            case SUSPENDED_7 -> user.suspend7Days(request.reason(), adminId);
-            case SUSPENDED_15 -> user.suspend15Days(request.reason(), adminId);
-            case SUSPENDED_30 -> user.suspend30Days(request.reason(), adminId);
-            case PERMANENTLY_BANNED -> user.banPermanently(request.reason(), adminId);
+            case SUSPENDED_7 -> user.setBanStatus(SUSPENDED_7);
+            case SUSPENDED_15 -> user.setBanStatus(SUSPENDED_15);
+            case SUSPENDED_30 -> user.setBanStatus(SUSPENDED_30);
+            case PERMANENTLY_BANNED ->  user.setBanStatus(PERMANENTLY_BANNED);
             default -> throw new IllegalArgumentException("유효하지 않은 정지 상태입니다.");
         }
     }
@@ -174,6 +172,7 @@ public class UserService {
     }
 
     @Transactional
+    //관리자
     public void deleteUser(Long userId, String reason) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
@@ -182,7 +181,7 @@ public class UserService {
             throw new IllegalArgumentException("관리자는 삭제할 수 없습니다.");
         }
 
-        user.delete(reason);
+        user.markDeleted(reason);
     }
 
     @Transactional

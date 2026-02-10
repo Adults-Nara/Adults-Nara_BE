@@ -1,6 +1,6 @@
 package com.ott.common.persistence.entity;
 
-import com.ott.common.persistence.enums.AccountStatus;
+import com.ott.common.persistence.enums.BanStatus;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
@@ -58,7 +58,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "banned", nullable = false)
-    private AccountStatus banned;
+    private BanStatus banned;
 
     @Column(name = "banned_until")
     private OffsetDateTime bannedUntil;
@@ -69,20 +69,20 @@ public class User {
     @Column(name = "banned_at")
     private OffsetDateTime bannedAt;
 
-    public User(String email, String nickname) {
+    public User(String email, String nickname, String passwordHash, UserRole userRole) {
         this.email = email;
         this.nickname = nickname;
-        this.role = UserRole.VIEWER;
-        this.banned = AccountStatus.ACTIVE;
+        this.role = userRole;
+        this.banned = BanStatus.ACTIVE;
         this.deleted = false;
+        this.passwordHash = passwordHash;
     }
 
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
         if (role == null) role = UserRole.VIEWER;
-        if (banned == null) banned = AccountStatus.ACTIVE;
-        // createdAt/updatedAt은 DB DEFAULT NOW()에 맡김
+        if (banned == null) banned = BanStatus.ACTIVE;
     }
 
     // ===== 도메인 메서드 =====
@@ -90,15 +90,16 @@ public class User {
     public void changeNickname(String nickname) { this.nickname = nickname; }
     public void setOAuth(String provider, String oauthId) { this.oauthProvider = provider; this.oauthId = oauthId; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void setBanStatus(BanStatus status) { this.banned = status; }
 
     public void markDeleted(String reason) {
         this.deleted = true;
-        this.banned = AccountStatus.DELETED;
+        this.banned = BanStatus.DELETED;
         this.banReason = reason;
         this.bannedAt = OffsetDateTime.now();
     }
 
-    public void suspend(AccountStatus status, OffsetDateTime until, String reason) {
+    public void suspend(BanStatus status, OffsetDateTime until, String reason) {
         this.banned = status;
         this.bannedUntil = until;
         this.banReason = reason;
@@ -106,9 +107,16 @@ public class User {
     }
 
     public void activate() {
-        this.banned = AccountStatus.ACTIVE;
+        this.banned = BanStatus.ACTIVE;
         this.bannedUntil = null;
         this.banReason = null;
         this.bannedAt = null;
+    }
+
+    public void deactivate() {
+        this.banned = BanStatus.DELETED;
+        this.bannedUntil = null;
+        this.banReason = null;
+        this.bannedAt = OffsetDateTime.now();
     }
 }
