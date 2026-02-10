@@ -17,12 +17,6 @@ dependencies {
 
     implementation("org.springframework.kafka:spring-kafka")
 
-    compileOnly ("org.projectlombok:lombok:1.18.34")
-    annotationProcessor ("org.projectlombok:lombok:1.18.34")
-
-    testCompileOnly ("org.projectlombok:lombok:1.18.34")
-    testAnnotationProcessor ("org.projectlombok:lombok:1.18.34")
-
     // S3 접근(초기엔 AWS SDK v2 권장)
     implementation("software.amazon.awssdk:s3:2.25.62")
 
