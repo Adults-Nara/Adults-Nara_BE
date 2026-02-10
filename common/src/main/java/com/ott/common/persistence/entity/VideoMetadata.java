@@ -3,10 +3,12 @@ package com.ott.common.persistence.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import lombok.Getter;
 
 import java.time.OffsetDateTime;
 
 @Entity
+@Getter
 public class VideoMetadata {
     @Id
     private Long id;

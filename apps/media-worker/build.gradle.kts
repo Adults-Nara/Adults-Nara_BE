@@ -15,8 +15,7 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter")
 
-    // 메시지 큐를 Kafka로 갈 거면
-    //implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.kafka:spring-kafka")
 
     // S3 접근(초기엔 AWS SDK v2 권장)
     implementation("software.amazon.awssdk:s3:2.25.62")
