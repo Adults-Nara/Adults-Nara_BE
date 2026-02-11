@@ -12,7 +12,7 @@ dependencies {
 
     implementation("io.hypersistence:hypersistence-utils-hibernate-60:3.5.1") // TSID
 
-    compileOnly ("org.projectlombok:lombok:1.18.34")
+    api ("org.projectlombok:lombok:1.18.34")
     annotationProcessor ("org.projectlombok:lombok:1.18.34")
 
     testCompileOnly ("org.projectlombok:lombok:1.18.34")
