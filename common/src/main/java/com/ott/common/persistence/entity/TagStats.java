@@ -1,18 +1,19 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Getter
 @NoArgsConstructor (access = AccessLevel.PROTECTED)
 @Table(name = "tag_stats")
-public class TagStats {
+public class TagStats extends BaseEntity {
 
     @Id
     @Column(name = "tag_stats_id")
@@ -27,7 +28,7 @@ public class TagStats {
     private User user;
 
     @Column(name = "stats_date")
-    private OffsetDateTime statsDate;
+    private LocalDate statsDate;
 
     @Column(name = "total_view_time")
     private Integer totalViewTime;
@@ -35,7 +36,7 @@ public class TagStats {
     @Column(name = "view_count")
     private Integer viewCount;
 
-    public TagStats(Tag tag, User user, OffsetDateTime statsDate) {
+    public TagStats(Tag tag, User user, LocalDate statsDate) {
         this.tag = tag;
         this.user = user;
         this.statsDate = statsDate;

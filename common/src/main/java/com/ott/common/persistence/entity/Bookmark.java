@@ -1,18 +1,20 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.OffsetDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "bookmark")
-public class Bookmark {
+@Table(name = "bookmark",uniqueConstraints = {
+        @UniqueConstraint(name = "uk_bookmark_user_video", columnNames = {"user_id", "video_metadata_id"})
+})
+public class Bookmark extends BaseEntity {
 
     @Id
     @Column(name = "bookmark_id")
@@ -26,18 +28,14 @@ public class Bookmark {
     @JoinColumn(name = "video_metadata_id", nullable = false)
     private VideoMetadata videoMetadata;
 
-    @Column(name = "created_at")
-    private OffsetDateTime createdAt;
 
     public Bookmark(User user, VideoMetadata videoMetadata) {
         this.user = user;
         this.videoMetadata = videoMetadata;
-        this.createdAt = OffsetDateTime.now();
     }
 
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
-        if (createdAt == null) createdAt = OffsetDateTime.now();
     }
 }
