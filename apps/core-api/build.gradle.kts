@@ -34,6 +34,5 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
-    //엘라스틱서치 dependency
-    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+
 }
