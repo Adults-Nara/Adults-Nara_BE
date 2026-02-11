@@ -29,6 +29,15 @@ public class WatchHistory extends BaseEntity {
     @Column(nullable = false)
     private boolean completed;
 
+    @Column(nullable = false)
+    private boolean deleted;
+
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
     protected WatchHistory() {}
 
     public WatchHistory(User user, VideoMetadata videoMetadata) {
@@ -36,6 +45,9 @@ public class WatchHistory extends BaseEntity {
         this.videoMetadata = videoMetadata;
         this.lastPosition = 0;
         this.completed = false;
+        this.deleted = false;
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 
     @PrePersist
@@ -49,5 +61,11 @@ public class WatchHistory extends BaseEntity {
 
     public void markCompleted() {
         this.completed = true;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+        this.updatedAt = OffsetDateTime.now();
     }
 }
