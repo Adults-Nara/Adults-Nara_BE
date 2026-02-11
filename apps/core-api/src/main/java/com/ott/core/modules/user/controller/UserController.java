@@ -115,10 +115,10 @@ public class UserController {
     public ApiResponse<?> banUser(
             @PathVariable Long userId,
             @Valid @RequestBody BanUserRequest request,
-            Authentication authentication  // ✅ SecurityContext에서 안전하게 가져옴
+            Authentication authentication
     ) {
         Long adminId = Long.parseLong(authentication.getName());
-        userService.banUser(userId, request, adminId);
+        userService.banUser(userId, request, adminId);  // ✅ adminId는 로그용으로만 사용 (DB 저장 안 함)
         return ApiResponse.success();
     }
 

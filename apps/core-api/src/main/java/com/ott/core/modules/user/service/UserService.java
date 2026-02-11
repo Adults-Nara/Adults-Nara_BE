@@ -2,7 +2,6 @@ package com.ott.core.modules.user.service;
 
 import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.enums.UserRole;
-import com.ott.common.util.IdGenerator;
 import com.ott.core.global.exception.UserNotFoundException;
 import com.ott.core.modules.user.dto.request.CreateUserRequest;
 import com.ott.core.modules.user.dto.request.UpdateUserRequest;
@@ -16,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.ott.common.persistence.enums.BanStatus.*;
+import java.time.OffsetDateTime;
 
 @Service
 public class UserService {
@@ -29,9 +28,6 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * 일반 사용자 회원가입 (VIEWER만 가능)
-     */
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         if (userRepository.existsByEmailAndNotDeleted(request.email())) {
@@ -39,8 +35,6 @@ public class UserService {
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
-
-        // ✅ 일반 회원가입은 항상 VIEWER로 생성
         User user = new User(request.email(), request.nickname(), passwordHash, UserRole.VIEWER);
 
         if (request.profileImageUrl() != null && !request.profileImageUrl().isBlank()) {
@@ -48,16 +42,11 @@ public class UserService {
         }
 
         userRepository.save(user);
-
         return UserResponse.from(user);
     }
 
-    /**
-     * 업로더 회원가입 (별도 엔드포인트 또는 초대 코드 필요)
-     */
     @Transactional
     public UserResponse createUploader(CreateUserRequest request, String inviteCode) {
-        // ✅ 초대 코드 검증
         if (!"UPLOADER_INVITE_2026".equals(inviteCode)) {
             throw new IllegalArgumentException("유효하지 않은 초대 코드입니다.");
         }
@@ -67,8 +56,6 @@ public class UserService {
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
-        Long userId = IdGenerator.generate();
-
         User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
 
         if (request.profileImageUrl() != null) {
@@ -79,12 +66,8 @@ public class UserService {
         return UserResponse.from(user);
     }
 
-    /**
-     * 관리자 생성 (시스템 관리자만 가능)
-     */
     @Transactional
     public UserResponse createAdmin(CreateUserRequest request, String adminSecretKey) {
-        // ✅ 환경변수에서 관리자 생성 키 검증
         if (!"ADMIN_SECRET_KEY_2026".equals(adminSecretKey)) {
             throw new IllegalArgumentException("관리자 생성 권한이 없습니다.");
         }
@@ -94,7 +77,7 @@ public class UserService {
         }
 
         String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(),request.nickname(), passwordHash, UserRole.ADMIN);
+        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.ADMIN);
 
         userRepository.save(user);
         return UserResponse.from(user);
@@ -154,13 +137,13 @@ public class UserService {
             throw new IllegalArgumentException("관리자는 정지할 수 없습니다.");
         }
 
-        switch (request.banStatus()) {
-            case SUSPENDED_7 -> user.setBanStatus(SUSPENDED_7);
-            case SUSPENDED_15 -> user.setBanStatus(SUSPENDED_15);
-            case SUSPENDED_30 -> user.setBanStatus(SUSPENDED_30);
-            case PERMANENTLY_BANNED ->  user.setBanStatus(PERMANENTLY_BANNED);
-            default -> throw new IllegalArgumentException("유효하지 않은 정지 상태입니다.");
+        // ✅ BanStatus의 getDays()로 정지 기간 계산
+        OffsetDateTime until = null;
+        if (request.banStatus().isSuspended()) {
+            until = OffsetDateTime.now().plusDays(request.banStatus().getDays());
         }
+
+        user.suspend(request.banStatus(), until, request.reason());
     }
 
     @Transactional
@@ -172,7 +155,6 @@ public class UserService {
     }
 
     @Transactional
-    //관리자
     public void deleteUser(Long userId, String reason) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));

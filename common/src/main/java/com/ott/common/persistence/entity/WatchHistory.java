@@ -1,15 +1,15 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.Getter;
 
-import java.time.OffsetDateTime;
 
 @Entity
 @Getter
 @Table(name = "watch_history")
-public class WatchHistory {
+public class WatchHistory extends BaseEntity {
 
     @Id
     @Column(name = "watch_history_id")
@@ -53,13 +53,10 @@ public class WatchHistory {
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
-        if (createdAt == null) createdAt = OffsetDateTime.now();
-        if (updatedAt == null) updatedAt = OffsetDateTime.now();
     }
 
     public void updatePosition(int seconds) {
         this.lastPosition = seconds;
-        this.updatedAt = OffsetDateTime.now();
     }
 
     public void markCompleted() {
