@@ -13,16 +13,17 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query("SELECT u FROM User u WHERE u.email = :email AND u.banned != 'DELETED'")
+    // ✅ deleted = false 조건으로 변경
+    @Query("SELECT u FROM User u WHERE u.email = :email AND u.deleted = false")
     Optional<User> findByEmailAndNotDeleted(@Param("email") String email);
 
-    @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email AND u.banned != 'DELETED'")
+    @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email AND u.deleted = false")
     boolean existsByEmailAndNotDeleted(@Param("email") String email);
 
-    @Query("SELECT u FROM User u WHERE u.banned != 'DELETED'")
+    @Query("SELECT u FROM User u WHERE u.deleted = false")
     Page<User> findAllNotDeleted(Pageable pageable);
 
-    @Query("SELECT u FROM User u WHERE u.role = :role AND u.banned != 'DELETED'")
+    @Query("SELECT u FROM User u WHERE u.role = :role AND u.deleted = false")
     Page<User> findByRoleAndNotDeleted(@Param("role") UserRole role, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE u.banned = :banned")

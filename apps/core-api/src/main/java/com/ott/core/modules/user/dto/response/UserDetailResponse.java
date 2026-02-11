@@ -20,6 +20,7 @@ public record UserDetailResponse(
         OffsetDateTime bannedAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
+        // ✅ bannedBy 제거 (현재 코드에 없음)
 ) {
     public static UserDetailResponse from(User user) {
         return new UserDetailResponse(

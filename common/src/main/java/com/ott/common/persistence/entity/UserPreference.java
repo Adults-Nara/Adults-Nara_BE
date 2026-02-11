@@ -1,18 +1,18 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.OffsetDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "user_preference")
-public class UserPreference {
+public class UserPreference extends BaseEntity {
 
     @Id
     @Column(name = "user_preference_id")
@@ -28,25 +28,22 @@ public class UserPreference {
 
     private Double score;
 
-    @Column(name = "last_action_at")
-    private OffsetDateTime lastActionAt;
 
     public UserPreference(User user, Tag tag, Double score) {
         this.user = user;
         this.tag = tag;
         this.score = score;
-        this.lastActionAt = OffsetDateTime.now();
     }
 
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
-        if (lastActionAt == null) lastActionAt = OffsetDateTime.now();
     }
 
     public void updateScore(Double score) {
         this.score = score;
-        this.lastActionAt = OffsetDateTime.now();
     }
 }
+
+
 

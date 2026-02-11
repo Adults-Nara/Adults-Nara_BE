@@ -1,5 +1,6 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.persistence.enums.InteractionType;
 import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
@@ -7,13 +8,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.OffsetDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "interaction")
-public class Interaction {
+@Table(name = "interaction", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_interaction_user_video_type", columnNames = {"user_id", "video_metadata_id", "interaction_type"})
+})
+public class Interaction extends BaseEntity {
 
     @Id
     @Column(name = "interaction_id")
@@ -31,21 +33,17 @@ public class Interaction {
     @Column(name = "interaction_type", nullable = false)
     private InteractionType interactionType;
 
-    @Column(name = "created_at")
-    private OffsetDateTime createdAt;
 
     public Interaction(User user, VideoMetadata videoMetadata, InteractionType type) {
         this.user = user;
         this.videoMetadata = videoMetadata;
         this.interactionType = type;
-        this.createdAt = OffsetDateTime.now();
     }
 
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
         if (interactionType == null) interactionType = InteractionType.LIKE;
-        if (createdAt == null) createdAt = OffsetDateTime.now();
     }
 
     public void changeType(InteractionType type) {

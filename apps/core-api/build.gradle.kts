@@ -23,8 +23,6 @@ dependencies {
     // 보안 필요 시(로그인/회원가입)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
-    implementation("org.flywaydb:flyway-core:10.22.0")
-    implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
 
     // Kafka
     implementation("org.springframework.kafka:spring-kafka")
@@ -34,6 +32,5 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
-    //엘라스틱서치 dependency
-    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+
 }
