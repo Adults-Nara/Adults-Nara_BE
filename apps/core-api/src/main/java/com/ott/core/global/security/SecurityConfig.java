@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ✅ 회원가입은 인증 불필요 (하지만 역할 제한 추가)
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
+                        // 비디오 임시 인증 해제
+                        .requestMatchers("/api/v1/videos/**").permitAll()
 
                         // ✅ 사용자 목록 조회는 ADMIN만 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
