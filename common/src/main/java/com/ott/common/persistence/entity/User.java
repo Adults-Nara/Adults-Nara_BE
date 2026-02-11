@@ -1,5 +1,6 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.persistence.enums.BanStatus;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.common.util.IdGenerator;
@@ -19,16 +20,16 @@ import java.time.OffsetDateTime;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class User {
+public class User extends BaseEntity {  // ✅ BaseEntity 상속
 
     @Id
     @Column(name = "user_id", nullable = false)
     private Long id;
 
-    @Column(name = "email", length = 225, nullable = false)
+    @Column(name = "email", length = 255, nullable = false)
     private String email;
 
-    @Column(name = "password_hash", length = 225)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
     @Column(name = "nickname", length = 50, nullable = false)
@@ -44,17 +45,11 @@ public class User {
     @Column(name = "oauth_provider", length = 20)
     private String oauthProvider;
 
-    @Column(name = "oauth_id", length = 225)
+    @Column(name = "oauth_id", length = 255)
     private String oauthId;
 
     @Column(name = "deleted", nullable = false)
     private boolean deleted;
-
-    @Column(name = "created_at", insertable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @Column(name = "updated_at", insertable = false, updatable = false)
-    private OffsetDateTime updatedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "banned", nullable = false)
@@ -69,6 +64,8 @@ public class User {
     @Column(name = "banned_at")
     private OffsetDateTime bannedAt;
 
+    // ===== 생성자 =====
+
     public User(String email, String nickname, String passwordHash, UserRole userRole) {
         this.email = email;
         this.nickname = nickname;
@@ -78,6 +75,16 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
+    public User(String email, String nickname, String oauthProvider, String oauthId) {
+        this.email = email;
+        this.nickname = nickname;
+        this.role = UserRole.VIEWER;
+        this.oauthProvider = oauthProvider;
+        this.oauthId = oauthId;
+        this.banned = BanStatus.ACTIVE;
+        this.deleted = false;
+    }
+
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
@@ -85,12 +92,29 @@ public class User {
         if (banned == null) banned = BanStatus.ACTIVE;
     }
 
-    // ===== 도메인 메서드 =====
-    public void changeProfileImage(String url) { this.profileImageUrl = url; }
-    public void changeNickname(String nickname) { this.nickname = nickname; }
-    public void setOAuth(String provider, String oauthId) { this.oauthProvider = provider; this.oauthId = oauthId; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-    public void setBanStatus(BanStatus status) { this.banned = status; }
+    // ===== 도메인 메서드 (updatedAt 수동 설정 제거) =====
+
+    public void changeProfileImage(String url) {
+        this.profileImageUrl = url;
+        // ✅ updatedAt은 BaseEntity의 @PreUpdate가 자동 처리
+    }
+
+    public void changeNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void setOAuth(String provider, String oauthId) {
+        this.oauthProvider = provider;
+        this.oauthId = oauthId;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void setBanStatus(BanStatus status) {
+        this.banned = status;
+    }
 
     public void markDeleted(String reason) {
         this.deleted = true;
@@ -114,9 +138,46 @@ public class User {
     }
 
     public void deactivate() {
-        this.banned = BanStatus.DELETED;
+        this.banned = BanStatus.DEACTIVATED;
         this.bannedUntil = null;
         this.banReason = null;
         this.bannedAt = OffsetDateTime.now();
+    }
+
+    // ===== 헬퍼 메서드 =====
+
+    public boolean isOAuthUser() {
+        return this.oauthProvider != null;
+    }
+
+    public boolean isDeleted() {
+        return this.deleted;
+    }
+
+    public boolean isActive() {
+        return this.banned == BanStatus.ACTIVE && !this.deleted;
+    }
+
+    public boolean isSuspended() {
+        return this.banned == BanStatus.SUSPENDED_7 ||
+                this.banned == BanStatus.SUSPENDED_15 ||
+                this.banned == BanStatus.SUSPENDED_30;
+    }
+
+    public boolean canLogin() {
+        if (deleted) return false;
+        if (banned == BanStatus.PERMANENTLY_BANNED) return false;
+        if (banned == BanStatus.DEACTIVATED) return false;
+
+        // 임시 정지 기간 만료 시 자동 활성화
+        if (isSuspended()) {
+            if (bannedUntil != null && OffsetDateTime.now().isAfter(bannedUntil)) {
+                activate();
+                return true;
+            }
+            return false;
+        }
+
+        return banned == BanStatus.ACTIVE;
     }
 }
