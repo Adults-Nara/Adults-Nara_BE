@@ -20,8 +20,12 @@ dependencies {
     // Spring Batch
     implementation("org.springframework.boot:spring-boot-starter-batch")
 
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    runtimeOnly("org.postgresql:postgresql")
-
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    //elasticsearch
+    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+
+    // Redis
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
 }
+
