@@ -5,6 +5,8 @@ import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.Getter;
 
+import java.time.OffsetDateTime;
+
 
 @Entity
 @Getter
@@ -41,31 +43,11 @@ public class WatchHistory extends BaseEntity {
     protected WatchHistory() {}
 
     public WatchHistory(User user, VideoMetadata videoMetadata) {
+        this.id = IdGenerator.generate();
         this.user = user;
         this.videoMetadata = videoMetadata;
         this.lastPosition = 0;
         this.completed = false;
         this.deleted = false;
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    @PrePersist
-    private void prePersist() {
-        if (id == null) id = IdGenerator.generate();
-    }
-
-    public void updatePosition(int seconds) {
-        this.lastPosition = seconds;
-    }
-
-    public void markCompleted() {
-        this.completed = true;
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    public void setDeleted(boolean deleted) {
-        this.deleted = deleted;
-        this.updatedAt = OffsetDateTime.now();
     }
 }
