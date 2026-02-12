@@ -34,3 +34,10 @@ app:
   kafka:
     topics:
       mediaTranscode: ${KAFKA_TOPIC_MEDIA_TRANSCODE:media.transcode.requested}
+
+logging:
+  level:
+    root: WARN
+    com.ott: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN

@@ -35,10 +35,10 @@ public class VideoService {
     private String bucket;
 
     public VideoService(VideoRepository videoRepository,
-                        VideoUploadSessionRepository sessionRepository,
-                        PresignedMultipartProcessor presignedMultipartProcessor,
-                        ObjectStorageVerifier objectStorageVerifier,
-                        ApplicationEventPublisher eventPublisher) {
+            VideoUploadSessionRepository sessionRepository,
+            PresignedMultipartProcessor presignedMultipartProcessor,
+            ObjectStorageVerifier objectStorageVerifier,
+            ApplicationEventPublisher eventPublisher) {
         this.videoRepository = videoRepository;
         this.sessionRepository = sessionRepository;
         this.presignedMultipartProcessor = presignedMultipartProcessor;
@@ -61,20 +61,20 @@ public class VideoService {
 
     @Transactional
     public MultipartInitResult initMultipartUpload(String contentType, long sizeBytes) {
-        if (sizeBytes <= 0) throw new IllegalArgumentException("sizeBytes must be > 0");
+        if (sizeBytes <= 0)
+            throw new IllegalArgumentException("sizeBytes must be > 0");
 
         Long videoId = IdGenerator.generate();
         String sourceKey = "videos/" + videoId + "/source/source.mp4";
 
         videoRepository.save(new Video(videoId, sourceKey));
 
-        MultipartInitResult result = presignedMultipartProcessor.initMultipart(videoId, bucket, sourceKey, contentType, sizeBytes);
-
+        MultipartInitResult result = presignedMultipartProcessor.initMultipart(videoId, bucket, sourceKey, contentType,
+                sizeBytes);
 
         OffsetDateTime expiresAt = OffsetDateTime.ofInstant(
                 Instant.ofEpochSecond(result.expiresAtEpochSeconds()),
-                ZoneOffset.UTC
-        );
+                ZoneOffset.UTC);
         VideoUploadSession session = new VideoUploadSession(
                 IdGenerator.generate(),
                 videoId,
@@ -83,15 +83,15 @@ public class VideoService {
                 result.uploadId(),
                 result.partSizeBytes(),
                 sizeBytes,
-                expiresAt
-        );
+                expiresAt);
         sessionRepository.save(session);
 
         return result;
     }
 
     @Transactional
-    public void completeMultipartUpload(Long videoId, String uploadId, List<CompletedPartDto> completedParts, long sizeBytes) {
+    public void completeMultipartUpload(Long videoId, String uploadId, List<CompletedPartDto> completedParts,
+            long sizeBytes) {
         Video v = videoRepository.findById(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("video not found"));
 

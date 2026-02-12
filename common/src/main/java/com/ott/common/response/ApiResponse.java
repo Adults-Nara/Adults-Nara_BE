@@ -1,5 +1,7 @@
 package com.ott.common.response;
 
+import com.ott.common.error.ErrorCode;
+
 public class ApiResponse<T> {
     private final ResultType result;
     private final T data;
@@ -23,13 +25,23 @@ public class ApiResponse<T> {
         return new ApiResponse<>(ResultType.ERROR, null, new ErrorMessage(code, message));
     }
 
+    public static ApiResponse<?> error(ErrorCode errorCode) {
+        return new ApiResponse<>(ResultType.ERROR, null,
+                new ErrorMessage(errorCode.getCode(), errorCode.getMessage()));
+    }
+
+    public static ApiResponse<?> error(ErrorCode errorCode, java.util.List<ErrorMessage.FieldError> errors) {
+        return new ApiResponse<>(ResultType.ERROR, null,
+                new ErrorMessage(errorCode.getCode(), errorCode.getMessage(), errors));
+    }
+
     public ResultType getResult() {
         return result;
     }
 
-    public Object getData() {
+    public T getData() {
         return data;
-    }
+    } // (권장: Object -> T)
 
     public ErrorMessage getError() {
         return error;
