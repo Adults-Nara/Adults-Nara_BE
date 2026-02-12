@@ -22,8 +22,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleValidation(MethodArgumentNotValidException ex) {
+        var errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> new com.ott.common.response.ErrorMessage.FieldError(e.getField(), e.getDefaultMessage()))
+                .collect(java.util.stream.Collectors.toList());
+
         return ResponseEntity.status(ErrorCode.INVALID_REQUEST.getHttpStatus())
-                .body(ApiResponse.error(ErrorCode.INVALID_REQUEST));
+                .body(ApiResponse.error(ErrorCode.INVALID_REQUEST, errors));
     }
 
     @ExceptionHandler(Exception.class)

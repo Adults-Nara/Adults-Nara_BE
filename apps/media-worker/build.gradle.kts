@@ -27,6 +27,8 @@ dependencies {
     // S3 접근(초기엔 AWS SDK v2 권장)
     implementation("software.amazon.awssdk:s3:2.25.62")
 
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -30,7 +30,20 @@ public class ApiResponse<T> {
                 new ErrorMessage(errorCode.getCode(), errorCode.getMessage()));
     }
 
-    public ResultType getResult() { return result; }
-    public T getData() { return data; }           // (권장: Object -> T)
-    public ErrorMessage getError() { return error; }
+    public static ApiResponse<?> error(ErrorCode errorCode, java.util.List<ErrorMessage.FieldError> errors) {
+        return new ApiResponse<>(ResultType.ERROR, null,
+                new ErrorMessage(errorCode.getCode(), errorCode.getMessage(), errors));
+    }
+
+    public ResultType getResult() {
+        return result;
+    }
+
+    public T getData() {
+        return data;
+    } // (권장: Object -> T)
+
+    public ErrorMessage getError() {
+        return error;
+    }
 }
