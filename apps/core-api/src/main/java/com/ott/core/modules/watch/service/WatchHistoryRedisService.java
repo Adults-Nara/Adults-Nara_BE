@@ -74,11 +74,11 @@ public class WatchHistoryRedisService {
         redisTemplate.delete(key);
     }
 
-    private String generateWatchKey(Long userId, Long videoMetaDataId) {
-        return WATCH_HISTORY_PREFIX + userId + ":" + videoMetaDataId;
+    private String generateWatchKey(Long userId, Long videoMetadataId) {
+        return WATCH_HISTORY_PREFIX + userId + ":" + videoMetadataId;
     }
 
-    private String generateRateLimitKey(Long userId, Long videoMetaDataId) {
-        return RATE_LIMIT_PREFIX + userId + ":" + videoMetaDataId;
+    private String generateRateLimitKey(Long userId, Long videoMetadataId) {
+        return RATE_LIMIT_PREFIX + userId + ":" + videoMetadataId;
     }
 }
