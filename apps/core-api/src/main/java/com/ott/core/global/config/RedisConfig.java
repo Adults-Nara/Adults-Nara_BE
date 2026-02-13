@@ -24,7 +24,7 @@ public class RedisConfig {
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
-                        .allowIfBasePackage("com.ott.core.modules")
+                        .allowIfSubType("com.ott.core.modules")
                         .build(),
                 ObjectMapper.DefaultTyping.NON_FINAL
         );
