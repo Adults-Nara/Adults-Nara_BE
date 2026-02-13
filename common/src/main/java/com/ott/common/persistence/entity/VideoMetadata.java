@@ -37,5 +37,7 @@ public class VideoMetadata extends BaseEntity {
 
     private int bookmarkCount;
 
+    private Integer duration;
+
     private Long otherVideoMetadataId;
 }

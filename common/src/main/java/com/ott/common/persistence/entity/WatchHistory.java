@@ -5,12 +5,16 @@ import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.Getter;
 
-import java.time.OffsetDateTime;
 
 
 @Entity
 @Getter
-@Table(name = "watch_history")
+@Table(
+        name = "watch_history",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user_id", "video_metadata_id"})
+        }
+)
 public class WatchHistory extends BaseEntity {
 
     @Id
@@ -34,19 +38,13 @@ public class WatchHistory extends BaseEntity {
     @Column(nullable = false)
     private boolean deleted;
 
-    @Column(name = "created_at")
-    private OffsetDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private OffsetDateTime updatedAt;
-
     protected WatchHistory() {}
 
-    public WatchHistory(User user, VideoMetadata videoMetadata) {
+    public WatchHistory(User user, VideoMetadata videoMetadata, Integer lastPosition) {
         this.id = IdGenerator.generate();
         this.user = user;
         this.videoMetadata = videoMetadata;
-        this.lastPosition = 0;
+        this.lastPosition = lastPosition;
         this.completed = false;
         this.deleted = false;
     }

@@ -31,6 +31,8 @@ dependencies {
     // 보안 필요 시(로그인/회원가입)
     implementation("org.springframework.boot:spring-boot-starter-security")
 
+    // Redis
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
     // Kafka
     implementation("org.springframework.kafka:spring-kafka")
@@ -39,6 +41,7 @@ dependencies {
     implementation("software.amazon.awssdk:s3:2.41.23");
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-
-
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
 }
