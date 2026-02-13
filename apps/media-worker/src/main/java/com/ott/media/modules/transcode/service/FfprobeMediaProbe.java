@@ -3,6 +3,7 @@ package com.ott.media.modules.transcode.service;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -31,6 +32,44 @@ public class FfprobeMediaProbe {
             return 30.0;
         }
         return fps;
+    }
+
+    public double readDurationSeconds(Path inputFile) {
+        List<String> cmd = List.of(
+                "ffprobe",
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                inputFile.toString()
+        );
+
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(true);
+
+        try {
+            Process p = pb.start();
+
+            String output;
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+                output = br.readLine();
+            }
+
+            int exit = p.waitFor();
+            if (exit != 0) {
+                throw new RuntimeException("ffprobe failed. exit=" + exit);
+            }
+
+            if (output == null || output.isBlank()) {
+                throw new RuntimeException("ffprobe returned empty duration");
+            }
+
+            return Double.parseDouble(output.trim());
+
+        } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("ffprobe execution error", e);
+        }
     }
 
     private String runAndCapture(List<String> cmd, Path workingDir) {

@@ -13,8 +13,16 @@ java {
 dependencies {
     implementation(project(":common"))
 
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 
     // DB 사용 시
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
