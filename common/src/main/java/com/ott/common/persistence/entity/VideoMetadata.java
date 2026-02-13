@@ -1,16 +1,22 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.persistence.base.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import lombok.Getter;
+import jakarta.persistence.Table;
+import lombok.*;
 
 import java.time.OffsetDateTime;
 
 @Entity
 @Getter
-public class VideoMetadata {
+@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Table(name = "video_metadata")
+public class VideoMetadata extends BaseEntity {
     @Id
+    @Column(name = "video_metadata_id")
     private Long id;
 
     private Long videoId;
@@ -26,31 +32,9 @@ public class VideoMetadata {
 
     private int viewCount;
 
+    private int likeCount;
+
     private int bookmarkCount;
 
-    private Integer duration;
-
     private Long otherVideoMetadataId;
-
-    private OffsetDateTime createdAt;
-
-    private OffsetDateTime updatedAt;
-
-    protected VideoMetadata() { }
-
-    public VideoMetadata(Long id, Long videoId, String title, Integer duration) {
-        this.id = id;
-        this.title = title;
-        this.viewCount = 0;
-        this.bookmarkCount = 0;
-        this.duration = duration;
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    public VideoMetadata(Long id, Long videoId, String title, Integer duration, String description, String thumbnailUrl) {
-        this(id, videoId, title, duration);
-        this.description = description;
-        this.thumbnailUrl = thumbnailUrl;
-    }
 }
