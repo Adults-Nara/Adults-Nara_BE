@@ -4,8 +4,11 @@ import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.video.controller.request.MultipartCompleteRequest;
 import com.ott.core.modules.video.controller.request.MultipartInitRequest;
 import com.ott.core.modules.video.controller.response.MultipartInitResponse;
+import com.ott.core.modules.video.controller.response.PlayResponse;
+import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.service.VideoService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,4 +38,13 @@ public class VideoController {
         videoService.abortMultipartUpload(videoId, uploadId);
         return ApiResponse.success();
     }
+
+    @GetMapping("/api/v1/videos/{videoId}/play")
+    public ResponseEntity<ApiResponse<PlayResponse>> play(@PathVariable Long videoId) {
+        PlayResult result = videoService.play(videoId);
+        return ResponseEntity.ok()
+                .headers(result.httpHeaders())
+                .body(ApiResponse.success(PlayResponse.of(result)));
+    }
+
 }
