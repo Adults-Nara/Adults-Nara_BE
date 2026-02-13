@@ -8,25 +8,30 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "video_tag")
+@Table(name = "video_tag",
+    uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_video_tag",
+                columnNames = {"video_metadata_id", "tag_id"}
+        )
+    })
 public class VideoTag {
 
-    @EmbeddedId
-    private VideoTagId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "video_tag_id")
+    private Long id;
 
-    @MapsId("tagId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tag_id", nullable = false)
-    private Tag tag;
-
-    @MapsId("videoMetadataId")
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "video_metadata_id", nullable = false)
     private VideoMetadata videoMetadata;
 
-    public VideoTag(Tag tag, VideoMetadata videoMetadata) {
-        this.tag = tag;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id", nullable = false)
+    private Tag tag;
+
+    public VideoTag(VideoMetadata videoMetadata, Tag tag) {
         this.videoMetadata = videoMetadata;
-        this.id = new VideoTagId(tag.getId(), videoMetadata.getId());
+        this.tag = tag;
     }
 }
