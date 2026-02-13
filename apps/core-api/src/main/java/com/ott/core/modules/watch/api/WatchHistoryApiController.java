@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class WatchHistoryApiController {
 
-    private final WatchHistoryRedisService watchHistoryService;
+    private final WatchHistoryService watchHistoryService;
 
-    public WatchHistoryApiController(WatchHistoryRedisService watchHistoryService) {
+    public WatchHistoryApiController(WatchHistoryService watchHistoryService) {
         this.watchHistoryService = watchHistoryService;
     }
 }
