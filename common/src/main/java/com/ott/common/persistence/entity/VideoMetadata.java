@@ -12,6 +12,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Getter
 @Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Table(name = "video_metadata")
 public class VideoMetadata extends BaseEntity {
