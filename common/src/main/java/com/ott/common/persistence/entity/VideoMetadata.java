@@ -40,4 +40,10 @@ public class VideoMetadata extends BaseEntity {
     private Integer duration;
 
     private Long otherVideoMetadataId;
+
+    private boolean deleted;
+
+    public void setDuration(Integer duration) {
+        this.duration = duration;
+    }
 }

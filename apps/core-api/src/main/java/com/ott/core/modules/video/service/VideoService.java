@@ -1,5 +1,6 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoUploadSession;
@@ -10,6 +11,7 @@ import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.event.VideoTranscodeRequestedEvent;
+import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.repository.VideoRepository;
 import com.ott.core.modules.video.repository.VideoUploadSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,6 +31,7 @@ import java.util.Map;
 @Service
 public class VideoService {
     private final VideoRepository videoRepository;
+    private final VideoMetadataRepository videoMetadataRepository;
     private final VideoUploadSessionRepository sessionRepository;
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
@@ -43,6 +46,7 @@ public class VideoService {
     private final String BUCKET;
 
     public VideoService(VideoRepository videoRepository,
+                        VideoMetadataRepository videoMetadataRepository,
                         VideoUploadSessionRepository sessionRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
                         ObjectStorageVerifier objectStorageVerifier,
@@ -52,6 +56,7 @@ public class VideoService {
                         @Value("${aws.cloudfront.ttl}") Integer ttl,
                         @Value("${aws.s3.source-bucket}") String bucket) {
         this.videoRepository = videoRepository;
+        this.videoMetadataRepository = videoMetadataRepository;
         this.sessionRepository = sessionRepository;
         this.presignedMultipartProcessor = presignedMultipartProcessor;
         this.objectStorageVerifier = objectStorageVerifier;
@@ -133,7 +138,12 @@ public class VideoService {
         session.markCompleted();
         v.setProcessingStatus(ProcessingStatus.UPLOADED);
 
-        // todo: kafka uploaded 메시지 발송
+        VideoMetadata metadata = VideoMetadata.builder()
+                .id(IdGenerator.generate())
+                .videoId(v.getId())
+                .build();
+        videoMetadataRepository.save(metadata);
+
         eventPublisher.publishEvent(new VideoTranscodeRequestedEvent(videoId));
     }
 
