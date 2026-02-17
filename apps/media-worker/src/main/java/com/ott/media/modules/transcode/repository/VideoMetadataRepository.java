@@ -1,4 +1,4 @@
-package com.ott.core.modules.video.repository;
+package com.ott.media.modules.transcode.repository;
 
 import com.ott.common.persistence.entity.VideoMetadata;
 import org.springframework.data.jpa.repository.JpaRepository;

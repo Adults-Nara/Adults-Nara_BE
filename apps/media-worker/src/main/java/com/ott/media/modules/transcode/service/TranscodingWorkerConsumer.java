@@ -18,6 +18,7 @@ import java.util.List;
 public class TranscodingWorkerConsumer {
     private final ObjectStorageClient storage;
     private final FfmpegTranscoder ffmpegTranscoder;
+    private final FfprobeMediaProbe ffprobeMediaProbe;
     private final HlsUploader uploader;
     private final VideoUpdater videoUpdater;
 
@@ -31,11 +32,13 @@ public class TranscodingWorkerConsumer {
 
     public TranscodingWorkerConsumer(ObjectStorageClient storage,
                                      FfmpegTranscoder ffmpegTranscoder,
+                                     FfprobeMediaProbe ffprobeMediaProbe,
                                      HlsUploader uploader,
                                      VideoUpdater videoUpdater,
                                      @Value("${aws.s3.source-bucket}") String bucket) {
         this.storage = storage;
         this.ffmpegTranscoder = ffmpegTranscoder;
+        this.ffprobeMediaProbe = ffprobeMediaProbe;
         this.uploader = uploader;
         this.videoUpdater = videoUpdater;
         this.bucket = bucket;
@@ -56,6 +59,10 @@ public class TranscodingWorkerConsumer {
             // 소스 다운로드
             Path input = workRoot.resolve("source.mp4");
             storage.downloadToFile(bucket, video.getSourceKey(), input);
+
+            // 영상 길이 추출
+            int durationSeconds = (int) ffprobeMediaProbe.readDurationSeconds(input);
+            videoUpdater.updateVideoDuration(evt.videoId(), durationSeconds);
 
             // 로컬 HLS 생성
             Path hlsRoot = workRoot.resolve("hls"); // 여기 아래에 360p/720p/...
