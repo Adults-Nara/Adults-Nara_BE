@@ -1,15 +1,20 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
+import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoUploadSession;
 import com.ott.common.persistence.enums.UploadSessionStatus;
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.persistence.enums.Visibility;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.event.VideoTranscodeRequestedEvent;
+import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.repository.VideoRepository;
 import com.ott.core.modules.video.repository.VideoUploadSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +23,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -29,9 +36,11 @@ import java.util.Map;
 @Service
 public class VideoService {
     private final VideoRepository videoRepository;
+    private final VideoMetadataRepository videoMetadataRepository;
     private final VideoUploadSessionRepository sessionRepository;
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
+    private final S3ObjectStorage s3ObjectStorage;
     private final ObjectStorageVerifier objectStorageVerifier;
 
     private final ApplicationEventPublisher eventPublisher;
@@ -43,8 +52,10 @@ public class VideoService {
     private final String BUCKET;
 
     public VideoService(VideoRepository videoRepository,
+                        VideoMetadataRepository videoMetadataRepository,
                         VideoUploadSessionRepository sessionRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
+                        S3ObjectStorage s3ObjectStorage,
                         ObjectStorageVerifier objectStorageVerifier,
                         ApplicationEventPublisher eventPublisher,
                         SignedCookieProcessor signedCookieProcessor,
@@ -52,8 +63,10 @@ public class VideoService {
                         @Value("${aws.cloudfront.ttl}") Integer ttl,
                         @Value("${aws.s3.source-bucket}") String bucket) {
         this.videoRepository = videoRepository;
+        this.videoMetadataRepository = videoMetadataRepository;
         this.sessionRepository = sessionRepository;
         this.presignedMultipartProcessor = presignedMultipartProcessor;
+        this.s3ObjectStorage = s3ObjectStorage;
         this.objectStorageVerifier = objectStorageVerifier;
         this.eventPublisher = eventPublisher;
         this.signedCookieProcessor = signedCookieProcessor;
@@ -133,7 +146,12 @@ public class VideoService {
         session.markCompleted();
         v.setProcessingStatus(ProcessingStatus.UPLOADED);
 
-        // todo: kafka uploaded 메시지 발송
+        VideoMetadata metadata = VideoMetadata.builder()
+                .id(IdGenerator.generate())
+                .videoId(v.getId())
+                .build();
+        videoMetadataRepository.save(metadata);
+
         eventPublisher.publishEvent(new VideoTranscodeRequestedEvent(videoId));
     }
 
@@ -152,6 +170,33 @@ public class VideoService {
 
         presignedMultipartProcessor.abortMultipart(BUCKET, v.getSourceKey(), uploadId);
         session.markAborted();
+    }
+
+    @Transactional
+    public void upload(Long videoId, Long userId, MultipartFile thumbnail,
+                       String title, String description, VideoType videoType, String otherVideoUrl) {
+        VideoValidator.validateTitleLength(title);
+        VideoValidator.validateDescription(description);
+
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        videoMetadata.setUserId(userId);
+        videoMetadata.setTitle(title);
+        videoMetadata.setDescription(description);
+        videoMetadata.setVideoType(videoType);
+        videoMetadata.setOtherVideoUrl(otherVideoUrl);
+
+        if (thumbnail != null) {
+            String thumbnailExtension = thumbnail.getOriginalFilename().substring(thumbnail.getOriginalFilename().lastIndexOf("."));
+            String thumbnailKey = "videos/" + videoId + "/outputs/thumbnail" + thumbnailExtension;
+            try {
+                s3ObjectStorage.save(BUCKET, thumbnailKey, thumbnail.getBytes(), thumbnail.getContentType());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            videoMetadata.setThumbnailUrl("https://" + CLOUD_FRONT_DOMAIN + "/" + thumbnailKey);
+        }
     }
 
     public PlayResult play(Long videoId) {
