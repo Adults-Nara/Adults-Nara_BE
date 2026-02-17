@@ -1,10 +1,13 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoUploadSession;
 import com.ott.common.persistence.enums.UploadSessionStatus;
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.persistence.enums.Visibility;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.video.dto.PlayResult;
@@ -20,7 +23,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -35,6 +40,7 @@ public class VideoService {
     private final VideoUploadSessionRepository sessionRepository;
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
+    private final S3ObjectStorage s3ObjectStorage;
     private final ObjectStorageVerifier objectStorageVerifier;
 
     private final ApplicationEventPublisher eventPublisher;
@@ -49,6 +55,7 @@ public class VideoService {
                         VideoMetadataRepository videoMetadataRepository,
                         VideoUploadSessionRepository sessionRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
+                        S3ObjectStorage s3ObjectStorage,
                         ObjectStorageVerifier objectStorageVerifier,
                         ApplicationEventPublisher eventPublisher,
                         SignedCookieProcessor signedCookieProcessor,
@@ -59,6 +66,7 @@ public class VideoService {
         this.videoMetadataRepository = videoMetadataRepository;
         this.sessionRepository = sessionRepository;
         this.presignedMultipartProcessor = presignedMultipartProcessor;
+        this.s3ObjectStorage = s3ObjectStorage;
         this.objectStorageVerifier = objectStorageVerifier;
         this.eventPublisher = eventPublisher;
         this.signedCookieProcessor = signedCookieProcessor;
@@ -162,6 +170,33 @@ public class VideoService {
 
         presignedMultipartProcessor.abortMultipart(BUCKET, v.getSourceKey(), uploadId);
         session.markAborted();
+    }
+
+    @Transactional
+    public void upload(Long videoId, Long userId, MultipartFile thumbnail,
+                       String title, String description, VideoType videoType, String otherVideoUrl) {
+        VideoValidator.validateTitleLength(title);
+        VideoValidator.validateDescription(description);
+
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        videoMetadata.setUserId(userId);
+        videoMetadata.setTitle(title);
+        videoMetadata.setDescription(description);
+        videoMetadata.setVideoType(videoType);
+        videoMetadata.setOtherVideoUrl(otherVideoUrl);
+
+        if (thumbnail != null) {
+            String thumbnailExtension = thumbnail.getOriginalFilename().substring(thumbnail.getOriginalFilename().lastIndexOf("."));
+            String thumbnailKey = "videos/" + videoId + "/outputs/thumbnail" + thumbnailExtension;
+            try {
+                s3ObjectStorage.save(BUCKET, thumbnailKey, thumbnail.getBytes(), thumbnail.getContentType());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            videoMetadata.setThumbnailUrl("https://" + CLOUD_FRONT_DOMAIN + "/" + thumbnailKey);
+        }
     }
 
     public PlayResult play(Long videoId) {

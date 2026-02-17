@@ -3,6 +3,7 @@ package com.ott.core.modules.video.controller;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.video.controller.request.MultipartCompleteRequest;
 import com.ott.core.modules.video.controller.request.MultipartInitRequest;
+import com.ott.core.modules.video.controller.request.UploadRequest;
 import com.ott.core.modules.video.controller.response.MultipartInitResponse;
 import com.ott.core.modules.video.controller.response.PlayResponse;
 import com.ott.core.modules.video.dto.PlayResult;
@@ -10,6 +11,7 @@ import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.service.VideoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 public class VideoController {
@@ -37,6 +39,23 @@ public class VideoController {
                                                   @RequestParam String uploadId) {
         videoService.abortMultipartUpload(videoId, uploadId);
         return ApiResponse.success();
+    }
+
+    /*
+        curl -X POST "http://localhost:8080/api/v1/videos/{videoId}/upload" \
+          -H "Content-Type: multipart/form-data" \
+          -F "image=@thumbnail.jpg" \
+          -F 'data={"title":"my title","description":"my description"};type=application/json'
+     */
+    @PostMapping("/api/v1/videos/{videoId}/upload")
+    public ApiResponse<?> upload(@PathVariable Long videoId,
+                                 @RequestPart("image") MultipartFile image,
+                                 @RequestPart("data") UploadRequest request) {
+        // todo: 사용자 ID 받아서 넣어주기
+        // todo: 카테고리 저장하기
+        videoService.upload(videoId, null, image, request.title(), request.description(),
+                request.videoType(), request.otherVideoUrl());
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/api/v1/videos/{videoId}/play")

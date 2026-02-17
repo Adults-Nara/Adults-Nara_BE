@@ -30,7 +30,10 @@ public enum ErrorCode {
     USER_NOT_FOUND("USER-404-001", 404, "사용자를 찾을 수 없습니다."),
     USER_INVALID_CREDENTIAL("USER-401-001", 401, "이메일 또는 비밀번호가 올바르지 않습니다."),
     USER_CANNOT_BAN_ADMIN("USER-403-001", 403, "관리자는 정지할 수 없습니다."),
-    USER_CANNOT_DELETE_ADMIN("USER-403-002", 403, "관리자는 삭제할 수 없습니다.");
+    USER_CANNOT_DELETE_ADMIN("USER-403-002", 403, "관리자는 삭제할 수 없습니다."),
+
+    VIDEO_INVALID_TITLE("VIDEO-400-TITLE", 400, "잘못된 제목입니다. 제목은 2글자 이상 100글자 이하여야 합니다."),
+    VIDEO_INVALID_DESCRIPTION("VIDEO-400-DESCRIPTION", 400, "잘못된 설명입니다. 설명은 0글자 이상 4000글자 이하여야 합니다.");
 
     private final String code;
     private final int httpStatus;
