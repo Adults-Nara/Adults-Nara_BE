@@ -1,3 +1,4 @@
+/*
 package com.ott.core.modules.video.controller;
 
 import com.ott.common.response.ApiResponse;
@@ -35,3 +36,4 @@ public class BackofficeController {
         return ApiResponse.success(result);
     }
 }
+*/
