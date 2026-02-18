@@ -1,5 +1,6 @@
 package com.ott.core.modules.watch.service;
 
+import com.ott.core.modules.video.service.SignedCookieProcessor;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import static org.mockito.Mockito.verify;
 @ActiveProfiles("test")
 class WatchHistoryServiceTest {
 
+    @MockitoBean private SignedCookieProcessor signedCookieProcessor;
     @Autowired private RedisTemplate<String, Object> redisTemplate;
     @Autowired private WatchHistoryRedisService watchHistoryRedisService;
     @Autowired private WatchHistoryService watchHistoryService;

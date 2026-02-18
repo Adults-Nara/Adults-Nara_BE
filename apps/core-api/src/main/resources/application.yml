@@ -43,7 +43,7 @@ aws:
   presign:
     put-ttl-seconds: 1200
   cloudfront:
-    domain: ${AWS_CLOUDFRONT_DOMAIN}
-    keypair-id: ${AWS_CLOUDFRONT_KEY_PAIR_ID}
-    private-key-pem-b64: ${AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64}
+    domain: ${AWS_CLOUDFRONT_DOMAIN:}
+    keypair-id: ${AWS_CLOUDFRONT_KEY_PAIR_ID:}
+    private-key-pem-b64: ${AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64:}
     ttl: 7200

@@ -46,6 +46,8 @@ public class VideoMetadata extends BaseEntity {
     @Builder.Default
     private int bookmarkCount = 0;
 
+    private int commentCount;
+
     private Integer duration;
 
     private Long otherVideoMetadataId;

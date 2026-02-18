@@ -18,7 +18,6 @@ import lombok.NoArgsConstructor;
 public class VideoTag {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "video_tag_id")
     private Long id;
 

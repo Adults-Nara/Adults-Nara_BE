@@ -1,17 +1,16 @@
 package com.ott.core.modules.watch.service;
 
+import com.ott.core.modules.video.service.SignedCookieProcessor;
 import com.ott.core.modules.watch.dto.WatchHistoryDto;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 class WatchHistoryRedisServiceTest {
 
+    @MockitoBean private SignedCookieProcessor signedCookieProcessor;
     @Autowired private WatchHistoryRedisService watchHistoryRedisService;
     @Autowired private RedisTemplate<String, Object> redisTemplate;
 
