@@ -32,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByBanned(BanStatus banned);
 
     long countByRole(UserRole role);
+
+    Optional<User> findByEmail(String email);
 }
