@@ -10,6 +10,11 @@ dependencies {
     // 엔티티 컴파일에 필요한 최소 의존성만
     api("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
+    // Querydsl
+    api("com.querydsl:querydsl-jpa:5.1.0:jakarta")
+    annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")
+    annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
+
     implementation("io.hypersistence:hypersistence-utils-hibernate-60:3.5.1") // TSID
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 

@@ -8,8 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 
-import java.time.OffsetDateTime;
-
 @Entity
 @Getter
 @Builder
@@ -38,7 +36,11 @@ public class VideoMetadata extends BaseEntity {
 
     private int likeCount;
 
+    private int dislikeCount;
+
     private int bookmarkCount;
+
+    private int commentCount;
 
     private Integer duration;
 
