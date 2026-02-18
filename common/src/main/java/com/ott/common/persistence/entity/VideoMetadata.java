@@ -2,13 +2,10 @@ package com.ott.common.persistence.entity;
 
 import com.ott.common.persistence.base.BaseEntity;
 import com.ott.common.persistence.enums.VideoType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.ott.common.util.IdGenerator;
+import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.OffsetDateTime;
 
 @Entity
 @Getter
@@ -34,11 +31,20 @@ public class VideoMetadata extends BaseEntity {
     @Column(length = 1000)
     private String thumbnailUrl;
 
-    private int viewCount;
+    @Builder.Default
+    private int viewCount = 0;
 
-    private int likeCount;
+    @Builder.Default
+    private int likeCount = 0;
 
-    private int bookmarkCount;
+    @Builder.Default
+    private int dislikeCount = 0;
+
+    @Builder.Default
+    private int superLikeCount = 0;
+
+    @Builder.Default
+    private int bookmarkCount = 0;
 
     private Integer duration;
 
@@ -76,5 +82,10 @@ public class VideoMetadata extends BaseEntity {
 
     public void setVideoType(VideoType videoType) {
         this.videoType = videoType;
+    }
+
+    @PrePersist
+    private void prePersist() {
+        if (id == null) id = IdGenerator.generate();
     }
 }
