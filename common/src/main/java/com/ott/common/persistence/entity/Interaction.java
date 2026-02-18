@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "interaction", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_interaction_user_video_type", columnNames = {"user_id", "video_metadata_id", "interaction_type"})
+        @UniqueConstraint(name = "uk_interaction_user_video_type", columnNames = {"user_id", "video_metadata_id"})
 })
 public class Interaction extends BaseEntity {
 
