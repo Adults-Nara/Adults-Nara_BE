@@ -27,8 +27,8 @@ server:
   port: ${MEDIA_WORKER_PORT:8081}
 
 aws:
-  region: ap-northeast-2
+  region: ${AWS_REGION}
   s3:
-    source-bucket: sinna-bucket
+    source-bucket: ${S3_BUCKET}
   presign:
     put-ttl-seconds: 1200
