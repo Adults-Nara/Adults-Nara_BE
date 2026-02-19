@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  # 1) PR이 만들어지거나 업데이트될 때 실행 (feature/* -> develop, develop -> main 모두 해당)
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ["develop", "main"] # PR 대상 브랜치가 develop/main일 때만 CI 실행
+
+  # 2) 실제로 develop/main에 머지되어 push가 발생했을 때도 실행
+  #    (PR에서 통과했더라도 merge 결과를 한 번 더 검증하는 목적)
+  push:
+    branches: ["develop", "main"]
+
+permissions:
+  contents: read # 코드 읽기만 필요 (최소 권한)
+
+concurrency:
+  # 같은 브랜치/PR에서 중복 실행되면 이전 실행을 취소해서 CI 시간을 절약
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test (+ JaCoCo + SonarQube)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) 리포지토리 체크아웃
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarQube가 git 히스토리(blame)를 활용할 수 있어 0 권장
+
+      # 2) JDK 설치 + Gradle 캐시 사용
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      # 3) gradlew 실행 권한 부여(리눅스 러너 필수)
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 4) 핵심: 빌드/테스트 + JaCoCo 리포트 생성
+      #    - jacocoTestReport: 커버리지 리포트(xml/html) 생성(sonar 연동 시 xml 필요)
+      - name: Run tests + JaCoCo report
+        run: |
+          ./gradlew --no-daemon test jacocoTestReport
+
+      # 5) (선택) 커버리지 70% 이상 강제
+      #    - Gradle에 jacocoTestCoverageVerification 규칙이 설정되어 있어야 실제로 실패 처리됩니다.
+      #    - 아직 규칙을 안 넣었다면, 이 스텝을 켜도 "항상 성공"할 수 있으니 주의.
+      # - name: Enforce JaCoCo coverage >= 70%
+      #   run: |
+      #     ./gradlew --no-daemon jacocoTestCoverageVerification
+
+      # 6) SonarQube 분석 (옵션)
+      #    - secrets에 SONAR_HOST_URL, SONAR_TOKEN을 넣어두면 실행됩니다.
+      #    - 없으면 자동 스킵하도록 처리.
+      - name: SonarQube (optional)
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "${SONAR_HOST_URL}" ] && [ -n "${SONAR_TOKEN}" ]; then
+            echo "SonarQube enabled"
+            ./gradlew --no-daemon sonar \
+              -Dsonar.host.url="${SONAR_HOST_URL}" \
+              -Dsonar.login="${SONAR_TOKEN}"
+          else
+            echo "SonarQube skipped (missing SONAR_HOST_URL or SONAR_TOKEN)"
+          fi
+
+      # (선택) 더 빠르게 하고 싶으면 아래처럼 바꿀 수 있음:
+      # ./gradlew --no-daemon test -x integrationTest
