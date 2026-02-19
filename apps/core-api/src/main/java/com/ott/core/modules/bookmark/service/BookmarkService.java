@@ -1,5 +1,7 @@
 package com.ott.core.modules.bookmark.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.Bookmark;
 import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.VideoMetadata;
@@ -46,11 +48,11 @@ public class BookmarkService {
 
     private User findUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다. ID: " + userId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
     private VideoMetadata findVideo(Long videoId) {
         return videoMetadataRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 비디오입니다. ID: " + videoId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
     }
 }
