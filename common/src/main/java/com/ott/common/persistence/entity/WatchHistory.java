@@ -17,6 +17,9 @@ import lombok.Getter;
 )
 public class WatchHistory extends BaseEntity {
 
+    // 완주로 판단할 비율 (90%)
+    private static final double COMPLETION_THRESHOLD = 0.9;
+
     @Id
     @Column(name = "watch_history_id")
     private Long id;
@@ -47,5 +50,16 @@ public class WatchHistory extends BaseEntity {
         this.lastPosition = lastPosition;
         this.completed = false;
         this.deleted = false;
+    }
+
+    public static boolean isVideoCompleted(Integer lastPosition, Integer duration) {
+
+        if (duration == null || duration <= 0) { // 방어 로직: 영상 길이가 없거나 0이면 완주 불가
+            return false;
+        }
+        if (lastPosition == null) { // 방어 로직: 시청 위치가 없으면 미완주
+            return false;
+        }
+        return (double) lastPosition / duration >= COMPLETION_THRESHOLD; // 90% 이상 시청 시 true 반환
     }
 }

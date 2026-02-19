@@ -71,10 +71,14 @@ public class WatchHistoryService {
      */
     @Transactional
     public void updateWatchPosition(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
+
+        // 도메인 로직을 사용하여 완주 여부 계산
+        boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
+
         watchHistoryRedisService.saveWatchHistory(userId, videoMetadataId, lastPosition, duration);
         boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoMetadataId);
-        if (canSaveToDb) {
-            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition);
+        if (canSaveToDb || isCompleted) {
+            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted);
         }
     }
 
@@ -82,8 +86,11 @@ public class WatchHistoryService {
      * 시청 종료 시 최종 위치 DB 저장 (Rate limit 무시)
      */
     @Transactional
-    public void stopWatching(Long userId, Long videoMetadataId, Integer lastPosition) {
-        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, OffsetDateTime.now(ZoneOffset.UTC));
+    public void stopWatching(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
+
+        // 종료 시점에 완주 여부 계산
+        boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
+        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
         watchHistoryRedisService.deleteWatchHistory(userId, videoMetadataId);
     }
 }
