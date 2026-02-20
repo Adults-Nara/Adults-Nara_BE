@@ -1,5 +1,7 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.dto.multipart.PresignedPart;
@@ -32,8 +34,8 @@ public class S3PresignedMultipartProcessor implements PresignedMultipartProcesso
 
     @Override
     public MultipartInitResult initMultipart(Long videoId, String bucket, String objectKey, String contentType, long sizeBytes) {
-        if (sizeBytes <= 0) throw new IllegalArgumentException("sizeBytes must be > 0");
-        if (sizeBytes > MAX_OBJECT_SIZE_BYTES) throw new IllegalArgumentException("sizeBytes exceeds max allowed");
+        if (sizeBytes <= 0) throw new BusinessException(ErrorCode.VIDEO_INVALID_SIZE);
+        if (sizeBytes > MAX_OBJECT_SIZE_BYTES) throw new BusinessException(ErrorCode.VIDEO_INVALID_SIZE);
 
         int partSize = DEFAULT_PART_SIZE;
         int partCount = (int) Math.ceil((double) sizeBytes / (double) partSize);
@@ -75,7 +77,7 @@ public class S3PresignedMultipartProcessor implements PresignedMultipartProcesso
 
     @Override
     public void completeMultipart(String bucket, String objectKey, String uploadId, List<CompletedPartDto> parts) {
-        if (parts == null || parts.isEmpty()) throw new IllegalArgumentException("parts is empty");
+        if (parts == null || parts.isEmpty()) throw new BusinessException(ErrorCode.INVALID_REQUEST);
 
         // 1) CompleteMultipartUpload는 partNumber 오름차순이 안전
         List<CompletedPartDto> sorted = parts.stream()

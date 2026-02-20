@@ -1,5 +1,7 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -23,13 +25,13 @@ public class S3ObjectStorageVerifier implements ObjectStorageVerifier {
                     .key(key)
                     .build());
         } catch (NoSuchKeyException e) {
-            throw new IllegalStateException("Object not found");
+            throw new BusinessException(ErrorCode.NOT_FOUND);
         }
 
         long actualSize = head.contentLength();
-        if (actualSize <= 0) throw new IllegalStateException("Empty object");
+        if (actualSize <= 0) throw new BusinessException(ErrorCode.NOT_FOUND);
         if (expectedSizeBytes > 0 && actualSize != expectedSizeBytes) {
-            throw new IllegalStateException("Size mismatch");
+            throw new BusinessException(ErrorCode.VIDEO_INVALID_SIZE);
         }
     }
 }

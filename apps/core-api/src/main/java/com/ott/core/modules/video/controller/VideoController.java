@@ -53,6 +53,7 @@ public class VideoController {
                                  @RequestPart("data") UploadRequest request) {
         // todo: 사용자 ID 받아서 넣어주기
         // todo: 카테고리 저장하기
+        // todo: visible 상태 값 받기
         videoService.upload(videoId, null, image, request.title(), request.description(),
                 request.videoType(), request.otherVideoUrl());
         return ApiResponse.success(null);
