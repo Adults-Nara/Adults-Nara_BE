@@ -36,4 +36,17 @@ public class VideoDocument {
 
     @Field(type = FieldType.Keyword)
     private String videoType;
+
+    public static VideoDocument of(com.ott.common.persistence.entity.VideoMetadata video, List<String> tags) {
+        return VideoDocument.builder()
+                .id(video.getId())
+                .title(video.getTitle())
+                .description(video.getDescription())
+                .tags(tags)
+                .viewCount(video.getViewCount())
+                .likeCount(video.getLikeCount())
+                .createdAt(video.getCreatedAt().toString())
+                .videoType(video.getVideoType() != null ? video.getVideoType().name() : "NONE")
+                .build();
+    }
 }
