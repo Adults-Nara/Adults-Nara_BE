@@ -1,5 +1,4 @@
 # Adults-Nara_BE
-
 ## 🧭 목차
 - [🏢 아키텍처 설계](#-아키텍처-설계)
     - [최종 구조](#최종-구조)
@@ -19,7 +18,14 @@
     - [3. 검색: 한글 특화 검색](#3-검색-한글-특화-검색)
     - [4. 실시간 인기차트: Bookmark 기반 Top 10](#4-실시간-인기차트-bookmark-기반-top-10)
     - [5. 영상: 업로드 / 트랜스코딩 / 재생(권한)](#5-영상-업로드--트랜스코딩--재생권한)
-
+- [🛠️ 기술 스택 근거](#-기술-스택-근거)
+    - [1. Message Broker: Apache Kafka vs RabbitMQ](#1-message-broker-apache-kafka-vs-rabbitmq)
+    - [2. 검색 엔진 선정: Elasticsearch vs OpenSearch](#2--검색-엔진-선정-elasticsearch-vs-opensearch)
+    - [3. 데이터 동기화 파이프라인: Spring Boot(Application Layer) vs Logstash](#3--데이터-동기화-파이프라인-spring-bootapplication-layer-vs-logstash)
+    - [4. 사용자 취향 점수 실시간 집계: Redis ZSet vs RDBMS vs Batch](#4--사용자-취향-점수-실시간-집계-redis-zset-vs-rdbms-vs-batch)
+    - [5. DB 데이터 백업/적재: JPA save() vs Native Query(Upsert)](#5--db-데이터-백업적재-jpa-save-vs-native-queryupsert)
+    - [6. 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER](#6--추천-서빙-es--redis-zset-vs-python-ml-vs-redis-sinter)
+    - [7. 영상 시청: CloudFront + S3](#7--영상-시청-cloudfront--s3)
 ---
 
 ## 🏢 아키텍처 설계
@@ -157,8 +163,7 @@
 2. 반영 결과에 따라 VideoMetadata 카운트(+1/-1) 갱신
 3. 조회 API는 VideoMetadata 카운트를 그대로 반환(집계 쿼리 최소화)
 
-![interaction-1](docs/images/interaction-1.png)
-![interaction-2](docs/images/interaction-2.png)
+
 ---
 
 ### 2. 추천: 태그 기반 실시간 맞춤형 추천 시스템
@@ -316,3 +321,159 @@
 2. Core API: `SignedCookieProcessor`가 CloudFront 쿠키 발급
 3. 클라이언트: 쿠키로 CloudFront 경로 접근하여 재생
 ![video](docs/images/video.png)
+
+---
+## 🛠️ 기술 스택 근거
+
+### 1. Message Broker: Apache Kafka vs RabbitMQ
+
+#### ① 요구사항(문제/목표)
+- 트랜스코딩은 장시간 작업(360/720/1080p)이며 실패 시 재처리 비용이 큼
+- 워커 장애/로직 변경/품질 이슈 발생 시 **재처리(Replay)** 필요
+- **메시지 유실 방지 + 재처리 추적/통제 + 운영 가시성(대기량)** 필요
+
+#### ② 대안 비교
+- **RabbitMQ**: ACK 기반 재전송은 가능하나, ACK 이후 메시지 삭제 → 과거 작업 재처리 어려움
+- **Kafka**: 보존 기간 동안 로그 유지 + offset rewind로 과거 메시지 재소비 가능, lag로 대기량 계량화
+
+#### ③ 결정
+- ✅ **Apache Kafka 채택**
+
+#### ④ 선정 근거
+- **재처리(Replay) 지원**: offset 관리만으로 과거 작업 재수행 가능
+- **내구성**: 디스크 기반 로그 보존으로 유실 리스크 최소화
+- **운영 지표**: Consumer Lag로 적체를 수치화하여 오토스케일 기준으로 활용 가능
+
+---
+
+### 2. 🔎 검색 엔진 선정: Elasticsearch vs OpenSearch
+
+#### ① 요구사항(문제/목표)
+- Spring Boot 기반에서 **빠른 개발/통합** 필요
+- 한글 검색 품질 고도화(형태소 분석) 필요
+- 운영/모니터링 도구가 직관적이어야 함
+- 초기 비용은 최소화(필수 기능 위주)
+
+#### ② 대안 비교
+- **Elasticsearch**: Spring Data Elasticsearch 공식 지원, Nori 레퍼런스 풍부, Kibana 생태계 강함
+- **OpenSearch**: 기능 유사하나, Spring 통합은 별도 클라이언트 구성 필요
+
+#### ③ 결정
+- ✅ **Elasticsearch 채택**
+
+#### ④ 선정 근거
+- **개발 생산성**: Spring Data 공식 지원으로 JPA 유사한 개발 경험 확보
+- **한글 검색 고도화**: Nori 적용/사례가 풍부해 품질 튜닝이 수월
+- **운영 편의**: Kibana 기반 모니터링/쿼리 분석 경험이 성숙
+
+---
+
+### 3. 🔁 데이터 동기화 파이프라인: Spring Boot(Application Layer) vs Logstash
+
+#### ① 요구사항(문제/목표)
+- RDB → 검색 인덱스 동기화를 **가능하면 즉시(Near real-time)** 반영
+- 초기 단계에서 인프라 복잡도/운영 부담을 최소화
+- 오버엔지니어링 방지
+
+#### ② 대안 비교
+- **Logstash(CDC)**: 별도 서버/JVM 운영 필요, 파이프라인 복잡도 증가, 지연 가능
+- **Spring Boot(Double Write)**: 트랜잭션 흐름 내 즉시 동기화 가능, 구성 단순
+
+#### ③ 결정
+- ✅ **Spring Boot Application(Double Write) 채택**
+
+#### ④ 선정 근거
+- **인프라 단순화**: 별도 Logstash 운영 없이 기존 서버로 처리
+- **즉시성**: 트랜잭션 내 저장 직후 인덱스 반영(near real-time)
+- **현 단계 적합성**: 초기 규모/팀 역량 대비 운영 비용 최소화
+
+---
+
+### 4. ⚡ 사용자 취향 점수 실시간 집계: Redis ZSet vs RDBMS vs Batch
+
+#### ① 요구사항(문제/목표)
+- 유저 행동(좋아요/시청)이 발생하면 **즉시 점수 반영** 및 랭킹/Top-N 조회 필요
+- 높은 쓰기 빈도에서도 병목/데드락 없이 견뎌야 함
+
+#### ② 대안 비교
+- **RDBMS 업데이트**: 빈번한 UPDATE로 I/O 병목, 락/데드락 위험
+- **Batch 집계**: 부하는 줄지만 실시간 추천 요구 충족 불가
+- **Redis ZSet**: 인메모리 + `ZINCRBY` 원자 연산, 자동 정렬로 실시간 랭킹 최적
+
+#### ③ 결정
+- ✅ **Redis ZSet 채택**
+
+#### ④ 선정 근거
+- **쓰기 성능**: 인메모리 기반으로 고빈도 이벤트 처리에 유리
+- **원자적 누적**: `ZINCRBY`로 동시성 안전하게 점수 누적
+- **즉시 조회**: 정렬이 자동 유지되어 Top-N 조회가 빠름
+
+---
+
+### 5. 🗄️ DB 데이터 백업/적재: JPA `save()` vs Native Query(Upsert)
+
+#### ① 요구사항(문제/목표)
+- 대량/반복 적재에서 DB I/O 최소화
+- 동시성 상황에서도 중복/경합을 안전하게 처리
+
+#### ② 대안 비교
+- **JPA `save()`**: 존재 여부 확인(SELECT) 후 INSERT/UPDATE로 **쿼리 2회** 발생 가능
+- **Native Upsert(ON CONFLICT 등)**: **단일 쿼리**로 Insert/Update 처리, 경쟁 상태 감소
+
+#### ③ 결정
+- ✅ **Native Query Upsert 채택**
+
+#### ④ 선정 근거
+- **쿼리 수 감소**: 2회 → 1회로 I/O 절감
+- **동시성 안전**: 경합 구간을 DB 레벨 upsert로 흡수
+- **처리량 개선**: 대량 적재 시 TPS/지연시간에 직접 이득
+
+---
+
+### 6. 🧠 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER
+
+#### ① 요구사항(문제/목표)
+- 좋아요/시청 행동이 다음 피드에 **1초 이내 반영**
+- 가중치 조합(텍스트 유사도 + 인기도 + 취향 점수)로 개인화
+- Cold Start에도 자연스럽게 동작
+
+#### ② 대안 비교
+- **Python ML(SVD 등)**: 정교하지만 배치 기반이 일반적, 별도 서버/운영 비용
+- **Redis SINTER**: 빠르지만 메타데이터/가중치 반영 제한, Cold Start 취약
+- **ES + Redis ZSet**: Redis의 실시간 취향 + ES `function_score`로 다중 가중치 결합 가능
+
+#### ③ 결정
+- ✅ **Redis ZSet + Elasticsearch Function Score 채택**
+
+#### ④ 선정 근거
+- **실시간성**: Redis Top 태그/점수 즉시 반영 → 1초 내 개인화 가능
+- **경량 아키텍처**: ML 서버 없이 ES scoring으로 빠르게 서빙
+- **신선도 제어**: decay(예: gauss)로 오래된 콘텐츠 자동 감쇠
+- **Cold Start 대응**: 취향 데이터 없으면 인기/최신 중심으로 자연스럽게 폴백
+
+---
+
+### 7. 🎬 영상 시청: CloudFront + S3
+
+#### ① 요구사항(문제/목표)
+- HLS/DASH는 **세그먼트 단위 다수 요청** → **지연시간(latency)** 이 체감 품질을 좌우
+- URL 유출/직접 다운로드 방지를 위한 **접근 통제** 필요
+- 대규모 트래픽에서 **데이터 전송 비용**이 비용 구조의 핵심
+
+#### ② 대안 비교
+- **S3 직접 서빙(CloudFront 없음)**
+    - 세그먼트 요청마다 원거리/원본(S3)까지 왕복 → 응답 지연 증가 가능
+    - S3를 public으로 두면 URL만 알아도 다운로드 가능(보안 취약)
+    - 전송 요금이 트래픽 증가에 따라 직접 부담으로 확장
+- **CloudFront + S3(Private)**
+    - 엣지 캐시로 세그먼트 응답 지연 감소 → 초기 버퍼링/ABR 품질 개선
+    - OAI/OAC로 S3를 private 유지 + Signed Cookie/URL로 접근 제어
+    - 캐시 히트로 원본 트래픽 감소 → 비용 절감 여지
+
+#### ③ 결정
+- ✅ **CloudFront 도입**
+
+#### ④ 선정 근거
+- **성능(응답 속도)**: 엣지에서 세그먼트 처리 → **초기 버퍼링 감소**, **ABR 품질 유지**
+- **보안**: S3 **Private** 유지 + CloudFront 경유 강제 + **Signed Cookie**로 인증 사용자만 재생
+- **비용**: CDN 캐싱으로 원본 전송량을 줄여 트래픽 비용 부담 완화
