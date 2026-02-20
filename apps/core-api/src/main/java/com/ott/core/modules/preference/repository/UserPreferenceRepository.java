@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface UserPreferenceRepository extends JpaRepository<UserPreference, Long> {
 
@@ -27,4 +28,7 @@ public interface UserPreferenceRepository extends JpaRepository<UserPreference, 
                   @Param("tagId") Long tagId,
                   @Param("addScore") Double addScore,
                   @Param("now") LocalDateTime now);
+
+    @Query("SELECT up FROM UserPreference up JOIN FETCH up.tag WHERE up.user.id = :userId")
+    List<UserPreference> findWithTagByUserId(@Param("userId") Long userId);
 }

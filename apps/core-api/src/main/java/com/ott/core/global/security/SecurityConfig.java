@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/bookmarks/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/search/admin/**").permitAll()
+                        .requestMatchers("/api/v1/recommendations/feed/**").permitAll()
 
                         // ✅ 사용자 목록 조회는 ADMIN만 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")

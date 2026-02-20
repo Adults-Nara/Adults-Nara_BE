@@ -50,4 +50,7 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.bookmarkCount = v.bookmarkCount - 1 WHERE v.id = :id AND v.bookmarkCount > 0")
     void decreaseBookmarkCount(@Param("id") Long id);
+
+    // COUNT 쿼리 없이 딱 (요청한 사이즈 + 1)개만 가져와서 다음 페이지 여부만 판단하는 Slice
+    org.springframework.data.domain.Slice<VideoMetadata> findSliceBy(org.springframework.data.domain.Pageable pageable);
 }

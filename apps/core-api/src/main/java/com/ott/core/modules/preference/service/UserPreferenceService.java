@@ -1,8 +1,10 @@
 package com.ott.core.modules.preference.service;
 
 import com.ott.common.persistence.entity.Tag;
+import com.ott.common.persistence.entity.UserPreference;
 import com.ott.common.persistence.enums.InteractionType;
 import com.ott.common.util.IdGenerator;
+import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.repository.UserPreferenceRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import lombok.RequiredArgsConstructor;
@@ -100,5 +102,50 @@ public class UserPreferenceService {
             case LIKE -> SCORE_LIKE;
             case DISLIKE -> SCORE_DISLIKE;
         };
+    }
+    /**
+     * [조회 API] 유저의 Top N 취향 태그 가져오기 (Cache-Aside 패턴 적용)
+     */
+    @Transactional(readOnly = true)
+    public List<TagScoreDto> getTopPreferences(Long userId, int limit) {
+        String redisKey = "user:" + userId + ":preference";
+
+        // 1. [Cache Hit] Redis에서 먼저 조회 (1등부터 한도(limit)까지 가져옴)
+        // 0은 1등, limit - 1은 N등을 의미합니다.
+        var redisResult = stringRedisTemplate.opsForZSet().reverseRangeWithScores(redisKey, 0, limit - 1);
+
+        if (redisResult != null && !redisResult.isEmpty()) {
+            log.info("[Preference Read] Redis 캐시 히트! 초고속 반환 - userId: {}", userId);
+            return redisResult.stream()
+                    .map(tuple -> new TagScoreDto(tuple.getValue(), tuple.getScore()))
+                    .toList();
+        }
+
+        // 2. [Cache Miss] Redis에 데이터가 텅 비었음! DB에서 조회 시작
+        log.warn("[Preference Read] Redis 캐시 미스. DB에서 조회 및 자가 복구 진행 - userId: {}", userId);
+        List<UserPreference> dbPreferences = userPreferenceRepository.findWithTagByUserId(userId);
+
+        if (dbPreferences.isEmpty()) {
+            log.info("[Preference Read] 취향 데이터가 없는 신규 유저입니다 - userId: {}", userId);
+            return List.of(); // 빈 리스트 반환 (나중에 ES에서 기본 인기 영상 노출용으로 쓰임)
+        }
+
+        // 3. [Self-Healing] DB에서 가져온 데이터를 다시 Redis에 채워 넣기 (복구)
+        List<TagScoreDto> recoveredScores = new java.util.ArrayList<>();
+
+        for (UserPreference pref : dbPreferences) {
+            String tagName = pref.getTag().getTagName();
+            Double score = pref.getScore();
+
+            // Redis에 다시 ZADD
+            stringRedisTemplate.opsForZSet().add(redisKey, tagName, score);
+            recoveredScores.add(new TagScoreDto(tagName, score));
+        }
+
+        // 4. 복구된 데이터를 점수 내림차순으로 정렬해서 요청한 개수(limit)만큼만 짤라서 반환
+        return recoveredScores.stream()
+                .sorted((a, b) -> Double.compare(b.score(), a.score()))
+                .limit(limit)
+                .toList();
     }
 }

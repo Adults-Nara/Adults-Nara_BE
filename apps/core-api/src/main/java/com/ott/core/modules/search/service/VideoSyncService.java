@@ -38,15 +38,12 @@ public class VideoSyncService {
             int totalSynced = 0;
 
             while (hasNext) {
-                // 1. 1000개씩 잘라서 DB에서 가져오기 (Pageable 적용)
-                Page<VideoMetadata> videoPage = videoMetadataRepository.findAll(PageRequest.of(page, chunkSize));
+                // findAll 대신 새로 만든 findSliceBy 호출 (Page -> Slice로 변경)
+                org.springframework.data.domain.Slice<VideoMetadata> videoSlice = videoMetadataRepository.findSliceBy(PageRequest.of(page, chunkSize));
 
-                if (videoPage.isEmpty()) {
-                    break;
-                }
+                if (videoSlice.isEmpty()) break;
 
-                // 1. 방금 가져온 비디오 1000개의 ID만 뽑아 리스트로 만든다.
-                List<Long> videoIds = videoPage.stream().map(VideoMetadata::getId).toList();
+                List<Long> videoIds = videoSlice.stream().map(VideoMetadata::getId).toList();
 
                 // 2. IN 절을 써서  "단 한 번의 쿼리"로 가져온다
                 List<VideoTag> allTagsForChunk = videoTagRepository.findWithTagByVideoMetadataIdIn(videoIds);
@@ -60,23 +57,13 @@ public class VideoSyncService {
                         ));
 
                 // 4. 비디오 엔티티를 ES용 문서로 변환
-                List<VideoDocument> documents = videoPage.stream().map(video -> {
+                List<VideoDocument> documents = videoSlice.stream().map(video -> {
 
                     // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 0.0001초 만에 빼온다.
                     List<String> tagNames = tagsByVideoId.getOrDefault(video.getId(), java.util.List.of());
 
-                    // ES 전용 객체로 조립
-                    return VideoDocument.builder()
-                            .id(video.getId())
-                            .title(video.getTitle())
-                            .description(video.getDescription())
-                            .tags(tagNames)
-                            .viewCount(video.getViewCount())
-                            .likeCount(video.getLikeCount())
-                            .createdAt(video.getCreatedAt().toString()) // 날짜를 안전한 문자열
-                            .videoType(video.getVideoType() != null ? video.getVideoType().name() : "NONE")
-                            .build();
-            }).toList();
+                    return VideoDocument.of(video, tagNames); // 문서 조립 책임을 위임!
+                }).toList();
 
                 // 1000개 묶음을 엘라스틱서치에 벌크 저장
                 videoSearchRepository.saveAll(documents);
@@ -85,7 +72,7 @@ public class VideoSyncService {
                 log.info("[ES Sync] {}번째 페이지({}건) 인덱싱 완료...", page, documents.size());
 
                 // 다음 페이지가 있는지 확인하고 넘어가기
-                hasNext = videoPage.hasNext();
+                hasNext = videoSlice.hasNext();
                 page++;
             }
 
