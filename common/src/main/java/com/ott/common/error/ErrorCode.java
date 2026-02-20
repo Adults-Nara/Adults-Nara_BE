@@ -33,7 +33,8 @@ public enum ErrorCode {
     USER_CANNOT_DELETE_ADMIN("USER-403-002", 403, "관리자는 삭제할 수 없습니다."),
 
     VIDEO_INVALID_TITLE("VIDEO-400-TITLE", 400, "잘못된 제목입니다. 제목은 2글자 이상 100글자 이하여야 합니다."),
-    VIDEO_INVALID_DESCRIPTION("VIDEO-400-DESCRIPTION", 400, "잘못된 설명입니다. 설명은 0글자 이상 4000글자 이하여야 합니다.");
+    VIDEO_INVALID_DESCRIPTION("VIDEO-400-DESCRIPTION", 400, "잘못된 설명입니다. 설명은 0글자 이상 4000글자 이하여야 합니다."),
+    VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다.");
 
     private final String code;
     private final int httpStatus;
