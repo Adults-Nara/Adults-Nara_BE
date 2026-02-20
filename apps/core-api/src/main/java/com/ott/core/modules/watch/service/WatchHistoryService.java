@@ -2,11 +2,14 @@ package com.ott.core.modules.watch.service;
 
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
+import com.ott.core.modules.preference.event.VideoWatchedEvent;
+import com.ott.core.modules.preference.service.UserPreferenceService;
 import com.ott.core.modules.watch.dto.WatchHistoryDto;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +25,8 @@ public class WatchHistoryService {
     private final WatchHistoryRepository watchHistoryRepository;
     private final WatchHistoryRedisService watchHistoryRedisService;
     private final WatchHistoryAsyncService watchHistoryAsyncService;
-
+    private final UserPreferenceService userPreferenceService;
+    private final ApplicationEventPublisher eventPublisher;
     /**
      *  시청 이력 조회
      */
@@ -91,6 +95,8 @@ public class WatchHistoryService {
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
+        userPreferenceService.reflectWatchScore(userId, videoMetadataId, lastPosition, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoMetadataId);
+        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoMetadataId, lastPosition, isCompleted));
     }
 }
