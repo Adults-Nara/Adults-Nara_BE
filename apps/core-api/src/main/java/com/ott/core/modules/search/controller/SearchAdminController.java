@@ -1,5 +1,6 @@
 package com.ott.core.modules.search.controller;
 
+import com.ott.core.docs.SearchAdminApiDocs;
 import com.ott.core.modules.search.service.VideoSyncService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/search/admin")
 @RequiredArgsConstructor
 
-public class SearchAdminController {
+public class SearchAdminController implements SearchAdminApiDocs {
 
     private final VideoSyncService videoSyncService;
-
+    @Override
     @PostMapping("/sync")
     public String syncData() {
         videoSyncService.syncAllVideosToElasticsearch();
