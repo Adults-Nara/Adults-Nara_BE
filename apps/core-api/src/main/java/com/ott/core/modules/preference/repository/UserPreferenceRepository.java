@@ -1,14 +1,18 @@
-package com.ott.batch.modules.User;
-
+package com.ott.core.modules.preference.repository;
 import com.ott.common.persistence.entity.UserPreference;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.time.LocalDateTime;
 
 public interface UserPreferenceRepository extends JpaRepository<UserPreference, Long> {
+
+    /**
+     * [점수 누적 Upsert 쿼리]
+     * - 데이터가 없으면 INSERT
+     * - 이미 있으면(ON CONFLICT) 기존 점수에 더하기(+)
+     */
     @Modifying
     @Query(value = """
             INSERT INTO user_preference (user_preference_id, user_id, tag_id, score, created_at, updated_at)
