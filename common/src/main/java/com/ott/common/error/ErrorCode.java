@@ -41,7 +41,7 @@ public enum ErrorCode {
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
 
-    IO_EXCEPTION("IOE-400-001", 400, "IOException이 발생했습니다.");
+    IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다.");
 
     private final String code;
     private final int httpStatus;
