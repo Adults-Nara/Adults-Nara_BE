@@ -29,8 +29,6 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
-    //elasticsearch
-    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
 
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")

@@ -47,4 +47,8 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+
+    //elasticsearch
+    implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+
 }
