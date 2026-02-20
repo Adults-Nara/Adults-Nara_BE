@@ -79,11 +79,11 @@ public class VideoService {
     @Transactional
     public void updateVisibility(Long videoId, Visibility visibility) {
         Video v = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("video not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         // READY 아닌데 공개 요청이면 차단
         if (visibility == Visibility.PUBLIC && v.getProcessingStatus() != ProcessingStatus.READY) {
-            throw new IllegalStateException("Video not ready for publish");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_READY);
         }
 
         v.setVisibility(visibility);
@@ -91,7 +91,7 @@ public class VideoService {
 
     @Transactional
     public MultipartInitResult initMultipartUpload(String contentType, long sizeBytes) {
-        if (sizeBytes <= 0) throw new IllegalArgumentException("sizeBytes must be > 0");
+        if (sizeBytes <= 0) throw new BusinessException(ErrorCode.VIDEO_INVALID_SIZE);
 
         Long videoId = IdGenerator.generate();
         String sourceKey = "videos/" + videoId + "/source/source.mp4";
@@ -123,20 +123,20 @@ public class VideoService {
     @Transactional
     public void completeMultipartUpload(Long videoId, String uploadId, List<CompletedPartDto> completedParts, long sizeBytes) {
         Video v = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("video not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         VideoUploadSession session = sessionRepository
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
-                .orElseThrow(() -> new IllegalStateException("No active upload session"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
         // uploadId 매칭 검증
         if (!session.getS3UploadId().equals(uploadId)) {
-            throw new IllegalArgumentException("uploadId mismatch");
+            throw new BusinessException(ErrorCode.VIDEO_MISMATCH);
         }
 
         // 만료 검증
         if (session.isExpiredNow()) {
-            throw new IllegalStateException("Upload session expired");
+            throw new BusinessException(ErrorCode.VIDEO_SESSION_EXPIRED);
         }
 
         presignedMultipartProcessor.completeMultipart(BUCKET, v.getSourceKey(), uploadId, completedParts);
@@ -158,14 +158,14 @@ public class VideoService {
     @Transactional
     public void abortMultipartUpload(Long videoId, String uploadId) {
         Video v = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("video not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         VideoUploadSession session = sessionRepository
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
-                .orElseThrow(() -> new IllegalStateException("No active upload session"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
         if (!session.getS3UploadId().equals(uploadId)) {
-            throw new IllegalArgumentException("uploadId mismatch");
+            throw new BusinessException(ErrorCode.VIDEO_MISMATCH);
         }
 
         presignedMultipartProcessor.abortMultipart(BUCKET, v.getSourceKey(), uploadId);
@@ -193,7 +193,7 @@ public class VideoService {
             try {
                 s3ObjectStorage.save(BUCKET, thumbnailKey, thumbnail.getBytes(), thumbnail.getContentType());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new BusinessException(ErrorCode.IO_EXCEPTION);
             }
             videoMetadata.setThumbnailUrl("https://" + CLOUD_FRONT_DOMAIN + "/" + thumbnailKey);
         }
@@ -201,14 +201,14 @@ public class VideoService {
 
     public PlayResult play(Long videoId) {
         Video v = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("video not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         if (v.getProcessingStatus() != ProcessingStatus.READY) {
-            throw new IllegalStateException("비디오가 준비중입니다.");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_READY);
         }
 
         if (v.getVisibility() != Visibility.PUBLIC) {
-            throw new IllegalStateException("비디오가 비공개 상태입니다.");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_PUBLIC);
         }
 
         String masterPath = v.getHlsBaseKey() + "master.m3u8"; // key

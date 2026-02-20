@@ -1,5 +1,7 @@
 package com.ott.core.modules.video.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -20,9 +22,9 @@ public class S3PresignedUrlProcessor implements PresignedUrlProcessor {
 
     @Override
     public PresignedPutUrlResult presignPut(String bucket, String objectKey, String contentType, long ttlSeconds) {
-        if (bucket == null || bucket.isBlank()) throw new IllegalArgumentException("bucket is blank");
-        if (objectKey == null || objectKey.isBlank()) throw new IllegalArgumentException("objectKey is blank");
-        if (ttlSeconds <= 0) throw new IllegalArgumentException("ttlSeconds must be > 0");
+        if (bucket == null || bucket.isBlank()) throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        if (objectKey == null || objectKey.isBlank()) throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        if (ttlSeconds <= 0) throw new BusinessException(ErrorCode.INVALID_REQUEST);
 
         // 1) 실제 PubObjectRequest를 먼저 만든다.
         // 여기서 contentType을 넣으면 "해당 헤더 포함"이 서명에 반영됨 → 다른 Content-Type으로 PUT하면 403
