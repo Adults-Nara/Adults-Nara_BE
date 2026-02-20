@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Long> {
@@ -53,4 +54,14 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     // COUNT 쿼리 없이 딱 (요청한 사이즈 + 1)개만 가져와서 다음 페이지 여부만 판단하는 Slice
     org.springframework.data.domain.Slice<VideoMetadata> findSliceBy(org.springframework.data.domain.Pageable pageable);
+
+    // ADMIN 전용 삭제
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.id IN :ids")
+    void softDeleteByAdmin(@Param("ids") List<Long> ids);
+
+    // UPLOADER 전용 삭제
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.id IN :ids AND vm.userId = :userId")
+    void softDeleteByUploader(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 }

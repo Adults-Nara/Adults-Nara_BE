@@ -1,10 +1,10 @@
-package com.ott.core.modules.video.dto.backoffice;
+package com.ott.core.modules.backoffice.dto;
 
 import com.ott.common.persistence.enums.Visibility;
 
 import java.time.OffsetDateTime;
 
-public record UploaderContentResponse(
+public record AdminContentResponse(
         Long contentId,
         String thumbnailUrl,
         String title,

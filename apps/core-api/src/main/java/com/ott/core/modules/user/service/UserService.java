@@ -5,17 +5,13 @@ import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.global.exception.UserNotFoundException;
 import com.ott.core.modules.user.dto.request.CreateUserRequest;
 import com.ott.core.modules.user.dto.request.UpdateUserRequest;
-import com.ott.core.modules.user.dto.request.BanUserRequest;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import com.ott.core.modules.user.repository.UserRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 
 @Service
 public class UserService {
@@ -84,18 +80,6 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<UserResponse> getAllUsers(Pageable pageable) {
-        return userRepository.findAllNotDeleted(pageable)
-                .map(UserResponse::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<UserResponse> getUsersByRole(UserRole role, Pageable pageable) {
-        return userRepository.findByRoleAndNotDeleted(role, pageable)
-                .map(UserResponse::from);
-    }
-
-    @Transactional(readOnly = true)
     public UserDetailResponse getUserDetail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
@@ -126,32 +110,6 @@ public class UserService {
         }
 
         return UserResponse.from(user);
-    }
-
-    @Transactional
-    public void banUser(Long userId, BanUserRequest request, Long adminId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
-
-        if (user.getRole() == UserRole.ADMIN) {
-            throw new IllegalArgumentException("관리자는 정지할 수 없습니다.");
-        }
-
-        // ✅ BanStatus의 getDays()로 정지 기간 계산
-        OffsetDateTime until = null;
-        if (request.banStatus().isSuspended()) {
-            until = OffsetDateTime.now().plusDays(request.banStatus().getDays());
-        }
-
-        user.suspend(request.banStatus(), until, request.reason());
-    }
-
-    @Transactional
-    public void unbanUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
-
-        user.activate();
     }
 
     @Transactional
