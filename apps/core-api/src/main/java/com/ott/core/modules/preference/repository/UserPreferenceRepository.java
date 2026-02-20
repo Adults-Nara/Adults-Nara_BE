@@ -29,6 +29,6 @@ public interface UserPreferenceRepository extends JpaRepository<UserPreference, 
                   @Param("addScore") Double addScore,
                   @Param("now") LocalDateTime now);
 
-    @Query("SELECT up FROM UserPreference up JOIN FETCH up.tag WHERE up.user.id = :userId")
+    @Query("SELECT up FROM UserPreference up JOIN FETCH up.tag WHERE up.user.id = :userId ORDER BY up.score DESC")
     List<UserPreference> findWithTagByUserId(@Param("userId") Long userId);
 }
