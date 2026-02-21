@@ -1,0 +1,174 @@
+name: Reusable - Deploy ECS Service
+
+on:
+  workflow_call:
+    inputs:
+      ecr_repo:
+        required: true
+        type: string
+      service_name:
+        required: true
+        type: string
+      dockerfile:
+        required: true
+        type: string
+      taskdef_tpl:
+        required: true
+        type: string
+      taskdef_out:
+        required: true
+        type: string
+      image_uri:
+        required: true
+        type: string
+      container_image_env_key:
+        required: true
+        type: string
+    secrets:
+      AWS_REGION:
+        required: true
+      AWS_ACCOUNT_ID:
+        required: true
+      AWS_ROLE_ARN:
+        required: true
+      ECS_CLUSTER:
+        required: true
+      TASK_ROLE_ARN:
+        required: true
+      AWS_EXE_ROLE_ARN:
+        required: true
+
+      DB_URL:
+        required: false
+      DB_USER:
+        required: false
+      DB_PASSWORD:
+        required: false
+      REDIS_HOST:
+        required: false
+      REDIS_PORT:
+        required: false
+      REDIS_PASSWORD:
+        required: false
+      KAFKA_BOOTSTRAP_SERVERS:
+        required: false
+      KAFKA_ACKS:
+        required: false
+      KAFKA_TOPIC_MEDIA_TRANSCODE:
+        required: false
+      ES_URL:
+        required: false
+      ES_USERNAME:
+        required: false
+      ES_PASSWORD:
+        required: false
+      S3_BUCKET:
+        required: false
+      AWS_CLOUDFRONT_DOMAIN:
+        required: false
+      AWS_CLOUDFRONT_KEY_PAIR_ID:
+        required: false
+      AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64:
+        required: false
+      JWT_SECRET:
+        required: false
+      KAKAO_CLIENT_ID:
+        required: false
+      KAKAO_CLIENT_SECRET:
+        required: false
+      OAUTH2_REDIRECT_URI:
+        required: false
+      KAFKA_CONSUMER_GROUP_ID:
+        required: false
+      KAFKA_AUTO_OFFSET_RESET:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+      ECR_REPO: ${{ inputs.ecr_repo }}
+      ECS_SERVICE: ${{ inputs.service_name }}
+      TASKDEF_TPL: ${{ inputs.taskdef_tpl }}
+      TASKDEF_OUT: ${{ inputs.taskdef_out }}
+      IMAGE_URI: ${{ inputs.image_uri }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JARs
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: .
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Docker image
+        run: |
+          docker build -f "${{ inputs.dockerfile }}" \
+            -t "$IMAGE_URI" \
+            -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest" \
+            .
+          docker push "$IMAGE_URI"
+          docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest"
+
+      - name: Render task definition
+        env:
+          TASK_ROLE_ARN: ${{ secrets.TASK_ROLE_ARN }}
+          AWS_EXE_ROLE_ARN: ${{ secrets.AWS_EXE_ROLE_ARN }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          KAFKA_ACKS: ${{ secrets.KAFKA_ACKS }}
+          KAFKA_TOPIC_MEDIA_TRANSCODE: ${{ secrets.KAFKA_TOPIC_MEDIA_TRANSCODE }}
+          ES_URL: ${{ secrets.ES_URL }}
+          ES_USERNAME: ${{ secrets.ES_USERNAME }}
+          ES_PASSWORD: ${{ secrets.ES_PASSWORD }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          AWS_CLOUDFRONT_DOMAIN: ${{ secrets.AWS_CLOUDFRONT_DOMAIN }}
+          AWS_CLOUDFRONT_KEY_PAIR_ID: ${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}
+          AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64: ${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64 }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          OAUTH2_REDIRECT_URI: ${{ secrets.OAUTH2_REDIRECT_URI }}
+          KAFKA_CONSUMER_GROUP_ID: ${{ secrets.KAFKA_CONSUMER_GROUP_ID }}
+          KAFKA_AUTO_OFFSET_RESET: ${{ secrets.KAFKA_AUTO_OFFSET_RESET }}
+
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+
+          # 템플릿이 기대하는 이미지 env key(CORE_API_IMAGE_URI 등)를 동적으로 세팅
+          export "${{ inputs.container_image_env_key }}=$IMAGE_URI"
+
+          envsubst < "$TASKDEF_TPL" > "$TASKDEF_OUT"
+
+      - name: Deploy to ECS (service update)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ env.TASKDEF_OUT }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true
