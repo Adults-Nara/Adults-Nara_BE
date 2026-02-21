@@ -34,14 +34,14 @@ jobs:
                     :apps:batch-analytics:bootJar \
                     --no-daemon -x test
 
+      - name: Tar artifacts
+        run: tar cvf jars.tar apps/core-api/build/libs/*.jar apps/media-worker/build/libs/*.jar apps/batch-analytics/build/libs/*.jar
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: jars
-          path: |
-            apps/core-api/build/libs/*.jar
-            apps/media-worker/build/libs/*.jar
-            apps/batch-analytics/build/libs/*.jar
+          path: jars.tar
           retention-days: 1
 
   deploy-core-api:
