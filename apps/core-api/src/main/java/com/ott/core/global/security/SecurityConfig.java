@@ -46,6 +46,9 @@ public class SecurityConfig {
                         // 백오피스 임시 인증 해제
                         .requestMatchers("/api/v1/backoffice/**").permitAll()
 
+                        //헬스 체크 해제
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+
                         // ✅ 사용자 목록 조회는 ADMIN만 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
@@ -53,6 +56,7 @@ public class SecurityConfig {
                         // ✅ 관리자 전용 엔드포인트
                         .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
+
 
                         // ✅ 나머지는 인증 필요
                         .anyRequest().authenticated()
