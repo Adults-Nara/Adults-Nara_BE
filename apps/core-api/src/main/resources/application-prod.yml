@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      acks: ${KAFKA_ACKS:all}
+
+    # (선택) MSK/Confluent 등 SASL/TLS 쓰면 아래 env 채우기
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
+      sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
+
+  elasticsearch:
+    uris: ${ES_URL}
+    username: ${ES_USERNAME}
+    password: ${ES_PASSWORD}
+
+app:
+  kafka:
+    topics:
+      mediaTranscode: ${KAFKA_TOPIC_MEDIA_TRANSCODE:media.transcode.requested}
+
+logging:
+  level:
+    root: WARN
+    com.ott: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN

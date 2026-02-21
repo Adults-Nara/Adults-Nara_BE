@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: asn-postgres
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-asn}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - asn_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-asn}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: asn-redis
+    ports:
+      - "${REDIS_EXPOSE_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - asn_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: asn-kafka
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+    environment:
+      # KRaft settings
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://asn-kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@asn-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - asn_kafka_data:/var/lib/kafka/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: asn-elasticsearch
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms${ES_HEAP:-512m} -Xmx${ES_HEAP:-512m}
+    volumes:
+      - asn_es_data:/usr/share/elasticsearch/data
+
+    # analysis-nori
+    command: >
+      /bin/sh -c "
+        if ! ./bin/elasticsearch-plugin list | grep -q analysis-nori; then
+          ./bin/elasticsearch-plugin install analysis-nori;
+        fi;
+        /usr/local/bin/docker-entrypoint.sh
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: asn-kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://asn-elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    profiles: [ "debug" ]
+
+
+
+volumes:
+  asn_pg_data:
+  asn_redis_data:
+  asn_kafka_data:
+  asn_es_data:

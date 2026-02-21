@@ -1,0 +1,84 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build JARs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build all JARs (skip tests)
+        run: |
+          ./gradlew :apps:core-api:bootJar \
+                    :apps:media-worker:bootJar \
+                    :apps:batch-analytics:bootJar \
+                    --no-daemon -x test
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: |
+            apps/core-api/build/libs/*.jar
+            apps/media-worker/build/libs/*.jar
+            apps/batch-analytics/build/libs/*.jar
+          retention-days: 1
+
+  deploy-core-api:
+    needs: build
+    uses: ./.github/workflows/_reusable_deploy_service.yml
+    with:
+      ecr_repo: asn/core-api
+      service_name: core-api-service-7s9tx6ks
+      dockerfile: deployments/docker/core-api.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-core-api.json.tpl
+      taskdef_out: infra/ecs/taskdef-core-api.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/core-api:${{ github.ref_name }}
+      container_image_env_key: CORE_API_IMAGE_URI
+    secrets: inherit
+
+  deploy-media-worker:
+    needs: build
+    uses: ./.github/workflows/_reusable_deploy_service.yml
+    with:
+      ecr_repo: asn/media-worker
+      service_name: media-worker-service-lxkbkrg7
+      dockerfile: deployments/docker/media-worker.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-media-worker.json.tpl
+      taskdef_out: infra/ecs/taskdef-media-worker.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/media-worker:${{ github.ref_name }}
+      container_image_env_key: MEDIA_WORKER_IMAGE_URI
+    secrets: inherit
+
+  deploy-batch-analytics:
+    needs: build
+    uses: ./.github/workflows/_reusable_deploy_batch_schedule.yml
+    with:
+      ecr_repo: asn/batch-analytics
+      dockerfile: deployments/docker/batch-analytics.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-batch-analytics.json.tpl
+      taskdef_out: infra/ecs/taskdef-batch-analytics.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/batch-analytics:${{ github.ref_name }}
+      schedule_group: default
+      schedule_name: batch-analytics-daily
+    secrets: inherit

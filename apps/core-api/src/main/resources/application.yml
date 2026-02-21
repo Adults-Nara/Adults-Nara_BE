@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: core-api
+  profiles:
+    active: local
+
+  # 파일 업로드 사이즈 제한
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  jpa:
+    open-in-view: false
+
+  # Kafka 공통 기본 (세부 producer/consumer는 필요 시 local/prod에서 확장)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: ${KAFKA_ACKS:all}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+    consumer:
+      # core-api에서도 consumer가 필요 없으면 무시됨(필요할 때만 리스너가 동작)
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:core-api}
+      auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET:earliest}
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    listener:
+      ack-mode: manual
+
+server:
+  port: ${CORE_API_PORT:8080}
+
+aws:
+  region: ${AWS_REGION:}
+  s3:
+    source-bucket: ${S3_BUCKET:}
+  presign:
+    put-ttl-seconds: 1200
+  cloudfront:
+    domain: ${AWS_CLOUDFRONT_DOMAIN:}
+    keypair-id: ${AWS_CLOUDFRONT_KEY_PAIR_ID:}
+    private-key-pem-b64: ${AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64:}
+    ttl: 7200

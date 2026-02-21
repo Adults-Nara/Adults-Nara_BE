@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: batch-analytics
+  profiles:
+    active: local
+
+server:
+  port: ${BATCH_ANALYTICS_PORT:8082}
