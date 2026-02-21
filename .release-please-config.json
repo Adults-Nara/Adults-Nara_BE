@@ -1,0 +1,8 @@
+{
+  "release-type": "simple",
+  "pull-request-title-pattern": "chore(release): ${version}",
+  "include-v-in-tag": true,
+  "packages": {
+    ".": {}
+  }
+}
