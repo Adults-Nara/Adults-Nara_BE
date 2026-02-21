@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.4.1...v0.5.0) (2026-02-21)
+
+
+### Features
+
+* .gitignore 수정 ([5301d26](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5301d26a9ee3818ea1bf3b015429e41bc474b08a))
+
 ## [0.4.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.4.0...v0.4.1) (2026-02-21)
 
 
