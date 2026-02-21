@@ -18,43 +18,43 @@ public class InteractionController {
 
     // 좋아요
     @Operation(summary = "좋아요 누르기", description = "해당 영상에 좋아요를 표시합니다.")
-    @PostMapping("/video/{videoId}/like")
+    @PostMapping("/{videoMetadataId}/like")
     public ResponseEntity<String> likeVideo(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.LIKE);
+        interactionService.interact(userId, videoMetadataId, InteractionType.LIKE);
         return ResponseEntity.ok("성공: 좋아요 반영됨");
     }
 
     // 싫어요
     @Operation(summary = "싫어요 누르기", description = "해당 영상에 싫어요를 표시합니다.")
-    @PostMapping("/video/{videoId}/dislike")
+    @PostMapping("/{videoMetadataId}/dislike")
     public ResponseEntity<String> dislikeVideo(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.DISLIKE);
+        interactionService.interact(userId, videoMetadataId, InteractionType.DISLIKE);
         return ResponseEntity.ok("성공: 싫어요 반영됨");
     }
 
     // 슈퍼라이크 (왕따봉)
     @Operation(summary = "슈퍼라이크(왕따봉) 누르기", description = "해당 영상에 최고예요를 표시합니다.")
-    @PostMapping("/video/{videoId}/superlike")
+    @PostMapping("/{videoMetadataId}/superlike")
     public ResponseEntity<String> superLikeVideo(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.SUPERLIKE); // Enum 이름 확인 필요 (SUPERLIKE 인지 SUPER_LIKE 인지)
+        interactionService.interact(userId, videoMetadataId, InteractionType.SUPERLIKE); // Enum 이름 확인 필요 (SUPERLIKE 인지 SUPER_LIKE 인지)
         return ResponseEntity.ok("성공: 슈퍼라이크 반영됨");
     }
 
 
     @Operation(summary = "내 반응 조회", description = "내가 이 영상에 좋아요/싫어요를 했는지 확인합니다. (없으면 null)")
-    @GetMapping("/video/{videoId}/my-status")
+    @GetMapping("/{videoMetadataId}/my-status")
     public ResponseEntity<InteractionType> getMyInteractionStatus(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
 
         return ResponseEntity.ok(
-                interactionService.getInteractionStatus(userId, videoId).orElse(null)
+                interactionService.getInteractionStatus(userId, videoMetadataId).orElse(null)
         );
     }
 }
