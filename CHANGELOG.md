@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.3.0...v0.4.0) (2026-02-21)
+
+
+### Features
+
+* 배포를 위한 main 브랜치로의 병합 ([734dbf7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/734dbf7374a6bd71359bb0dbc0bcd0e530183dff))
+
 ## [0.3.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.2.1...v0.3.0) (2026-02-21)
 
 
