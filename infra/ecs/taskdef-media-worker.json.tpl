@@ -30,7 +30,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "/ecs/asn-media-worker",
+          "awslogs-group": "/ecs/media-worker",
           "awslogs-region": "${AWS_REGION}",
           "awslogs-stream-prefix": "ecs"
         }
