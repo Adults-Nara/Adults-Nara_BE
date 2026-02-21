@@ -1,6 +1,5 @@
 package com.ott.core.modules.search.service;
 
-import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
 import com.ott.core.modules.search.document.VideoDocument;
@@ -9,7 +8,6 @@ import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
