@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.0...v0.5.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* cd에서 발생하는 docker 빌드 문제 해결 ([ea528d5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ea528d51a592c4a6636a889de96b9b35d87ace5e))
+
 ## [0.5.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.4.1...v0.5.0) (2026-02-21)
 
 
