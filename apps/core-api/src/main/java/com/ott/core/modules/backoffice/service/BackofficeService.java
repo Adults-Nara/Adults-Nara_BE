@@ -72,7 +72,7 @@ public class BackofficeService {
             videoTagRepository.saveAll(videoTags);
         }
 
-        return new ContentUpdateResponse(contentId);
+        return new ContentUpdateResponse(String.valueOf(contentId));
     }
 
     @Transactional
@@ -108,7 +108,7 @@ public class BackofficeService {
         String banReason = isActive ? null : request.banReason();
 
         userRepository.updateBanStatus(request.banStatus(), banReason, bannedUtil, bannedAt, request.userIds());
-        return new UserStatusUpdateResponse(request.userIds());
+        return new UserStatusUpdateResponse(request.userIds().stream().map(String::valueOf).toList());
     }
 
     @Transactional
