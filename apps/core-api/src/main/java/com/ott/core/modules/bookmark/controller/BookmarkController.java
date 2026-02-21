@@ -27,7 +27,7 @@ public class BookmarkController {
 
     // 북마크 여부 조회
     @Operation(summary = "북마크 여부 조회", description = "내가 이 영상을 찜했는지 확인합니다.")
-    @GetMapping("/{videoMetadataId}status")
+    @GetMapping("/{videoMetadataId}/status")
     public ResponseEntity<Boolean> getBookmarkStatus(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {

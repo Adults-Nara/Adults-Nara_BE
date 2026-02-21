@@ -39,7 +39,7 @@ public class UserPreferenceService {
      */
 
     @Transactional
-    public void reflectWatchScore(Long userId, Long videoId, Integer watchSeconds, boolean isCompleted) {
+    public void reflectWatchScore(Long userId, Long videoMetadataId, Integer watchSeconds, boolean isCompleted) {
         double scoreToAdd = 0.0;
 
         if (watchSeconds != null && watchSeconds > 0) {
@@ -50,8 +50,8 @@ public class UserPreferenceService {
         }
 
         if (scoreToAdd > 0) {
-            updateScores(userId, videoId, scoreToAdd);
-            log.info("[Preference] 시청 점수 반영 완료 - userId: {}, videoId: {}, score: {}", userId, videoId, scoreToAdd);
+            updateScores(userId, videoMetadataId, scoreToAdd);
+            log.info("[Preference] 시청 점수 반영 완료 - userId: {}, videoMetadataId: {}, score: {}", userId, videoMetadataId, scoreToAdd);
         }
     }
 
@@ -60,7 +60,7 @@ public class UserPreferenceService {
      * [인터랙션] 좋아요 클릭 시 점수 반영
      */
     @Transactional
-    public void reflectInteractionScore(Long userId, Long videoId, InteractionType oldType, InteractionType newType) {
+    public void reflectInteractionScore(Long userId, Long videoMetadataId, InteractionType oldType, InteractionType newType) {
 
         double oldScore = getScoreByType(oldType);
         double newScore = getScoreByType(newType);
@@ -72,14 +72,14 @@ public class UserPreferenceService {
 
         // 3. 차이값이 0이 아닐 때만 Redis와 DB 업데이트 실행
         if (delta != 0.0) {
-            updateScores(userId, videoId, delta);
-            log.info("[Preference] 인터랙션 점수 차이값 반영 완료 - userId: {}, videoId: {}, delta: {}", userId, videoId, delta);
+            updateScores(userId, videoMetadataId, delta);
+            log.info("[Preference] 인터랙션 점수 차이값 반영 완료 - userId: {}, videoMetadataId: {}, delta: {}", userId, videoMetadataId, delta);
         }
     }
 
-    private void updateScores(Long userId, Long videoId, Double score) {
+    private void updateScores(Long userId, Long videoMetadataId, Double score) {
         // 1. 영상의 태그 목록 조회
-        List<Tag> tags = videoTagRepository.findTagsByVideoMetadataId(videoId);
+        List<Tag> tags = videoTagRepository.findTagsByVideoMetadataId(videoMetadataId);
         if (tags.isEmpty()) return;
 
         String redisKey = "user:" + userId + ":preference";

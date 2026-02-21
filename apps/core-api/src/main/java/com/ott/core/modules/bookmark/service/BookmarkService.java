@@ -23,27 +23,27 @@ public class BookmarkService {
     private final UserRepository userRepository;
     private final VideoMetadataRepository videoMetadataRepository;
 
-    public void toggleBookmark(Long userId, Long videoId) {
+    public void toggleBookmark(Long userId, Long videoMetadataId) {
         User user = findUser(userId);
-        VideoMetadata video = findVideo(videoId);
+        VideoMetadata video = findVideo(videoMetadataId);
 
         Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, video);
 
         if (existingBookmark.isPresent()) {
             // 이미 찜했으면 -> 취소
             bookmarkRepository.delete(existingBookmark.get());
-            videoMetadataRepository.decreaseBookmarkCount(videoId);
+            videoMetadataRepository.decreaseBookmarkCount(videoMetadataId);
         } else {
             // 없으면 -> 찜하기
             Bookmark newBookmark = new Bookmark(user, video);
             bookmarkRepository.save(newBookmark);
-            videoMetadataRepository.increaseBookmarkCount(videoId);
+            videoMetadataRepository.increaseBookmarkCount(videoMetadataId);
         }
     }
     // 조회
     @Transactional(readOnly = true)
-    public boolean isBookmarked(Long userId, Long videoId) {
-        return bookmarkRepository.findByUserIdAndVideoId(userId, videoId).isPresent();
+    public boolean isBookmarked(Long userId, Long videoMetadataId) {
+        return bookmarkRepository.findByUserIdAndVideoId(userId, videoMetadataId).isPresent();
     }
 
     private User findUser(Long userId) {
@@ -51,8 +51,8 @@ public class BookmarkService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private VideoMetadata findVideo(Long videoId) {
-        return videoMetadataRepository.findById(videoId)
+    private VideoMetadata findVideo(Long videoMetadataId) {
+        return videoMetadataRepository.findById(videoMetadataId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
     }
 }

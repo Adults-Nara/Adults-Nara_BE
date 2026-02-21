@@ -25,9 +25,9 @@ public class InteractionService {
     private final VideoMetadataRepository videoMetadataRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public void interact(Long userId, Long videoId, InteractionType newType) {
+    public void interact(Long userId, Long videoMetadataId, InteractionType newType) {
         User user = findUser(userId);
-        VideoMetadata video = findVideo(videoId);
+        VideoMetadata video = findVideo(videoMetadataId);
 
         Optional<Interaction> existingInteraction = interactionRepository.findByUserAndVideoMetadata(user, video);
 
@@ -41,7 +41,7 @@ public class InteractionService {
                     decreaseCount(video.getId(), oldType);
 
                     // [이벤트 발행] 취소되었으므로 newType은 null로 보냄
-                    eventPublisher.publishEvent(new InteractionEvent(userId, videoId, oldType, null));
+                    eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, oldType, null));
                 } else {
                     // 변경
                     interaction.changeType(newType);
@@ -50,7 +50,7 @@ public class InteractionService {
                     decreaseCount(video.getId(), oldType); // 기존 거 깎고
                     increaseCount(video.getId(), newType); // 새 거 올림
                     // [이벤트 발행] 변경 전/후 타입 모두 보냄
-                    eventPublisher.publishEvent(new InteractionEvent(userId, videoId, oldType, newType));
+                    eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, oldType, newType));
                 }
             } else {
                 // 생성
@@ -58,30 +58,30 @@ public class InteractionService {
                 interactionRepository.save(newInteraction);
                 increaseCount(video.getId(), newType);
                 // [이벤트 발행] 새로 생성되었으므로 oldType은 null로 보냄
-                eventPublisher.publishEvent(new InteractionEvent(userId, videoId, null, newType));
+                eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, null, newType));
             }
         }
 
     // 조회
     @Transactional(readOnly = true)
-    public Optional<InteractionType> getInteractionStatus(Long userId, Long videoId) {
-        return interactionRepository.findByUserIdAndVideoId(userId, videoId)
+    public Optional<InteractionType> getInteractionStatus(Long userId, Long videoMetadataId) {
+        return interactionRepository.findByUserIdAndVideoId(userId, videoMetadataId)
                 .map(Interaction::getInteractionType);
     }
 
-    private void increaseCount(Long videoId, InteractionType type) {
+    private void increaseCount(Long videoMetadataId, InteractionType type) {
         switch (type) {
-            case LIKE -> videoMetadataRepository.increaseLikeCount(videoId);
-            case DISLIKE -> videoMetadataRepository.increaseDislikeCount(videoId);
-            case SUPERLIKE -> videoMetadataRepository.increaseSuperLikeCount(videoId);
+            case LIKE -> videoMetadataRepository.increaseLikeCount(videoMetadataId);
+            case DISLIKE -> videoMetadataRepository.increaseDislikeCount(videoMetadataId);
+            case SUPERLIKE -> videoMetadataRepository.increaseSuperLikeCount(videoMetadataId);
         }
     }
 
-    private void decreaseCount(Long videoId, InteractionType type) {
+    private void decreaseCount(Long videoMetadataId, InteractionType type) {
         switch (type) {
-            case LIKE -> videoMetadataRepository.decreaseLikeCount(videoId);
-            case DISLIKE -> videoMetadataRepository.decreaseDislikeCount(videoId);
-            case SUPERLIKE -> videoMetadataRepository.decreaseSuperLikeCount(videoId);
+            case LIKE -> videoMetadataRepository.decreaseLikeCount(videoMetadataId);
+            case DISLIKE -> videoMetadataRepository.decreaseDislikeCount(videoMetadataId);
+            case SUPERLIKE -> videoMetadataRepository.decreaseSuperLikeCount(videoMetadataId);
         }
     }
 
@@ -90,8 +90,8 @@ public class InteractionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private VideoMetadata findVideo(Long videoId) {
-        return videoMetadataRepository.findById(videoId)
+    private VideoMetadata findVideo(Long videoMetadataId) {
+        return videoMetadataRepository.findById(videoMetadataId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
     }
 }
