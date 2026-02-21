@@ -22,4 +22,7 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
     @Query("SELECT vt FROM VideoTag vt JOIN FETCH vt.tag WHERE vt.videoMetadata.id IN :videoMetadataIds")
     List<VideoTag> findWithTagByVideoMetadataIdIn(@Param("videoMetadataIds") List<Long> videoMetadataIds);
 
+    @Modifying
+    @Query("DELETE FROM VideoTag vt WHERE vt.videoMetadata = :videoMetadata")
+    void deleteAllByVideoMetadata(@Param("videoMetadata") VideoMetadata videoMetadata);
 }
