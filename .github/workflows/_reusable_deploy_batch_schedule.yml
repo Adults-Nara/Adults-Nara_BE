@@ -82,16 +82,19 @@ jobs:
           docker build -f "${{ inputs.dockerfile }}" \
             -t "$IMAGE_URI" \
             -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest" \
+            -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${GITHUB_SHA}" \
             .
           docker push "$IMAGE_URI"
           docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest"
+          docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${GITHUB_SHA}"
 
       - name: Render task definition
         env:
           TASK_ROLE_ARN: ${{ secrets.TASK_ROLE_ARN }}
           AWS_EXE_ROLE_ARN: ${{ secrets.AWS_EXE_ROLE_ARN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          BATCH_ANALYTICS_IMAGE_URI: ${{ env.IMAGE_URI }}
+          # BATCH_ANALYTICS_IMAGE_URI: ${{ env.IMAGE_URI }}
+          BATCH_ANALYTICS_IMAGE_URI: ${{ inputs.image_uri }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}

@@ -122,9 +122,11 @@ jobs:
           docker build -f "${{ inputs.dockerfile }}" \
             -t "$IMAGE_URI" \
             -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest" \
+            -t "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${GITHUB_SHA}" \
             .
           docker push "$IMAGE_URI"
           docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest"
+          docker push "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${GITHUB_SHA}"
 
       - name: Render task definition
         env:
