@@ -49,7 +49,7 @@ public class UserQueryRepository {
 
         List<AdminUserResponse> content = query
                 .select(Projections.constructor(AdminUserResponse.class,
-                        user.id,
+                        user.id.stringValue(),
                         user.profileImageUrl,
                         user.nickname,
                         user.email,
