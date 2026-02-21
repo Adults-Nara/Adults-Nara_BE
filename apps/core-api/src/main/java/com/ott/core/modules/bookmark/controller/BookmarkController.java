@@ -17,21 +17,21 @@ public class BookmarkController {
 
     // 찜하기
     @Operation(summary = "찜하기(북마크) 토글", description = "누를 때마다 찜 상태가 켜지거나 꺼집니다.")
-    @PostMapping("/video/{videoId}/bookmark")
+    @PostMapping("/{videoMetadataId}")
     public ResponseEntity<String> toggleBookmark(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
-        bookmarkService.toggleBookmark(userId, videoId);
+        bookmarkService.toggleBookmark(userId, videoMetadataId);
         return ResponseEntity.ok("성공: 찜 상태 변경됨");
     }
 
     // 북마크 여부 조회
     @Operation(summary = "북마크 여부 조회", description = "내가 이 영상을 찜했는지 확인합니다.")
-    @GetMapping("/video/{videoId}/bookmark/status")
+    @GetMapping("/{videoMetadataId}status")
     public ResponseEntity<Boolean> getBookmarkStatus(
-            @PathVariable Long videoId,
+            @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
 
-        return ResponseEntity.ok(bookmarkService.isBookmarked(userId, videoId));
+        return ResponseEntity.ok(bookmarkService.isBookmarked(userId, videoMetadataId));
     }
 }

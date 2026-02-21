@@ -79,7 +79,7 @@ public class UserPreferenceService {
 
     private void updateScores(Long userId, Long videoId, Double score) {
         // 1. 영상의 태그 목록 조회
-        List<Tag> tags = videoTagRepository.findTagsByVideoId(videoId);
+        List<Tag> tags = videoTagRepository.findTagsByVideoMetadataId(videoId);
         if (tags.isEmpty()) return;
 
         String redisKey = "user:" + userId + ":preference";
