@@ -53,7 +53,7 @@ jobs:
       dockerfile: deployments/docker/core-api.Dockerfile
       taskdef_tpl: infra/ecs/taskdef-core-api.json.tpl
       taskdef_out: infra/ecs/taskdef-core-api.rendered.json
-      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/core-api:${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
       container_image_env_key: CORE_API_IMAGE_URI
     secrets: inherit
 
@@ -66,7 +66,7 @@ jobs:
       dockerfile: deployments/docker/media-worker.Dockerfile
       taskdef_tpl: infra/ecs/taskdef-media-worker.json.tpl
       taskdef_out: infra/ecs/taskdef-media-worker.rendered.json
-      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/media-worker:${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
       container_image_env_key: MEDIA_WORKER_IMAGE_URI
     secrets: inherit
 
@@ -78,7 +78,7 @@ jobs:
       dockerfile: deployments/docker/batch-analytics.Dockerfile
       taskdef_tpl: infra/ecs/taskdef-batch-analytics.json.tpl
       taskdef_out: infra/ecs/taskdef-batch-analytics.rendered.json
-      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/batch-analytics:${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
       schedule_group: default
       schedule_name: batch-analytics-daily
     secrets: inherit
