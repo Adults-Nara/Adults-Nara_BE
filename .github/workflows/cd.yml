@@ -1,24 +1,18 @@
-name: Build & Deploy to ECS
+name: CD
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-
 jobs:
-  # ────────────────────────────────────────────
-  # 1) JAR 빌드 (공통 - 한 번만 실행)
-  # ────────────────────────────────────────────
   build:
-    name: Gradle Build
+    name: Build JARs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,213 +44,41 @@ jobs:
             apps/batch-analytics/build/libs/*.jar
           retention-days: 1
 
-  # ────────────────────────────────────────────
-  # 2) core-api 배포
-  # ────────────────────────────────────────────
   deploy-core-api:
-    name: Deploy core-api
     needs: build
-    runs-on: ubuntu-latest
-    env:
-      ECR_REPO: asn/core-api
-      ECS_SERVICE: svc-core-api
-      CONTAINER_NAME: core-api
-      TASKDEF_TPL: infra/ecs/taskdef-core-api.json.tpl
-      TASKDEF_OUT: infra/ecs/taskdef-core-api.rendered.json
-    steps:
-      - uses: actions/checkout@v4
+    uses: ./.github/workflows/_reusable_deploy_service.yml
+    with:
+      ecr_repo: asn/core-api
+      service_name: core-api-service-7s9tx6ks
+      dockerfile: deployments/docker/core-api.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-core-api.json.tpl
+      taskdef_out: infra/ecs/taskdef-core-api.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/core-api:${{ github.ref_name }}
+      container_image_env_key: CORE_API_IMAGE_URI
+    secrets: inherit
 
-      - name: Download JARs
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & Push Docker image
-        run: |
-          IMAGE_URI=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${{ github.sha }}
-          docker build -f deployments/docker/core-api.Dockerfile \
-            -t $IMAGE_URI \
-            -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest \
-            .
-          docker push $IMAGE_URI
-          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-      - name: Render task definition
-        env:
-          TASK_ROLE_ARN:                         ${{ secrets.TASK_ROLE_ARN }}
-          AWS_EXE_ROLE_ARN:                      ${{ secrets.AWS_EXE_ROLE_ARN }}
-          CORE_API_IMAGE_URI:                    ${{ env.IMAGE_URI }}
-          DB_URL:                                ${{ secrets.DB_URL }}
-          DB_USER:                               ${{ secrets.DB_USER }}
-          DB_PASSWORD:                           ${{ secrets.DB_PASSWORD }}
-          REDIS_HOST:                            ${{ secrets.REDIS_HOST }}
-          REDIS_PORT:                            ${{ secrets.REDIS_PORT }}
-          REDIS_PASSWORD:                        ${{ secrets.REDIS_PASSWORD }}
-          KAFKA_BOOTSTRAP_SERVERS:               ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-          KAFKA_ACKS:                            ${{ secrets.KAFKA_ACKS }}
-          KAFKA_TOPIC_MEDIA_TRANSCODE:           ${{ secrets.KAFKA_TOPIC_MEDIA_TRANSCODE }}
-          ES_URL:                                ${{ secrets.ES_URL }}
-          ES_USERNAME:                           ${{ secrets.ES_USERNAME }}
-          ES_PASSWORD:                           ${{ secrets.ES_PASSWORD }}
-          S3_BUCKET:                             ${{ secrets.S3_BUCKET }}
-          AWS_CLOUDFRONT_DOMAIN:                 ${{ secrets.AWS_CLOUDFRONT_DOMAIN }}
-          AWS_CLOUDFRONT_KEY_PAIR_ID:            ${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}
-          AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64:    ${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY_PEM_B64 }}
-          JWT_SECRET:                            ${{ secrets.JWT_SECRET }}
-          KAKAO_CLIENT_ID:                       ${{ secrets.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET:                   ${{ secrets.KAKAO_CLIENT_SECRET }}
-          OAUTH2_REDIRECT_URI:                   ${{ secrets.OAUTH2_REDIRECT_URI }}
-        run: |
-          sudo apt-get install -y gettext-base
-          envsubst < "${{ env.TASKDEF_TPL }}" > "${{ env.TASKDEF_OUT }}"
-
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ env.TASKDEF_OUT }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
-          wait-for-service-stability: true
-
-  # ────────────────────────────────────────────
-  # 3) media-worker 배포
-  # ────────────────────────────────────────────
   deploy-media-worker:
-    name: Deploy media-worker
     needs: build
-    runs-on: ubuntu-latest
-    env:
-      ECR_REPO: asn/media-worker
-      ECS_SERVICE: svc-media-worker
-      CONTAINER_NAME: media-worker
-      TASKDEF_TPL: infra/ecs/taskdef-media-worker.json.tpl
-      TASKDEF_OUT: infra/ecs/taskdef-media-worker.rendered.json
-    steps:
-      - uses: actions/checkout@v4
+    uses: ./.github/workflows/_reusable_deploy_service.yml
+    with:
+      ecr_repo: asn/media-worker
+      service_name: media-worker-service-lxkbkrg7
+      dockerfile: deployments/docker/media-worker.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-media-worker.json.tpl
+      taskdef_out: infra/ecs/taskdef-media-worker.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/media-worker:${{ github.ref_name }}
+      container_image_env_key: MEDIA_WORKER_IMAGE_URI
+    secrets: inherit
 
-      - name: Download JARs
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & Push Docker image
-        run: |
-          IMAGE_URI=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${{ github.sha }}
-          docker build -f deployments/docker/media-worker.Dockerfile \
-            -t $IMAGE_URI \
-            -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest \
-            .
-          docker push $IMAGE_URI
-          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-      - name: Render task definition
-        env:
-          TASK_ROLE_ARN:                     ${{ secrets.TASK_ROLE_ARN }}
-          AWS_EXE_ROLE_ARN:                  ${{ secrets.AWS_EXE_ROLE_ARN }}
-          MEDIA_WORKER_IMAGE_URI:            ${{ env.IMAGE_URI }}
-          DB_URL:                            ${{ secrets.DB_URL }}
-          DB_USER:                           ${{ secrets.DB_USER }}
-          DB_PASSWORD:                       ${{ secrets.DB_PASSWORD }}
-          REDIS_HOST:                        ${{ secrets.REDIS_HOST }}
-          REDIS_PORT:                        ${{ secrets.REDIS_PORT }}
-          REDIS_PASSWORD:                    ${{ secrets.REDIS_PASSWORD }}
-          KAFKA_BOOTSTRAP_SERVERS:           ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
-          KAFKA_CONSUMER_GROUP_ID:           ${{ secrets.KAFKA_CONSUMER_GROUP_ID }}
-          KAFKA_AUTO_OFFSET_RESET:           ${{ secrets.KAFKA_AUTO_OFFSET_RESET }}
-          KAFKA_TOPIC_MEDIA_TRANSCODE:       ${{ secrets.KAFKA_TOPIC_MEDIA_TRANSCODE }}
-          S3_BUCKET:                         ${{ secrets.S3_BUCKET }}
-        run: |
-          sudo apt-get install -y gettext-base
-          envsubst < "${{ env.TASKDEF_TPL }}" > "${{ env.TASKDEF_OUT }}"
-
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ env.TASKDEF_OUT }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
-          wait-for-service-stability: true
-
-  # ────────────────────────────────────────────
-  # 4) batch-analytics 배포
-  # ────────────────────────────────────────────
   deploy-batch-analytics:
-    name: Deploy batch-analytics
     needs: build
-    runs-on: ubuntu-latest
-    env:
-      ECR_REPO: asn/batch-analytics
-      ECS_SERVICE: svc-batch-analytics
-      CONTAINER_NAME: batch-analytics
-      TASKDEF_TPL: infra/ecs/taskdef-batch-analytics.json.tpl
-      TASKDEF_OUT: infra/ecs/taskdef-batch-analytics.rendered.json
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download JARs
-        uses: actions/download-artifact@v4
-        with:
-          name: jars
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & Push Docker image
-        run: |
-          IMAGE_URI=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:${{ github.sha }}
-          docker build -f deployments/docker/batch-analytics.Dockerfile \
-            -t $IMAGE_URI \
-            -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest \
-            .
-          docker push $IMAGE_URI
-          docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO }}:latest
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-      - name: Render task definition
-        env:
-          TASK_ROLE_ARN:              ${{ secrets.TASK_ROLE_ARN }}
-          AWS_EXE_ROLE_ARN:           ${{ secrets.AWS_EXE_ROLE_ARN }}
-          BATCH_ANALYTICS_IMAGE_URI:  ${{ env.IMAGE_URI }}
-          DB_URL:                     ${{ secrets.DB_URL }}
-          DB_USER:                    ${{ secrets.DB_USER }}
-          DB_PASSWORD:                ${{ secrets.DB_PASSWORD }}
-        run: |
-          sudo apt-get install -y gettext-base
-          envsubst < "${{ env.TASKDEF_TPL }}" > "${{ env.TASKDEF_OUT }}"
-
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ env.TASKDEF_OUT }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
-          wait-for-service-stability: true
+    uses: ./.github/workflows/_reusable_deploy_batch_schedule.yml
+    with:
+      ecr_repo: asn/batch-analytics
+      dockerfile: deployments/docker/batch-analytics.Dockerfile
+      taskdef_tpl: infra/ecs/taskdef-batch-analytics.json.tpl
+      taskdef_out: infra/ecs/taskdef-batch-analytics.rendered.json
+      image_uri: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/asn/batch-analytics:${{ github.ref_name }}
+      schedule_group: default
+      schedule_name: batch-analytics-daily
+    secrets: inherit

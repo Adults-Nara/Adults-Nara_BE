@@ -86,6 +86,10 @@ public class VideoMetadata extends BaseEntity {
         this.videoType = videoType;
     }
 
+    public void softDelete() {
+        this.deleted = true;
+    }
+
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();

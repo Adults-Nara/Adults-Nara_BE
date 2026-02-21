@@ -1,5 +1,6 @@
 package com.ott.common.persistence.entity;
 
+import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -32,5 +33,12 @@ public class VideoTag {
     public VideoTag(VideoMetadata videoMetadata, Tag tag) {
         this.videoMetadata = videoMetadata;
         this.tag = tag;
+    }
+
+    @PrePersist
+    private void prePersist() {
+        if (id == null) {
+            id = IdGenerator.generate();
+        }
     }
 }

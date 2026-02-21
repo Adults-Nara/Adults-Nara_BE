@@ -1,21 +1,14 @@
 package com.ott.core.modules.user.controller;
 
-import com.ott.common.persistence.enums.UserRole;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.user.dto.request.CreateUserRequest;
 import com.ott.core.modules.user.dto.request.UpdateUserRequest;
-import com.ott.core.modules.user.dto.request.BanUserRequest;
 import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -52,39 +45,6 @@ public class UserController {
     }
 
     /**
-     * 사용자 목록 조회 (ADMIN만 가능)
-     */
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Page<UserResponse>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") Sort.Direction direction
-    ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<UserResponse> users = userService.getAllUsers(pageable);
-        return ApiResponse.success(users);
-    }
-
-    /**
-     * 역할별 사용자 목록 조회 (ADMIN만 가능)
-     */
-    @GetMapping("/role/{role}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Page<UserResponse>> getUsersByRole(
-            @PathVariable UserRole role,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") Sort.Direction direction
-    ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<UserResponse> users = userService.getUsersByRole(role, pageable);
-        return ApiResponse.success(users);
-    }
-
-    /**
      * 사용자 상세 조회 (본인 또는 ADMIN)
      */
     @GetMapping("/{userId}")
@@ -105,31 +65,6 @@ public class UserController {
     ) {
         UserResponse response = userService.updateUser(userId, request);
         return ApiResponse.success(response);
-    }
-
-    /**
-     * 사용자 정지 (ADMIN만 가능)
-     */
-    @PostMapping("/{userId}/ban")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> banUser(
-            @PathVariable Long userId,
-            @Valid @RequestBody BanUserRequest request,
-            Authentication authentication
-    ) {
-        Long adminId = Long.parseLong(authentication.getName());
-        userService.banUser(userId, request, adminId);  // ✅ adminId는 로그용으로만 사용 (DB 저장 안 함)
-        return ApiResponse.success();
-    }
-
-    /**
-     * 사용자 정지 해제 (ADMIN만 가능)
-     */
-    @PostMapping("/{userId}/unban")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> unbanUser(@PathVariable Long userId) {
-        userService.unbanUser(userId);
-        return ApiResponse.success();
     }
 
     /**

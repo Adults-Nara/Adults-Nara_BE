@@ -43,6 +43,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/search/admin/**").permitAll()
                         .requestMatchers("/api/v1/recommendations/feed/**").permitAll()
 
+                        // 백오피스 임시 인증 해제
+                        .requestMatchers("/api/v1/backoffice/**").permitAll()
+
                         // ✅ 사용자 목록 조회는 ADMIN만 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")

@@ -7,7 +7,6 @@ CREATE TYPE ban_status AS ENUM (
     'SUSPENDED_7',
     'SUSPENDED_15',
     'SUSPENDED_30',
-    'PERMANENTLY_BANNED',
     'DELETED'
     );
 
@@ -40,7 +39,7 @@ CREATE TABLE users (
                            ),
 
                        CONSTRAINT check_banned_status CHECK (
-                           (banned IN ('ACTIVE', 'DEACTIVATED', 'PERMANENTLY_BANNED', 'DELETED') AND banned_until IS NULL) OR
+                           (banned IN ('ACTIVE', 'DEACTIVATED', 'DELETED') AND banned_until IS NULL) OR
                            (banned IN ('SUSPENDED_7', 'SUSPENDED_15', 'SUSPENDED_30') AND banned_until IS NOT NULL)
                            )
 );
