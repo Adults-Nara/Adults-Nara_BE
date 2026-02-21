@@ -7,6 +7,7 @@ import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
 import com.ott.common.persistence.enums.BanStatus;
+import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.repository.UserQueryRepository;
 import com.ott.core.modules.tag.repository.TagRepository;
@@ -71,7 +72,7 @@ public class BackofficeService {
             videoTagRepository.saveAll(videoTags);
         }
 
-        return new ContentUpdateResponse(contentId);
+        return new ContentUpdateResponse(String.valueOf(contentId));
     }
 
     @Transactional
@@ -87,8 +88,8 @@ public class BackofficeService {
         }
     }
 
-    public Page<AdminUserResponse> getAllUsers(String keyword, Pageable pageable) {
-        return userQueryRepository.findAllUsers(keyword, pageable);
+    public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
+        return userQueryRepository.findAllUsers(userRole, keyword, pageable);
     }
 
     @Transactional
@@ -107,7 +108,7 @@ public class BackofficeService {
         String banReason = isActive ? null : request.banReason();
 
         userRepository.updateBanStatus(request.banStatus(), banReason, bannedUtil, bannedAt, request.userIds());
-        return new UserStatusUpdateResponse(request.userIds());
+        return new UserStatusUpdateResponse(request.userIds().stream().map(String::valueOf).toList());
     }
 
     @Transactional

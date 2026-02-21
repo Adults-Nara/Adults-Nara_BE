@@ -37,7 +37,7 @@ public class WatchHistoryService {
         // Redis에 시청 이력이 존재하는지 확인
         if (redisHistory != null) {
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(videoMetadataId)
+                    .videoMetadataId(String.valueOf(videoMetadataId))
                     .lastPosition(redisHistory.getLastPosition())
                     .duration(redisHistory.getDuration())
                     .build();
@@ -56,14 +56,14 @@ public class WatchHistoryService {
             );
 
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(videoMetadataId)
+                    .videoMetadataId(String.valueOf(videoMetadataId))
                     .lastPosition(watchHistory.getLastPosition())
                     .duration(watchHistory.getVideoMetadata().getDuration())
                     .build();
         } else {
             // DB에 시청이력이 존재하지 않으면 0초 반환
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(videoMetadataId)
+                    .videoMetadataId(String.valueOf(videoMetadataId))
                     .lastPosition(0)
                     .duration(null)
                     .build();
