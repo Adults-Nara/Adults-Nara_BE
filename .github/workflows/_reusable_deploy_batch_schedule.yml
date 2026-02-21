@@ -67,7 +67,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: jars
-          path: apps
+
+      - name: Untar artifacts
+        run: tar xvf jars.tar
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
