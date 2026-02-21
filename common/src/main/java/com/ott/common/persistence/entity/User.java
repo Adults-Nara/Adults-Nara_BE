@@ -166,7 +166,6 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
 
     public boolean canLogin() {
         if (deleted) return false;
-        if (banned == BanStatus.PERMANENTLY_BANNED) return false;
         if (banned == BanStatus.DEACTIVATED) return false;
 
         // 임시 정지 기간 만료 시 자동 활성화

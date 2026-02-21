@@ -1,11 +1,11 @@
-package com.ott.core.modules.video.repository;
+package com.ott.core.modules.backoffice.repository;
 
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
 import com.ott.common.persistence.enums.Visibility;
-import com.ott.core.modules.video.dto.backoffice.UploaderContentResponse;
+import com.ott.core.modules.backoffice.dto.UploaderContentResponse;
 import com.ott.core.modules.video.service.SignedCookieProcessor;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +30,8 @@ import static org.assertj.core.api.Assertions.*;
 class VideoMetadataQueryRepositoryTest {
 
     @Autowired EntityManager em;
-    @Autowired VideoMetadataQueryRepository videoMetadataQueryRepository;
+    @Autowired
+    VideoMetadataQueryRepository videoMetadataQueryRepository;
     @MockitoBean SignedCookieProcessor signedCookieProcessor;
 
     private static final Long USER_ID = 100L;

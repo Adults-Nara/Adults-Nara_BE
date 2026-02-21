@@ -1,7 +1,7 @@
-package com.ott.core.modules.video.service;
+package com.ott.core.modules.backoffice.service;
 
-import com.ott.core.modules.video.dto.backoffice.UploaderContentResponse;
-import com.ott.core.modules.video.repository.VideoMetadataQueryRepository;
+import com.ott.core.modules.backoffice.dto.UploaderContentResponse;
+import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,7 +19,8 @@ import static org.mockito.Mockito.when;
 class BackofficeServiceTest {
 
     @Mock VideoMetadataQueryRepository videoMetadataQueryRepository;
-    @InjectMocks BackofficeService backofficeService;
+    @InjectMocks
+    BackofficeService backofficeService;
 
     @Test
     void getUploaderContents_정상호출() {

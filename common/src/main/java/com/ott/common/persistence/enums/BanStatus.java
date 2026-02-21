@@ -6,7 +6,6 @@ public enum BanStatus {
     SUSPENDED_7,
     SUSPENDED_15,
     SUSPENDED_30,
-    PERMANENTLY_BANNED,
     DELETED;
 
     public boolean isSuspended() {

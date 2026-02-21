@@ -1,8 +1,10 @@
 package com.ott.core.modules.tag.repository;
 
 import com.ott.common.persistence.entity.Tag;
+import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -19,4 +21,8 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
      */
     @Query("SELECT vt FROM VideoTag vt JOIN FETCH vt.tag WHERE vt.videoMetadata.id IN :videoIds")
     List<VideoTag> findWithTagByVideoMetadataIdIn(@Param("videoIds") List<Long> videoIds);
+
+    @Modifying
+    @Query("DELETE FROM VideoTag vt WHERE vt.videoMetadata = :videoMetadata")
+    void deleteAllByVideoMetadata(@Param("videoMetadata") VideoMetadata videoMetadata);
 }
