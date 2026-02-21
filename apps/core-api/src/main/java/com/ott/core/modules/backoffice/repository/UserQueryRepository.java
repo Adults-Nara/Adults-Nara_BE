@@ -1,5 +1,6 @@
 package com.ott.core.modules.backoffice.repository;
 
+import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.AdminUserResponse;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
@@ -22,9 +23,10 @@ public class UserQueryRepository {
 
     private final JPAQueryFactory query;
 
-    public Page<AdminUserResponse> findAllUsers(String keyword, Pageable pageable) {
+    public Page<AdminUserResponse> findAllUsers(UserRole userRole, String keyword, Pageable pageable) {
         BooleanBuilder where = new BooleanBuilder();
         where.and(user.deleted.eq(false));
+        where.and(user.role.eq(userRole));
 
         if (keyword != null && !keyword.isBlank()) {
             String escaped = keyword.replace("%", "\\%").replace("_", "\\_");

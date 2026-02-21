@@ -1,5 +1,6 @@
 package com.ott.core.modules.backoffice.controller;
 
+import com.ott.common.persistence.enums.UserRole;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.service.BackofficeService;
@@ -79,6 +80,7 @@ public class BackofficeController {
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Page<AdminUserResponse>> getUsers(
+            @RequestParam UserRole userRole,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -86,7 +88,7 @@ public class BackofficeController {
             @RequestParam(defaultValue = "DESC") Sort.Direction direction
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<AdminUserResponse> result = backofficeService.getAllUsers(keyword, pageable);
+        Page<AdminUserResponse> result = backofficeService.getAllUsers(userRole, keyword, pageable);
         return ApiResponse.success(result);
     }
 
