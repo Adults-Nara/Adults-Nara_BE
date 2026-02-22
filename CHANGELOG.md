@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.3...v0.5.4) (2026-02-22)
+
+
+### Bug Fixes
+
+* CORS 문제 해결 ([b0c80bd](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b0c80bd559b9f03498c2f55a8ec74c66aaeeb1f4))
+* CORS 문제 해결 ([2d6d862](https://github.com/Adults-Nara/Adults-Nara_BE/commit/2d6d8621987e68b820148d1841185b073e193000))
+
 ## [0.5.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.2...v0.5.3) (2026-02-22)
 
 
