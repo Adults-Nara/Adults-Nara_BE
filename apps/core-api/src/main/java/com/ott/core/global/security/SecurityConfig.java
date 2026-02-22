@@ -50,37 +50,20 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        // 카카오 OAuth 인증
                         .requestMatchers("/api/v1/auth/**").permitAll()
-
-                        // 회원가입
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
-
-                        // 비디오 임시 인증 해제
                         .requestMatchers("/api/v1/videos/**").permitAll()
                         .requestMatchers("/api/v1/interactions/**").permitAll()
                         .requestMatchers("/api/v1/bookmarks/**").permitAll()
-
-                        // Swagger
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-
-                        // 검색/추천
                         .requestMatchers("/api/v1/search/admin/**").permitAll()
                         .requestMatchers("/api/v1/recommendations/feed/**").permitAll()
-
-                        // 백오피스 임시 인증 해제
                         .requestMatchers("/api/v1/backoffice/**").permitAll()
-
-                        // 헬스체크
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-
-                        // ADMIN 전용
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
-
-                        // 나머지 인증 필요
                         .anyRequest().authenticated()
                 );
 
