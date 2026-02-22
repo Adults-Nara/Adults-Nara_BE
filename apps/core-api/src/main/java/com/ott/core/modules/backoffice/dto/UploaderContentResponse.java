@@ -5,7 +5,7 @@ import com.ott.common.persistence.enums.Visibility;
 import java.time.OffsetDateTime;
 
 public record UploaderContentResponse(
-        Long contentId,
+        String contentId,
         String thumbnailUrl,
         String title,
         String description,

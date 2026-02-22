@@ -84,12 +84,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/backoffice/**").permitAll()
 
                         // ===== ADMIN 전용 =====
+                        //헬스 체크 해제
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+
+                        // ✅ 사용자 목록 조회는 ADMIN만 가능
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
 
                         // ===== 나머지는 인증 필요 =====
+
+                        // ✅ 나머지는 인증 필요
                         .anyRequest().authenticated()
                 );
 

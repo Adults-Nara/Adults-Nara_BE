@@ -5,7 +5,7 @@ import com.ott.common.persistence.enums.BanStatus;
 import java.time.OffsetDateTime;
 
 public record AdminUserResponse(
-        Long userId,
+        String userId,
         String profileImageUrl,
         String nickname,
         String email,
