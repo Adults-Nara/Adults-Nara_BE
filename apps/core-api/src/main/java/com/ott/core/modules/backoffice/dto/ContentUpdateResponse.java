@@ -1,6 +1,6 @@
 package com.ott.core.modules.backoffice.dto;
 
 public record ContentUpdateResponse(
-        String contentId
+        String videoMetadataId
 ) {
 }
