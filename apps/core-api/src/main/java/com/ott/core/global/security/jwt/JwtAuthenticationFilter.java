@@ -31,7 +31,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+        // [Fix #5] Access Token만 API 인증에 사용 (Refresh Token으로 API 호출 차단)
+        if (StringUtils.hasText(token)
+                && jwtTokenProvider.validateToken(token)
+                && jwtTokenProvider.isAccessToken(token)) {
             Authentication authentication = jwtTokenProvider.getAuthentication(token);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             log.debug("SecurityContext에 인증 정보 저장 완료: userId={}", authentication.getName());

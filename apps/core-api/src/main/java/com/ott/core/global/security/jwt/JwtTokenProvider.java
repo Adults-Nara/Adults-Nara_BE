@@ -20,6 +20,14 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
+    /**
+     * [Fix #5] 토큰 타입 상수
+     * Access Token과 Refresh Token을 구분하여 토큰 혼용 공격을 방지합니다.
+     */
+    private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String TOKEN_TYPE_ACCESS = "access";
+    private static final String TOKEN_TYPE_REFRESH = "refresh";
+
     private final JwtProperties jwtProperties;
     private SecretKey secretKey;
 
@@ -43,6 +51,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(userId.toString())
                 .claim("role", role)
+                .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS)  // [Fix #5]
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -61,6 +70,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim(TOKEN_TYPE_CLAIM, TOKEN_TYPE_REFRESH)  // [Fix #5]
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -110,6 +120,30 @@ public class JwtTokenProvider {
             log.warn("JWT 토큰이 비어있습니다: {}", e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * [Fix #5] Access Token인지 확인
+     */
+    public boolean isAccessToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return TOKEN_TYPE_ACCESS.equals(claims.get(TOKEN_TYPE_CLAIM, String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * [Fix #5] Refresh Token인지 확인
+     */
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return TOKEN_TYPE_REFRESH.equals(claims.get(TOKEN_TYPE_CLAIM, String.class));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**

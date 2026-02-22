@@ -47,9 +47,6 @@ public class KakaoOAuthService {
 
     /**
      * [Step 1] 인가코드(Authorization Code)로 카카오 액세스 토큰 교환
-     *
-     * @param authorizationCode 카카오 인가 서버에서 발급받은 인가코드
-     * @return 카카오 액세스 토큰 응답
      */
     public KakaoTokenResponse getAccessToken(String authorizationCode) {
         log.info("[카카오 OAuth] 액세스 토큰 교환 시작");
@@ -65,8 +62,9 @@ public class KakaoOAuthService {
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
                     log.error("[카카오 OAuth] 토큰 교환 실패 - 4xx 에러: {}", clientResponse.statusCode());
+                    // [Fix - Medium] 에러 응답 본문은 debug 레벨로 (프로덕션에서 민감정보 노출 방지)
                     return clientResponse.bodyToMono(String.class)
-                            .doOnNext(body -> log.error("[카카오 OAuth] 에러 응답: {}", body))
+                            .doOnNext(body -> log.debug("[카카오 OAuth] 에러 응답: {}", body))
                             .then(Mono.error(new BusinessException(ErrorCode.UNAUTHORIZED)));
                 })
                 .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
@@ -86,9 +84,6 @@ public class KakaoOAuthService {
 
     /**
      * [Step 2] 카카오 액세스 토큰으로 사용자 정보 조회
-     *
-     * @param accessToken 카카오 액세스 토큰
-     * @return 카카오 사용자 정보
      */
     public KakaoUserInfoResponse getUserInfo(String accessToken) {
         log.info("[카카오 OAuth] 사용자 정보 조회 시작");

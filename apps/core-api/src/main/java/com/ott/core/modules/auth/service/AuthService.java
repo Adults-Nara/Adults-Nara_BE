@@ -47,10 +47,11 @@ public class AuthService {
      * 5. JWT 토큰 발급
      *
      * @param authorizationCode 카카오 인가코드
+     * @param state OAuth state 파라미터 (CSRF 검증용)
      * @return 로그인 응답 (유저정보 + JWT 토큰)
      */
     @Transactional
-    public LoginResponse kakaoLogin(String authorizationCode) {
+    public LoginResponse kakaoLogin(String authorizationCode, String state) {
         // 1. 카카오 액세스 토큰 교환
         KakaoTokenResponse tokenResponse = kakaoOAuthService.getAccessToken(authorizationCode);
 
@@ -75,8 +76,16 @@ public class AuthService {
             // 프로필 정보 업데이트 (카카오에서 변경됐을 수 있으므로)
             updateProfileIfChanged(user, kakaoUser);
         } else {
-            // 같은 이메일로 이미 가입한 사용자가 있는지 체크
-            Optional<User> emailUser = userRepository.findByEmailAndNotDeleted(kakaoUser.email());
+            // [Fix #1] 이메일 기반 계정 연동 시 카카오 이메일 검증 여부 확인
+            // 미검증 이메일로 기존 계정을 탈취하는 것을 방지
+            Optional<User> emailUser = Optional.empty();
+            if (kakaoUser.isEmailVerified()) {
+                emailUser = userRepository.findByEmailAndNotDeleted(kakaoUser.email());
+            } else {
+                log.warn("[카카오 로그인] 미검증 이메일 - 이메일 기반 계정 연동 건너뜀. kakaoId: {}, email: {}",
+                        kakaoUser.oauthId(), kakaoUser.email());
+            }
+
             if (emailUser.isPresent()) {
                 // 이메일은 같지만 OAuth가 아닌 기존 사용자 → OAuth 연동
                 user = emailUser.get();
@@ -116,7 +125,13 @@ public class AuthService {
      * Refresh Token으로 Access Token 재발급
      */
     public TokenRefreshResponse refreshAccessToken(String refreshToken) {
+        // [Fix #5] Refresh Token 타입 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
+            log.warn("[토큰 갱신] Access Token으로 갱신 시도 차단");
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -132,13 +147,23 @@ public class AuthService {
 
     // ====== Private Methods ======
 
+    /**
+     * [Fix #6] 비활성화 계정 처리 정책 분리
+     * - USER_DEACTIVATED: 사용자 본인이 비활성화 → 로그인 시 자동 활성화
+     * - DEACTIVATED (관리자): 관리자가 비활성화 → 로그인 차단
+     *
+     * 현재는 BanStatus에 관리자/사용자 구분이 없으므로,
+     * DEACTIVATED는 사용자 본인 비활성화로 간주하고 자동 활성화합니다.
+     * 관리자 비활성화는 SUSPENDED 사용을 권장합니다.
+     */
     private void validateLoginStatus(User user) {
         if (!user.canLogin()) {
             if (user.isDeleted()) {
                 throw new BusinessException(ErrorCode.USER_NOT_FOUND);
             }
             if (user.getBanned() == BanStatus.DEACTIVATED) {
-                // 비활성화된 계정은 로그인 시 자동 활성화
+                // 사용자 본인 비활성화 → 로그인 시 자동 활성화
+                // 관리자 비활성화는 SUSPENDED 상태를 사용해야 합니다.
                 user.activate();
                 log.info("[카카오 로그인] 비활성화 계정 자동 활성화 - userId: {}", user.getId());
                 return;

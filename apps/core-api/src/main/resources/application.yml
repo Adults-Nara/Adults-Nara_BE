@@ -10,6 +10,11 @@ spring:
       max-request-size: 10MB
   jpa:
     open-in-view: false
+  oauth2:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -47,6 +52,6 @@ aws:
 
 # JWT 설정
 jwt:
-  secret: ${JWT_SECRET:Y29tLm90dC5hc24ua2FrYW8ub2F1dGguc2VjcmV0LmtleS5mb3IuZGV2ZWxvcG1lbnQub25seQ==}
+  secret: ${JWT_SECRET}
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000

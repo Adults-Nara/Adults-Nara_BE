@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * 카카오 사용자 정보 조회 API 응답
  * GET https://kapi.kakao.com/v2/user/me
  *
+ * @see <a href="https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api#req-user-info">카카오 문서</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record KakaoUserInfoResponse(
@@ -62,13 +63,27 @@ public record KakaoUserInfoResponse(
     }
 
     /**
-     * 이메일 (없으면 "kakao_{id}@kakao.local" 형태로 생성)
+     * [Fix #1] 카카오 이메일 검증 여부 확인
+     * 미검증 이메일로 기존 계정에 연동하면 계정 탈취 가능
+     *
+     * @return true: 이메일이 유효하고 검증됨, false: 그 외
+     */
+    public boolean isEmailVerified() {
+        if (kakaoAccount == null) return false;
+        return Boolean.TRUE.equals(kakaoAccount.isEmailValid())
+                && Boolean.TRUE.equals(kakaoAccount.isEmailVerified());
+    }
+
+    /**
+     * 이메일 (없으면 "noreply+kakao_{id}@asn.internal" 형태로 생성)
+     * 내부 전용 도메인을 사용하여 실제 이메일과의 충돌 방지
      */
     public String email() {
         if (kakaoAccount != null && kakaoAccount.email() != null) {
             return kakaoAccount.email();
         }
-        return "kakao_" + id + "@kakao.local";
+        // [Fix - Medium] 내부 전용 도메인 사용으로 실제 이메일 주소와 충돌 방지
+        return "noreply+kakao_" + id + "@asn.internal";
     }
 
     /**
