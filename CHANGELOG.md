@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.2...v0.5.3) (2026-02-22)
+
+
+### Bug Fixes
+
+* media-worker Dockerfile 수정사항 반영 ([aa66d9a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/aa66d9a13dee1046fde880e706c0f187b77271f0))
+
 ## [0.5.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.1...v0.5.2) (2026-02-21)
 
 
