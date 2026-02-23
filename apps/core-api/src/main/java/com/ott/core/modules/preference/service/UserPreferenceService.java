@@ -2,19 +2,25 @@ package com.ott.core.modules.preference.service;
 
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.UserPreference;
+import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.InteractionType;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.repository.UserPreferenceRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
+import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 
 @Slf4j
@@ -24,6 +30,7 @@ public class UserPreferenceService {
 
     private final UserPreferenceRepository userPreferenceRepository;
     private final VideoTagRepository videoTagRepository;
+    private final VideoMetadataRepository videoMetadataRepository;
     private final StringRedisTemplate stringRedisTemplate;
 
     private static final double SCORE_SUPERLIKE = 5.0; // 왕따봉
@@ -39,7 +46,7 @@ public class UserPreferenceService {
      */
 
     @Transactional
-    public void reflectWatchScore(Long userId, Long videoMetadataId, Integer watchSeconds, boolean isCompleted) {
+    public void reflectWatchScore(Long userId, Long videoId, Integer watchSeconds, boolean isCompleted) {
         double scoreToAdd = 0.0;
 
         if (watchSeconds != null && watchSeconds > 0) {
@@ -50,8 +57,8 @@ public class UserPreferenceService {
         }
 
         if (scoreToAdd > 0) {
-            updateScores(userId, videoMetadataId, scoreToAdd);
-            log.info("[Preference] 시청 점수 반영 완료 - userId: {}, videoMetadataId: {}, score: {}", userId, videoMetadataId, scoreToAdd);
+            updateScores(userId, videoId, scoreToAdd);
+            log.info("[Preference] 시청 점수 반영 완료 - userId: {}, videoId: {}, score: {}", userId, videoId, scoreToAdd);
         }
     }
 
@@ -60,7 +67,7 @@ public class UserPreferenceService {
      * [인터랙션] 좋아요 클릭 시 점수 반영
      */
     @Transactional
-    public void reflectInteractionScore(Long userId, Long videoMetadataId, InteractionType oldType, InteractionType newType) {
+    public void reflectInteractionScore(Long userId, Long videoId, InteractionType oldType, InteractionType newType) {
 
         double oldScore = getScoreByType(oldType);
         double newScore = getScoreByType(newType);
@@ -72,14 +79,19 @@ public class UserPreferenceService {
 
         // 3. 차이값이 0이 아닐 때만 Redis와 DB 업데이트 실행
         if (delta != 0.0) {
-            updateScores(userId, videoMetadataId, delta);
-            log.info("[Preference] 인터랙션 점수 차이값 반영 완료 - userId: {}, videoMetadataId: {}, delta: {}", userId, videoMetadataId, delta);
+            updateScores(userId, videoId, delta);
+            log.info("[Preference] 인터랙션 점수 차이값 반영 완료 - userId: {}, videoId: {}, delta: {}", userId, videoId, delta);
         }
     }
 
-    private void updateScores(Long userId, Long videoMetadataId, Double score) {
-        // 1. 영상의 태그 목록 조회
-        List<Tag> tags = videoTagRepository.findTagsByVideoMetadataId(videoMetadataId);
+    private void updateScores(Long userId, Long videoId, Double score) {
+        VideoMetadata metadata = videoMetadataRepository.findByVideoId(videoId).orElse(null);
+        if (metadata == null) {
+            log.warn("[Preference] 메타데이터를 찾을 수 없어 점수 반영 취소 - videoId: {}", videoId);
+            return;
+        }
+        // 영상의 태그 목록 조회
+        List<Tag> tags = videoTagRepository.findTagsByVideoMetadataId(metadata.getId());
         if (tags.isEmpty()) return;
 
         String redisKey = "user:" + userId + ":preference";
@@ -110,8 +122,7 @@ public class UserPreferenceService {
     public List<TagScoreDto> getTopPreferences(Long userId, int limit) {
         String redisKey = "user:" + userId + ":preference";
 
-        // 1. [Cache Hit] Redis에서 먼저 조회 (1등부터 한도(limit)까지 가져옴)
-        // 0은 1등, limit - 1은 N등을 의미합니다.
+        // 1. [Cache Hit] Redis에서 먼저 조회 (1등부터 한도(limit)까지 가져옴) 0이 1등
         var redisResult = stringRedisTemplate.opsForZSet().reverseRangeWithScores(redisKey, 0, limit - 1);
 
         if (redisResult != null && !redisResult.isEmpty()) {
@@ -130,22 +141,22 @@ public class UserPreferenceService {
             return List.of(); // 빈 리스트 반환 (나중에 ES에서 기본 인기 영상 노출용으로 쓰임)
         }
 
-        // 3. [Self-Healing] DB에서 가져온 데이터를 다시 Redis에 채워 넣기 (복구)
-        List<TagScoreDto> recoveredScores = new java.util.ArrayList<>();
+
+        Set<ZSetOperations.TypedTuple<String>> tuples = new HashSet<>();
+        List<TagScoreDto> recoveredScores = new java.util.ArrayList<>();// DB 데이터를 Redis에 복구
 
         for (UserPreference pref : dbPreferences) {
             String tagName = pref.getTag().getTagName();
             Double score = pref.getScore();
 
-            // Redis에 다시 ZADD
-            stringRedisTemplate.opsForZSet().add(redisKey, tagName, score);
+            tuples.add(new DefaultTypedTuple<>(tagName, score));
             recoveredScores.add(new TagScoreDto(tagName, score));
         }
 
-        // 4. 복구된 데이터를 점수 내림차순으로 정렬해서 요청한 개수(limit)만큼만 짤라서 반환
-        return recoveredScores.stream()
-                .sorted((a, b) -> Double.compare(b.score(), a.score()))
-                .limit(limit)
-                .toList();
+        // 반복문 밖에서 한 번의 명령어로 Redis에 와르르 쏟아붓습니다.
+        if (!tuples.isEmpty()) {
+            stringRedisTemplate.opsForZSet().add(redisKey, tuples);
+        }
+        return recoveredScores.stream().limit(limit).toList();
     }
 }

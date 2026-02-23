@@ -12,7 +12,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Table(name = "video_metadata")
+@Table(name = "video_metadata", indexes = {
+        @Index(name = "idx_video_metadata_video_id", columnList = "videoId", unique = true)
+})
 public class VideoMetadata extends BaseEntity {
     @Id
     @Column(name = "video_metadata_id")

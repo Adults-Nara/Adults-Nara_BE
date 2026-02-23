@@ -23,27 +23,28 @@ public class BookmarkService {
     private final UserRepository userRepository;
     private final VideoMetadataRepository videoMetadataRepository;
 
-    public void toggleBookmark(Long userId, Long videoMetadataId) {
+    public void toggleBookmark(Long userId, Long videoId) {
         User user = findUser(userId);
-        VideoMetadata video = findVideo(videoMetadataId);
+        VideoMetadata metadata = videoMetadataRepository.findByVideoId(videoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
-        Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, video);
+        Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, metadata);
 
         if (existingBookmark.isPresent()) {
             // 이미 찜했으면 -> 취소
             bookmarkRepository.delete(existingBookmark.get());
-            videoMetadataRepository.decreaseBookmarkCount(videoMetadataId);
+            videoMetadataRepository.decreaseBookmarkCount(metadata.getId());
         } else {
             // 없으면 -> 찜하기
-            Bookmark newBookmark = new Bookmark(user, video);
+            Bookmark newBookmark = new Bookmark(user, metadata);
             bookmarkRepository.save(newBookmark);
-            videoMetadataRepository.increaseBookmarkCount(videoMetadataId);
+            videoMetadataRepository.increaseBookmarkCount(metadata.getId());
         }
     }
     // 조회
     @Transactional(readOnly = true)
-    public boolean isBookmarked(Long userId, Long videoMetadataId) {
-        return bookmarkRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).isPresent();
+    public boolean isBookmarked(Long userId, Long videoId) {
+        return bookmarkRepository.findByUserIdAndVideoId(userId, videoId).isPresent();
     }
 
     private User findUser(Long userId) {
