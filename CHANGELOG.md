@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.0...v0.6.1) (2026-02-23)
+
+
+### Bug Fixes
+
+* application-prod.yml 변경사항 메인 브랜치 병합 ([df2331a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/df2331a4d41a9f20a1740532b77d83ccd5310543))
+
 ## [0.6.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.4...v0.6.0) (2026-02-23)
 
 
