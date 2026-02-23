@@ -1,11 +1,13 @@
 package com.ott.core.modules.search.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ott.core.modules.search.document.VideoDocument;
 
 import java.util.List;
 
 public record VideoFeedResponseDto(
-        String videoMetadataId,
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
+        Long videoMetadataId,
         String title,
         List<String> tags,
         int viewCount,

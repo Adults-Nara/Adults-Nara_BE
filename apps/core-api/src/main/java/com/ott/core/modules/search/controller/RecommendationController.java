@@ -24,7 +24,13 @@ public class RecommendationController implements RecommendationApiDocs {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> recommendedVideos = recommendationService.getPersonalizedFeed(userId, page, size);
-        return ResponseEntity.ok(recommendedVideos);
+        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed(userId, page, size);
+
+        // Document -> DTO 로 변환
+        List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
+                .map(VideoFeedResponseDto::from)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(dtoList));
     }
 }

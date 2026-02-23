@@ -43,7 +43,7 @@ public class BookmarkService {
     // 조회
     @Transactional(readOnly = true)
     public boolean isBookmarked(Long userId, Long videoMetadataId) {
-        return bookmarkRepository.findByUserIdAndVideoId(userId, videoMetadataId).isPresent();
+        return bookmarkRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).isPresent();
     }
 
     private User findUser(Long userId) {

@@ -1,6 +1,8 @@
 package com.ott.core.modules.interaction.controller;
 
 import com.ott.common.persistence.enums.InteractionType;
+import com.ott.common.response.ApiResponse;
+import com.ott.core.modules.interaction.dto.InteractionStatusResponseDto;
 import com.ott.core.modules.interaction.service.InteractionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,42 +21,47 @@ public class InteractionController {
     // 좋아요
     @Operation(summary = "좋아요 누르기", description = "해당 영상에 좋아요를 표시합니다.")
     @PostMapping("/{videoMetadataId}/like")
-    public ResponseEntity<String> likeVideo(
+    public ResponseEntity<ApiResponse<?>> likeVideo(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
         interactionService.interact(userId, videoMetadataId, InteractionType.LIKE);
-        return ResponseEntity.ok("성공: 좋아요 반영됨");
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     // 싫어요
     @Operation(summary = "싫어요 누르기", description = "해당 영상에 싫어요를 표시합니다.")
     @PostMapping("/{videoMetadataId}/dislike")
-    public ResponseEntity<String> dislikeVideo(
+    public ResponseEntity<ApiResponse<?>> dislikeVideo(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
         interactionService.interact(userId, videoMetadataId, InteractionType.DISLIKE);
-        return ResponseEntity.ok("성공: 싫어요 반영됨");
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     // 슈퍼라이크 (왕따봉)
     @Operation(summary = "슈퍼라이크(왕따봉) 누르기", description = "해당 영상에 최고예요를 표시합니다.")
     @PostMapping("/{videoMetadataId}/superlike")
-    public ResponseEntity<String> superLikeVideo(
+    public ResponseEntity<ApiResponse<?>> superLikeVideo(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
         interactionService.interact(userId, videoMetadataId, InteractionType.SUPERLIKE); // Enum 이름 확인 필요 (SUPERLIKE 인지 SUPER_LIKE 인지)
-        return ResponseEntity.ok("성공: 슈퍼라이크 반영됨");
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
 
-    @Operation(summary = "내 반응 조회", description = "내가 이 영상에 좋아요/싫어요를 했는지 확인합니다. (없으면 null)")
+    @Operation(summary = "내 반응 조회", description = "내가 이 영상에 좋아요/싫어요를 했는지 확인합니다.")
     @GetMapping("/{videoMetadataId}/my-status")
-    public ResponseEntity<InteractionType> getMyInteractionStatus(
+    public ResponseEntity<ApiResponse<InteractionStatusResponseDto>> getMyInteractionStatus(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
 
-        return ResponseEntity.ok(
-                interactionService.getInteractionStatus(userId, videoMetadataId).orElse(null)
-        );
+        // 1. 서비스에서 Enum 값(또는 null)을 가져옵니다.
+        InteractionType type = interactionService.getInteractionStatus(userId, videoMetadataId).orElse(null);
+
+        // 2. 날것의 데이터를 DTO로 예쁘게 포장합니다. (null이면 "NONE"으로 변환됨)
+        InteractionStatusResponseDto responseDto = InteractionStatusResponseDto.from(type);
+
+        // 3. 서빙 쟁반에 담아서 응답!
+        return ResponseEntity.ok(ApiResponse.success(responseDto));
     }
 }

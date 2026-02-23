@@ -1,6 +1,6 @@
 package com.ott.core.docs;
 
-import com.ott.core.modules.search.document.VideoDocument;
+import com.ott.core.modules.search.dto.VideoFeedResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,7 +24,7 @@ public interface RecommendationApiDocs {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "추천 피드 조회 성공 (데이터가 없으면 빈 배열 반환)")
     })
-    ResponseEntity<List<VideoDocument>> getFeed(
+    ResponseEntity<com.ott.common.response.ApiResponse<List<VideoFeedResponseDto>>> getFeed(
             @Parameter(description = "조회할 사용자의 고유 ID", example = "9999", required = true)
             Long userId,
 
