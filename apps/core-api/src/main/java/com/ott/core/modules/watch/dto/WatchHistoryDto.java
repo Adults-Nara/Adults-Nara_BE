@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class WatchHistoryDto {
     private Long userId;
-    private Long videoMetadataId;
+    private Long videoId;
     private Integer lastPosition;
     private Integer duration;
 }

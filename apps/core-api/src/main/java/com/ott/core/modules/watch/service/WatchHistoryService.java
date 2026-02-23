@@ -1,9 +1,13 @@
 package com.ott.core.modules.watch.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
+import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.preference.event.VideoWatchedEvent;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.watch.dto.WatchHistoryDto;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
@@ -27,45 +31,49 @@ public class WatchHistoryService {
     private final WatchHistoryAsyncService watchHistoryAsyncService;
     private final UserPreferenceService userPreferenceService;
     private final ApplicationEventPublisher eventPublisher;
+    private final VideoMetadataRepository videoMetadataRepository;
+
     /**
      *  시청 이력 조회
      */
-    public WatchHistoryResponse getWatchHistory(Long userId, Long videoMetadataId) {
+    public WatchHistoryResponse getWatchHistory(Long userId, Long videoId) {
 
-        WatchHistoryDto redisHistory = watchHistoryRedisService.getWatchHistory(userId, videoMetadataId);
+        WatchHistoryDto redisHistory = watchHistoryRedisService.getWatchHistory(userId, videoId);
 
         // Redis에 시청 이력이 존재하는지 확인
         if (redisHistory != null) {
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(String.valueOf(videoMetadataId))
+                    .videoId(String.valueOf(videoId))
                     .lastPosition(redisHistory.getLastPosition())
                     .duration(redisHistory.getDuration())
                     .build();
         }
 
         // DB에 시청 이력이 존재하는지 확인
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Long videoMetadataId = videoMetadata.getId();
         WatchHistory watchHistory = watchHistoryRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).orElse(null);
 
         if (watchHistory != null) {
             // DB에 시청이력이 존재하면 Redis에 캐싱 및 반환
             watchHistoryRedisService.saveWatchHistory(
                     userId,
-                    videoMetadataId,
+                    videoId,
                     watchHistory.getLastPosition(),
-                    watchHistory.getVideoMetadata().getDuration()
+                    videoMetadata.getDuration()
             );
 
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(String.valueOf(videoMetadataId))
+                    .videoId(String.valueOf(videoId))
                     .lastPosition(watchHistory.getLastPosition())
-                    .duration(watchHistory.getVideoMetadata().getDuration())
+                    .duration(videoMetadata.getDuration())
                     .build();
         } else {
             // DB에 시청이력이 존재하지 않으면 0초 반환
             return WatchHistoryResponse.builder()
-                    .videoMetadataId(String.valueOf(videoMetadataId))
+                    .videoId(String.valueOf(videoId))
                     .lastPosition(0)
-                    .duration(null)
+                    .duration(videoMetadata.getDuration())
                     .build();
         }
     }
@@ -73,13 +81,16 @@ public class WatchHistoryService {
     /**
      * 시청 위치 업데이트 (10초마다 호출)
      */
-    public void updateWatchPosition(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
+    public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition, Integer duration) {
 
         // 도메인 로직을 사용하여 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
 
-        watchHistoryRedisService.saveWatchHistory(userId, videoMetadataId, lastPosition, duration);
-        boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoMetadataId);
+        watchHistoryRedisService.saveWatchHistory(userId, videoId, lastPosition, duration);
+        boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoId);
+
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Long videoMetadataId = videoMetadata.getId();
         if (canSaveToDb || isCompleted) {
             watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted);
         }
@@ -89,13 +100,17 @@ public class WatchHistoryService {
      * 시청 종료 시 최종 위치 DB 저장 (Rate limit 무시)
      */
     @Transactional
-    public void stopWatching(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
+    public void stopWatching(Long userId, Long videoId, Integer lastPosition, Integer duration) {
 
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
+
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Long videoMetadataId = videoMetadata.getId();
+
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
         userPreferenceService.reflectWatchScore(userId, videoMetadataId, lastPosition, isCompleted);
-        watchHistoryRedisService.deleteWatchHistory(userId, videoMetadataId);
+        watchHistoryRedisService.deleteWatchHistory(userId, videoId);
         eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoMetadataId, lastPosition, isCompleted));
     }
 }
