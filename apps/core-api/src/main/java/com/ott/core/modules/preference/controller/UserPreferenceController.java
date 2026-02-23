@@ -6,6 +6,7 @@ import com.ott.core.modules.preference.service.UserPreferenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +22,6 @@ public class UserPreferenceController {
 
     /**
      * 내 선호 태그 Top N 조회
-     *
-     * 마이페이지에서 "내가 좋아하는 태그" 목록을 보여줄 때 사용합니다.
-     * Redis Cache-Aside 패턴으로 조회하므로 빠릅니다.
      */
     @Operation(
             summary = "내 선호 태그 조회",
@@ -40,13 +38,14 @@ public class UserPreferenceController {
     }
 
     /**
-     * 특정 유저의 선호 태그 조회 (관리자용)
+     * 특정 유저의 선호 태그 조회 (관리자 전용)
      */
     @Operation(
             summary = "특정 유저 선호 태그 조회 (관리자)",
-            description = "특정 사용자의 상위 N개 선호 태그와 점수를 반환합니다."
+            description = "관리자만 접근 가능합니다. 특정 사용자의 상위 N개 선호 태그와 점수를 반환합니다."
     )
     @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<TagScoreDto>> getUserPreferences(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "10") int limit

@@ -25,7 +25,7 @@ public class BackofficeAuthController {
 
     /**
      * 백오피스 로그인 (이메일 + 비밀번호)
-     * UPLOADER 또는 ADMIN만 로그인 가능
+     * UPLOADER 또는 ADMIN 계정만 가능
      */
     @Operation(
             summary = "백오피스 로그인",
@@ -40,25 +40,24 @@ public class BackofficeAuthController {
     }
 
     /**
-     * 업로더 회원가입 (초대코드 필요)
+     * 업로더 회원가입
+     * 이메일 + 비밀번호 + 닉네임으로 자체 가입
      */
     @Operation(
             summary = "업로더 회원가입",
-            description = "초대코드를 통해 업로더 계정을 생성합니다. 이메일 중복 체크를 수행합니다."
+            description = "이메일, 비밀번호, 닉네임으로 업로더 계정을 생성합니다. 이메일 중복 체크를 수행합니다."
     )
     @PostMapping("/signup/uploader")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<UserResponse> signupUploader(
-            @Valid @RequestBody BackofficeSignupRequest request,
-            @RequestParam String inviteCode
+            @Valid @RequestBody BackofficeSignupRequest request
     ) {
-        UserResponse response = backofficeAuthService.signupUploader(request, inviteCode);
+        UserResponse response = backofficeAuthService.signupUploader(request);
         return ApiResponse.success(response);
     }
 
     /**
      * 업로더 계정 탈퇴 (Soft Delete)
-     * 본인만 탈퇴 가능
      */
     @Operation(
             summary = "업로더 계정 탈퇴",
@@ -77,11 +76,10 @@ public class BackofficeAuthController {
      */
     @Operation(
             summary = "이메일 중복 체크",
-            description = "회원가입 전 이메일 사용 가능 여부를 확인합니다."
+            description = "회원가입 전 이메일 사용 가능 여부를 확인합니다. true = 사용 가능, false = 이미 존재"
     )
     @GetMapping("/check-email")
     public ApiResponse<Boolean> checkEmailAvailable(@RequestParam String email) {
-        // true = 사용 가능 (중복 없음), false = 이미 존재
         boolean available = !backofficeAuthService.isEmailExists(email);
         return ApiResponse.success(available);
     }

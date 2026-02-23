@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * 백오피스 회원가입 요청 (업로더/관리자용)
+ * 업로더 회원가입 요청
  * 이메일 + 비밀번호 + 닉네임
  */
 public record BackofficeSignupRequest(

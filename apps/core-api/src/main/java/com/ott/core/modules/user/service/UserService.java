@@ -116,23 +116,20 @@ public class UserService {
             throw new IllegalStateException("삭제된 사용자는 수정할 수 없습니다.");
         }
 
-        // 닉네임 수정
         if (request.nickname() != null) {
             user.changeNickname(request.nickname());
         }
 
-        // 비밀번호 수정 (UPLOADER/ADMIN만 가능)
         if (request.password() != null) {
             String newPasswordHash = passwordEncoder.encode(request.password());
             user.setPasswordHash(newPasswordHash);
         }
 
-        // 프로필 이미지 수정
         if (request.profileImageUrl() != null) {
             user.changeProfileImage(request.profileImageUrl());
         }
 
-        // [신규] 선호 태그 수정
+        // 선호 태그 수정
         if (request.preferredTagIds() != null) {
             updatePreferredTags(user, request.preferredTagIds());
         }
@@ -163,15 +160,14 @@ public class UserService {
     // ====== Private Methods ======
 
     /**
-     * [신규] 선호 태그 수정
+     * 선호 태그 수정
      *
      * 사용자가 마이페이지에서 선호 태그를 변경하면:
-     * 1. DB의 user_preference 테이블에서 기존 선호 태그 초기화
-     * 2. 새로운 선호 태그에 기본 점수(10.0) 부여
-     * 3. Redis의 취향 점수도 동기화 (실시간 추천에 반영)
+     * 1. 기존 선호 태그 중 선택 해제된 태그를 DB/Redis에서 제거
+     * 2. 새로 선택된 태그에 기본 점수(10.0) 부여
+     * 3. Redis 취향 점수 동기화
      *
-     * 주의: 시청 기록 기반으로 쌓인 기존 preference와 병합됩니다.
-     * preferredTagIds가 빈 리스트이면 선호 태그 초기화만 수행합니다.
+     * preferredTagIds가 빈 리스트이면 모든 선호 태그를 초기화합니다.
      */
     private void updatePreferredTags(User user, List<Long> preferredTagIds) {
         Long userId = user.getId();
@@ -179,20 +175,29 @@ public class UserService {
 
         // 기존 선호 태그 목록 조회
         List<UserPreference> existingPrefs = userPreferenceRepository.findWithTagByUserId(userId);
+
+        Set<Long> newTagIdSet = Set.copyOf(preferredTagIds);
         Set<Long> existingTagIds = existingPrefs.stream()
                 .map(up -> up.getTag().getId())
                 .collect(Collectors.toSet());
 
-        // 새로 선택된 태그 목록 조회
-        List<Tag> newTags = tagRepository.findAllById(preferredTagIds);
+        // === 1. 선택 해제된 태그 제거 (기존에 있었지만 새 목록에 없는 태그) ===
+        for (UserPreference pref : existingPrefs) {
+            if (!newTagIdSet.contains(pref.getTag().getId())) {
+                // Redis에서 제거
+                stringRedisTemplate.opsForZSet().remove(redisKey, pref.getTag().getTagName());
+                // DB에서 제거
+                userPreferenceRepository.delete(pref);
+            }
+        }
 
-        // 새로 추가된 태그에 기본 선호 점수 부여
+        // === 2. 새로 추가된 태그에 기본 점수 부여 ===
+        List<Tag> newTags = tagRepository.findAllById(preferredTagIds);
         double defaultPreferenceScore = 10.0;
 
         for (Tag tag : newTags) {
             if (!existingTagIds.contains(tag.getId())) {
                 // DB: 신규 선호 태그 추가
-                com.ott.common.util.IdGenerator idGen = null; // static method 사용
                 userPreferenceRepository.addScore(
                         com.ott.common.util.IdGenerator.generate(),
                         userId,
@@ -200,10 +205,9 @@ public class UserService {
                         defaultPreferenceScore,
                         java.time.LocalDateTime.now()
                 );
+                // Redis: 선호 태그 점수 추가
+                stringRedisTemplate.opsForZSet().add(redisKey, tag.getTagName(), defaultPreferenceScore);
             }
-
-            // Redis: 선호 태그 점수 동기화
-            stringRedisTemplate.opsForZSet().add(redisKey, tag.getTagName(), defaultPreferenceScore);
         }
 
         log.info("[프로필 수정] 선호 태그 업데이트 - userId: {}, 태그 수: {}", userId, newTags.size());
