@@ -38,6 +38,8 @@ on:
       AWS_EXE_ROLE_ARN:
         required: true
 
+      SPRING_JPA_DDL_AUTO:
+        required: false
       DB_URL:
         required: false
       DB_USER:
@@ -140,6 +142,7 @@ jobs:
           AWS_EXE_ROLE_ARN: ${{ secrets.AWS_EXE_ROLE_ARN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
 
+          SPRING_JPA_DDL_AUTO: ${{ secrets.SPRING_JPA_DDL_AUTO }}
           DB_URL: ${{ secrets.DB_URL }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
