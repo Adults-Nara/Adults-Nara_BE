@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.4...v0.6.0) (2026-02-23)
+
+
+### Features
+
+* OAuth 카카오 로그인 기능 구현 ([d8a3218](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d8a32183d80014797e927479b1e03ccdb32a9af1))
+* 백오피스 인증 API 및 유저 프로필 관리 기능 구현 ([e15805f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/e15805f39ffdb8d1c14f1824a837aac38891b712))
+
+
+### Bug Fixes
+
+* CD.yml 최적화 및 로그인 기능 구현 관련 메인 브랜치 반영 ([3c9e945](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3c9e945132adca93f1ec6a9c8e01efbb536f07b1))
+* ddl-auto 수정 ([c2c33c6](https://github.com/Adults-Nara/Adults-Nara_BE/commit/c2c33c655fb89fae962310118ee25dfaf314eea8))
+* SecurityConfig 충돌 문제 수정 ([a4a9ec3](https://github.com/Adults-Nara/Adults-Nara_BE/commit/a4a9ec35d2df286a928df81a695f6d21171a9253))
+* SecurityConfig에 비디오 관련 로직 수정 ([9ad6306](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9ad6306c7962ec0471bf920dd0ed70cd8cac0836))
+* SecurityConfig에 비디오 관련 로직 수정 ([9878657](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9878657258685199cb0208bb51a0f14078e9760d))
+* 백오피스 코드 리뷰 수정 ([edf7d11](https://github.com/Adults-Nara/Adults-Nara_BE/commit/edf7d11b41abb4e6a73a9d3bf59085451670ad47))
+* 백오피스 코드 리뷰 수정 및 업로더 회원가입 로직 수정 ([d1246e5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d1246e57fb841566b3d56938002abcddf16608b1))
+* 카카오 OAuth 코드 수정 ([a33cf38](https://github.com/Adults-Nara/Adults-Nara_BE/commit/a33cf38739424dbd4ede9ef3b03c724efb820f26))
+* 코드 리뷰 봇 수정 ([826c7f4](https://github.com/Adults-Nara/Adults-Nara_BE/commit/826c7f4c5ee00f941573ec38c77d01526533665c))
+
 ## [0.5.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.5.3...v0.5.4) (2026-02-22)
 
 
