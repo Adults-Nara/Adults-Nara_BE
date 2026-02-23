@@ -16,6 +16,12 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    // OAuth 사용자 조회 (카카오 로그인 시 기존 사용자 찾기)
+    @Query("SELECT u FROM User u WHERE u.oauthProvider = :oauthProvider AND u.oauthId = :oauthId AND u.deleted = false")
+    Optional<User> findByOauthProviderAndOauthId(
+            @Param("oauthProvider") String oauthProvider,
+            @Param("oauthId") String oauthId
+    );
     // ✅ deleted = false 조건으로 변경
     @Query("SELECT u FROM User u WHERE u.email = :email AND u.deleted = false")
     Optional<User> findByEmailAndNotDeleted(@Param("email") String email);

@@ -1,5 +1,7 @@
 package com.ott.core.global.security;
 
+import com.ott.core.global.security.jwt.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,11 +12,21 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity  // ✅ @PreAuthorize 사용 가능
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -24,44 +36,129 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // ✅ CSRF 보호 활성화 (REST API는 stateless이므로 disable 가능하지만, 프로덕션에서는 고려 필요)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 .csrf(csrf -> csrf.disable())
 
+                // [Fix #4] state 파라미터 검증을 위해 세션 허용
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                )
+
+                // JWT 인증 필터
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // 403 에러 핸들링
+                .exceptionHandling(exception ->
+                        exception.accessDeniedHandler(customAccessDeniedHandler)
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ 회원가입은 인증 불필요 (하지만 역할 제한 추가)
-                        .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
-                        // 비디오 임시 인증 해제
+
+                        // ===================================================================
+                        // 1. 완전 공개 (Public) - 비로그인 사용자도 접근 가능
+                        // ===================================================================
+
+                        // --- 카카오 OAuth 인증 ---
+                        .requestMatchers("/api/v1/auth/kakao/**").permitAll()
+                        .requestMatchers("/api/v1/auth/token/refresh").permitAll()
+
+                        // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
+                        .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
+                        .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
+                        .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
+
+                        // --- 비디오 (비로그인 시청 가능) ---
                         .requestMatchers("/api/v1/videos/**").permitAll()
 
-                        .requestMatchers("/api/v1/interactions/**").permitAll()
-                        .requestMatchers("/api/v1/bookmarks/**").permitAll()
+                        // --- 검색/추천 (비로그인 사용 가능) ---
+                        .requestMatchers("/api/v1/search/**").permitAll()
+                        .requestMatchers("/api/v1/recommendations/**").permitAll()
+
+                        // --- 좋아요/북마크 (비로그인도 조회 가능하도록) ---
+                        .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+
+                        // --- Swagger ---
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/v1/search/admin/**").permitAll()
-                        .requestMatchers("/api/v1/recommendations/feed/**").permitAll()
 
-                        // 백오피스 임시 인증 해제
-                        .requestMatchers("/api/v1/backoffice/**").permitAll()
+                        // --- Health Check ---
+                        .requestMatchers("/actuator/health").permitAll()
 
-                        //헬스 체크 해제
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        // ===================================================================
+                        // 2. 인증 필요 (로그인 사용자)
+                        // ===================================================================
 
-                        // ✅ 사용자 목록 조회는 ADMIN만 가능
+                        // --- 현재 사용자 정보 조회 (로그인 필수) ---
+                        .requestMatchers("/api/v1/auth/me").authenticated()
+
+                        // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
+                        .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
+
+                        // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
+                        .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
+
+                        // ===================================================================
+                        // 3. UPLOADER 전용
+                        // ===================================================================
+
+                        // --- 업로더 계정 탈퇴 ---
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/backoffice/auth/account").hasRole("UPLOADER")
+
+                        // --- 업로더 컨텐츠 관리 ---
+                        .requestMatchers("/api/v1/backoffice/uploader/**").hasRole("UPLOADER")
+
+                        // ===================================================================
+                        // 4. ADMIN 전용
+                        // ===================================================================
+
+                        // --- 사용자 관리 ---
                         .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
-
-                        // ✅ 관리자 전용 엔드포인트
                         .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
 
+                        // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
+                        .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
 
-                        // ✅ 나머지는 인증 필요
+                        // ===================================================================
+                        // 5. UPLOADER 또는 ADMIN
+                        // ===================================================================
+                        .requestMatchers("/api/v1/backoffice/contents/**").hasAnyRole("UPLOADER", "ADMIN")
+
+                        // ===================================================================
+                        // 6. 나머지는 인증 필요
+                        // ===================================================================
                         .anyRequest().authenticated()
                 );
 
         return http.build();
+    }
+
+    /**
+     * CORS 설정
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://asinna.store",
+                "https://admin.asinna.store"
+        ));
+
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

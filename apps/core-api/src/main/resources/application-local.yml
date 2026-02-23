@@ -21,7 +21,6 @@ spring:
     username: ${ES_USERNAME:}
     password: ${ES_PASSWORD:}
 
-# 앱에서 토픽명을 프로퍼티로 관리하고 싶으면
 app:
   kafka:
     topics:
@@ -30,3 +29,13 @@ app:
 logging:
   level:
     org.hibernate.SQL: debug
+
+# 카카오 OAuth (우리 커스텀 설정 — Spring OAuth2 Client 아님)
+oauth2:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: http://localhost:8080/api/v1/auth/kakao/callback
+
+jwt:
+  secret: ${JWT_SECRET}

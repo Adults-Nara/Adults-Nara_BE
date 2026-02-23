@@ -3,18 +3,15 @@ package com.ott.core.modules.backoffice.dto;
 import com.ott.common.persistence.enums.Visibility;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
-public record UploaderContentResponse(
+public record ContentDetailResponse(
         String videoMetadataId,
-        String thumbnailUrl,
         String title,
         String description,
-        String otherVideoUrl,
-        int viewCount,
-        int likeCount,
-        int dislikeCount,
-        int commentCount,
+        String thumbnailUrl,
         Visibility visibility,
+        List<String> tagIds,
         OffsetDateTime createdAt
 ) {
 }
