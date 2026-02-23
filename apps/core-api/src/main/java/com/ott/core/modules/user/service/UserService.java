@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @Service
 public class UserService {
 
+    private static final double DEFAULT_PREFERENCE_SCORE = 10.0;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TagRepository tagRepository;
@@ -206,18 +208,17 @@ public class UserService {
 
         if (!toAddIds.isEmpty()) {
             List<Tag> newTags = tagRepository.findAllById(toAddIds);
-            double defaultPreferenceScore = 10.0;
 
             // Redis: ZADD 한 번에 여러 멤버+점수 추가
             Set<ZSetOperations.TypedTuple<String>> tuples = newTags.stream()
                     .map(tag -> (ZSetOperations.TypedTuple<String>)
-                            new DefaultTypedTuple<>(tag.getTagName(), defaultPreferenceScore))
+                            new DefaultTypedTuple<>(tag.getTagName(), DEFAULT_PREFERENCE_SCORE))
                     .collect(Collectors.toSet());
             stringRedisTemplate.opsForZSet().add(redisKey, tuples);
 
             // DB: 일괄 추가
             List<UserPreference> newPrefs = newTags.stream()
-                    .map(tag -> new UserPreference(user, tag, defaultPreferenceScore))
+                    .map(tag -> new UserPreference(user, tag, DEFAULT_PREFERENCE_SCORE))
                     .collect(Collectors.toList());
             userPreferenceRepository.saveAll(newPrefs);
         }

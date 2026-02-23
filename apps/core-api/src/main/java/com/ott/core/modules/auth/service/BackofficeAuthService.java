@@ -40,7 +40,7 @@ public class BackofficeAuthService {
      * 백오피스 로그인 (이메일 + 비밀번호)
      * UPLOADER 또는 ADMIN만 로그인 가능
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public BackofficeLoginResponse login(BackofficeLoginRequest request) {
         User user = userRepository.findByEmailAndNotDeleted(request.email())
                 .orElseThrow(() -> {
@@ -60,6 +60,7 @@ public class BackofficeAuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
+        // 로그인 가능 상태 확인
         validateLoginStatus(user);
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
@@ -71,20 +72,13 @@ public class BackofficeAuthService {
 
     /**
      * 업로더 회원가입 (자체 가입)
-     *
-     * 플로우:
-     * 1. 이메일 중복 체크
-     * 2. 비밀번호 암호화
-     * 3. 사용자 생성 (role = UPLOADER)
      */
     @Transactional
     public UserResponse signupUploader(BackofficeSignupRequest request) {
-        // 이메일 중복 체크
-        if (userRepository.existsByEmailAndNotDeleted(request.email())) {
+        if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
         }
 
-        // 비밀번호 암호화 + 사용자 생성
         String passwordHash = passwordEncoder.encode(request.password());
         User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
 
@@ -124,17 +118,28 @@ public class BackofficeAuthService {
 
     // ====== Private Methods ======
 
+    /**
+     * 로그인 가능 상태 검증
+     *
+     * AuthService.canLogin()과 동일한 로직을 사용하여 일관성을 유지합니다.
+     * - DEACTIVATED: 자동 활성화 후 로그인 허용
+     * - SUSPENDED (정지 기간 만료): canLogin()에서 true 반환하므로 통과
+     * - SUSPENDED (정지 기간 유효): 로그인 차단
+     * - DELETED: 로그인 차단
+     */
     private void validateLoginStatus(User user) {
         if (user.isDeleted()) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        if (user.getBanned() != null && user.getBanned() != BanStatus.ACTIVE) {
-            if (user.getBanned() == BanStatus.DEACTIVATED) {
-                user.activate();
-                log.info("[백오피스 로그인] 비활성화 계정 자동 활성화 - userId: {}", user.getId());
-                return;
-            }
+        // 사용자 본인이 비활성화한 경우, 로그인 시 자동 활성화
+        if (user.getBanned() == BanStatus.DEACTIVATED) {
+            user.activate();
+            log.info("[백오피스 로그인] 비활성화 계정 자동 활성화 - userId: {}", user.getId());
+        }
+
+        // canLogin()은 정지 기간 만료 시 자동 활성화 처리 로직을 포함
+        if (!user.canLogin()) {
             log.warn("[백오피스 로그인] 정지된 계정 로그인 시도 - userId: {}, status: {}", user.getId(), user.getBanned());
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
