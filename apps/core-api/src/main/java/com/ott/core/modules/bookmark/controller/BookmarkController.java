@@ -26,7 +26,6 @@ public class BookmarkController {
 
         bookmarkService.toggleBookmark(userId, videoMetadataId);
 
-        // ✅ 자바가 헷갈리지 않게 <Void>를 명시해 줍니다!
         return ResponseEntity.ok(ApiResponse.success());
     }
 

@@ -44,7 +44,7 @@ public class InteractionController {
     public ResponseEntity<ApiResponse<?>> superLikeVideo(
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoMetadataId, InteractionType.SUPERLIKE); // Enum 이름 확인 필요 (SUPERLIKE 인지 SUPER_LIKE 인지)
+        interactionService.interact(userId, videoMetadataId, InteractionType.SUPERLIKE);
         return ResponseEntity.ok(ApiResponse.success());
     }
 
@@ -55,13 +55,10 @@ public class InteractionController {
             @PathVariable Long videoMetadataId,
             @RequestParam Long userId) {
 
-        // 1. 서비스에서 Enum 값(또는 null)을 가져옵니다.
         InteractionType type = interactionService.getInteractionStatus(userId, videoMetadataId).orElse(null);
 
-        // 2. 날것의 데이터를 DTO로 예쁘게 포장합니다. (null이면 "NONE"으로 변환됨)
         InteractionStatusResponseDto responseDto = InteractionStatusResponseDto.from(type);
-
-        // 3. 서빙 쟁반에 담아서 응답!
+        
         return ResponseEntity.ok(ApiResponse.success(responseDto));
     }
 }
