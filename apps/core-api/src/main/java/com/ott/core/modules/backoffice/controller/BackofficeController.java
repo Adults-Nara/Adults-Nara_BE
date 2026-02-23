@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,14 +24,13 @@ public class BackofficeController {
     @GetMapping("/uploader/contents")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<Page<UploaderContentResponse>> getMyContents(
-            Authentication authentication,
+            @AuthenticationPrincipal Long userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") Sort.Direction direction
     ) {
-        long userId = Long.parseLong(authentication.getName()); // 수정 필요
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<UploaderContentResponse> result = backofficeService.getUploaderContents(userId, keyword, pageable);
         return ApiResponse.success(result);
@@ -53,10 +53,9 @@ public class BackofficeController {
     @GetMapping("/contents/{videoMetadataId}")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentDetailResponse> getContentDetail(
-            Authentication authentication,
+            @AuthenticationPrincipal Long userId,
             @PathVariable("videoMetadataId") Long videoMetadataId
     ) {
-        long userId = Long.parseLong(authentication.getName()); // 수정 필요
         ContentDetailResponse response = backofficeService.getContentDetail(userId, videoMetadataId);
         return ApiResponse.success(response);
     }
@@ -64,11 +63,10 @@ public class BackofficeController {
     @PutMapping("/contents/{videoMetadataId}")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
-            Authentication authentication,
+            @AuthenticationPrincipal Long userId,
             @PathVariable("videoMetadataId") Long videoMetadataId,
             @RequestBody ContentUpdateRequest request
     ) {
-        long userId = Long.parseLong(authentication.getName()); // 수정 필요
         ContentUpdateResponse response = backofficeService.updateContent(userId, videoMetadataId, request);
         return ApiResponse.success(response);
     }
@@ -77,10 +75,9 @@ public class BackofficeController {
     @PreAuthorize("hasAnyRole('UPLOADER', 'ADMIN')")
     public ApiResponse<?> deleteContent(
             Authentication authentication,
+            @AuthenticationPrincipal Long userId,
             @RequestBody ContentDeleteRequest request
     ) {
-        long userId = Long.parseLong(authentication.getName()); // 수정 필요
-
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
