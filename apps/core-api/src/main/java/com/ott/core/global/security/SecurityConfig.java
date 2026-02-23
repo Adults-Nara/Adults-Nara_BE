@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
 
                         // --- 비디오 (비로그인 시청 가능) ---
-                        .requestMatchers(HttpMethod.GET, "/api/v1/videos/**").permitAll()
+                        .requestMatchers("/api/v1/videos/**").permitAll()
 
                         // --- 검색/추천 (비로그인 사용 가능) ---
                         .requestMatchers("/api/v1/search/**").permitAll()
@@ -99,9 +99,6 @@ public class SecurityConfig {
                         // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
                         .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
-
-                        // --- 비디오 업로드 (UPLOADER/ADMIN) ---
-                        .requestMatchers(HttpMethod.POST, "/api/v1/videos/**").hasAnyRole("UPLOADER", "ADMIN")
 
                         // ===================================================================
                         // 3. UPLOADER 전용
