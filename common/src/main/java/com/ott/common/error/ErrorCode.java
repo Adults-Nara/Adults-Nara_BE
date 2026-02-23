@@ -29,6 +29,7 @@ public enum ErrorCode {
     // ===== User =====
     USER_NOT_FOUND("USER-404-001", 404, "사용자를 찾을 수 없습니다."),
     USER_INVALID_CREDENTIAL("USER-401-001", 401, "이메일 또는 비밀번호가 올바르지 않습니다."),
+    USER_DUPLICATE_EMAIL("USER-409-001", 409, "이미 사용 중인 이메일입니다."),
     USER_CANNOT_BAN_ADMIN("USER-403-001", 403, "관리자는 정지할 수 없습니다."),
     USER_CANNOT_DELETE_ADMIN("USER-403-002", 403, "관리자는 삭제할 수 없습니다."),
 

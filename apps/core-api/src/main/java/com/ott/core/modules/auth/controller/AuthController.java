@@ -7,6 +7,7 @@ import com.ott.core.modules.auth.dto.LoginResponse;
 import com.ott.core.modules.auth.dto.TokenRefreshRequest;
 import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.auth.service.AuthService;
+import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLEncoder;
@@ -99,6 +101,28 @@ public class AuthController {
 
         log.info("[카카오 OAuth] 콜백 수신 - 인가코드 길이: {}", code.length());
         LoginResponse response = authService.kakaoLogin(code, state);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * [신규] 현재 로그인한 사용자 정보 조회
+     *
+     * 프론트엔드에서 로그인 상태 확인 및 마이페이지 렌더링에 사용합니다.
+     * - 비로그인 사용자: 이 API를 호출하면 401 반환 (SecurityConfig에서 인증 필요)
+     * - 로그인 사용자: JWT에서 userId 추출 후 사용자 정보 반환
+     */
+    @Operation(
+            summary = "현재 로그인 사용자 정보 조회",
+            description = "JWT 토큰으로 인증된 현재 사용자의 정보를 반환합니다. " +
+                    "마이페이지 렌더링 및 로그인 상태 확인에 사용합니다."
+    )
+    @GetMapping("/me")
+    public ApiResponse<UserDetailResponse> getCurrentUser(Authentication authentication) {
+        if (authentication == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        Long userId = Long.parseLong(authentication.getName());
+        UserDetailResponse response = authService.getCurrentUser(userId);
         return ApiResponse.success(response);
     }
 
