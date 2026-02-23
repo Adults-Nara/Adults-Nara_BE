@@ -73,7 +73,6 @@ public class WatchHistoryService {
     /**
      * 시청 위치 업데이트 (10초마다 호출)
      */
-    @Transactional
     public void updateWatchPosition(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
 
         // 도메인 로직을 사용하여 완주 여부 계산
