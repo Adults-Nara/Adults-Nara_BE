@@ -439,7 +439,7 @@
 
 #### ② 대안 비교
 - **Python ML(SVD 등)**: 정교하지만 배치 기반이 일반적, 별도 서버/운영 비용
-- **Redis SINTER**: 빠르지만 메타데이터/가중치 반영 제한, Cold Start 취약
+- **Redis SINTER**: 교집합 로직. 빠르지만 메타데이터/가중치 반영 제한, Cold Start 취약
 - **ES + Redis ZSet**: Redis의 실시간 취향 + ES `function_score`로 다중 가중치 결합 가능
 
 #### ③ 결정
