@@ -7,19 +7,29 @@ import java.util.List;
 
 public record VideoFeedResponseDto(
         @JsonFormat(shape = JsonFormat.Shape.STRING)
-        Long videoMetadataId,
+        Long videoId,
+        Long userId,
         String title,
+        String description,
+        String thumbnailUrl,
+        Integer duration,
         List<String> tags,
         int viewCount,
+        int likeCount,
         String uploadDate
 ) {
     public static VideoFeedResponseDto from(VideoDocument doc){
         return new VideoFeedResponseDto(
-                doc.getId(),
+                doc.getVideoId(),
+                doc.getUserId(),
                 doc.getTitle(),
+                doc.getDescription(),
+                doc.getThumbnailUrl(),
+                doc.getDuration(),
                 doc.getTags(),
                 doc.getViewCount(),
-                doc.getCreatedAt()
+                doc.getLikeCount(),
+                doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null
         );
     }
 }

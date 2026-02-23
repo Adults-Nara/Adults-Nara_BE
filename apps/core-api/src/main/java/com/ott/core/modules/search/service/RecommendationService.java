@@ -1,26 +1,19 @@
 package com.ott.core.modules.search.service;
 
-import co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
-import co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.FieldValue;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.search.component.RecommendationQueryBuilder;
 import com.ott.core.modules.search.document.VideoDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
-import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -29,84 +22,82 @@ public class RecommendationService {
 
     private final UserPreferenceService userPreferenceService;
     private final ElasticsearchOperations elasticsearchOperations;
+    private final RecommendationQueryBuilder queryBuilder; // ✅ 쿼리 공장 주입!
 
-    /**
-     * 메인 피드 맞춤형 추천 비디오 목록 조회
-     */
+    // =========================================================================
+    // [메인 홈 피드]
+    // =========================================================================
     public List<VideoDocument> getPersonalizedFeed(Long userId, int page, int size) {
-        // 1. Redis(또는 DB)에서 유저의 최애 태그 Top 5를 가져온다. (Cache-Aside 발동!)
         List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, 5);
 
-
+        // 빌더에게 쿼리 조립을 시킵니다!
         NativeQuery searchQuery = userPreferences.isEmpty()
-                ? buildFallbackQuery(page, size)
-                : buildPersonalizedQuery(userPreferences, page, size);
+                ? queryBuilder.buildFallbackQuery(page, size)
+                : queryBuilder.buildMainPersonalizedQuery(userPreferences, page, size);
 
-        // 쿼리를 Elasticsearch에 날려서 결과 받기
-        SearchHits<VideoDocument> searchHits = elasticsearchOperations.search(searchQuery, VideoDocument.class);
-
-        // 실제 Document 객체만 쏙 뽑아서 리스트로 반환합니다.
-        return searchHits.getSearchHits().stream()
-                .map(SearchHit::getContent)
-                .toList();
+        return executeSearch(searchQuery);
     }
 
-    private NativeQuery buildFallbackQuery(int page, int size) {
-        // ==========================================
-        // [Fallback] 취향 데이터가 없는 신규 유저
-        // ==========================================
-        log.info("[추천 API] 신규 유저입니다. 인기/최신순 기본 피드를 제공합니다.");
-        return NativeQuery.builder()
-                .withQuery(q -> q.matchAll(m -> m)) // 조건 없이 전부 다
-                .withSort(Sort.by(Sort.Direction.DESC, "viewCount")) // 1순위: 조회수 높은 순
-                .withSort(Sort.by(Sort.Direction.DESC, "createdAt")) // 2순위: 최신순
-                .withPageable(PageRequest.of(page, size))
-                .build();
-    }
+    // =========================================================================
+    // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤) 병렬 믹스
+    // =========================================================================
+    public List<VideoDocument> getVerticalMixedFeed(Long userId, int size) {
+        int personalSize = (int) Math.round(size * 0.7);
+        int popularSize = (int) Math.round(size * 0.2);
+        int randomSize = size - personalSize - popularSize;
 
-    private NativeQuery buildPersonalizedQuery(List<TagScoreDto> userPreferences, int page, int size) {
-        // ==========================================
-        // [Personalized] 취향 데이터가 있는 기존 유저
-        // ==========================================
-        log.info("[추천 API] 맞춤형 추천 시작! 선호 태그 개수: {}", userPreferences.size());
+        List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, 5);
 
-        List<FunctionScore> functions = new ArrayList<>();
+        // 비동기 병렬 처리
+        CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
+                executeSearch(userPreferences.isEmpty()
+                        ? queryBuilder.buildPopularQuery(personalSize)
+                        : queryBuilder.buildMainPersonalizedQuery(userPreferences, 0, personalSize)) // 기존 쿼리 재활용!
+        );
 
-        // 가중치 1: 유저의 취향 태그 매칭 (태그 점수만큼 가중치 부여)
-        for (TagScoreDto pref : userPreferences) {
+        CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
+                executeSearch(queryBuilder.buildPopularQuery(popularSize + 5))
+        );
 
-            // 방어 로직: 점수가 0 이하면(싫어하는 태그면) 가중치 계산에서 제외합니다!
-            if (pref.score() <= 0) {
-                continue;
-            }
-            functions.add(FunctionScore.of(f -> f
-                    .filter(fq -> fq.term(t -> t.field("tags").value(pref.tagName())))
-                    .weight(pref.score()) // ex: SF태그면 점수 x 9.0배!
-            ));
+        CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
+                executeSearch(queryBuilder.buildRandomQuery(randomSize + 5))
+        );
+
+        CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
+
+        // 중복 제거 및 조립
+        Set<VideoDocument> mixedFeed = new LinkedHashSet<>(personalFuture.join());
+
+        for (VideoDocument doc : popularFuture.join()) {
+            if (mixedFeed.size() < personalSize + popularSize) mixedFeed.add(doc);
+        }
+        for (VideoDocument doc : randomFuture.join()) {
+            if (mixedFeed.size() < size) mixedFeed.add(doc);
         }
 
-        // 가중치 2: 대중성 (조회수)
-        // 조회수가 높을수록 점수를 완만하게 올려줍니다 (Log1p 사용)
-        functions.add(FunctionScore.of(f -> f
-                .fieldValueFactor(fv -> fv
-                        .field("viewCount")
-                        .modifier(FieldValueFactorModifier.Log1p)
-                        .factor(0.1) // 조회수 영향력 조절
-                )
-        ));
+        return new ArrayList<>(mixedFeed);
+    }
 
-        // Function Score 쿼리 조립
-        Query functionScoreQuery = FunctionScoreQuery.of(fsq -> fsq
-                .query(q -> q.matchAll(m -> m)) // 일단 다 가져와서
-                .functions(functions)           // 위에서 만든 채점표로 점수를 매김
-                .scoreMode(FunctionScoreMode.Sum) // 채점표 점수들을 다 더함
-                .boostMode(FunctionBoostMode.Multiply) // 최종 점수에 곱함
-        )._toQuery();
+    // =========================================================================
+    //  [가로 스와이프 피드] - 상세페이지 연관 영상 추천
+    // =========================================================================
+    public List<VideoDocument> getHorizontalRelatedVideos(Long videoMetadataId, int size) {
+        VideoDocument currentVideo = elasticsearchOperations.get(videoMetadataId.toString(), VideoDocument.class);
+        if (currentVideo == null || currentVideo.getTags().isEmpty()) {
+            return List.of();
+        }
 
-        return NativeQuery.builder()
-                .withQuery(functionScoreQuery)
-                .withPageable(PageRequest.of(page, size))
-                .build();
+        List<FieldValue> tagValues = currentVideo.getTags().stream()
+                .map(FieldValue::of)
+                .toList();
+
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, videoMetadataId, size);
+        return executeSearch(searchQuery);
+    }
+
+    // 엘라스틱서치 실행 공통 헬퍼 메서드
+    private List<VideoDocument> executeSearch(NativeQuery query) {
+        return elasticsearchOperations.search(query, VideoDocument.class).getSearchHits().stream()
+                .map(SearchHit::getContent).toList();
     }
 }
-
