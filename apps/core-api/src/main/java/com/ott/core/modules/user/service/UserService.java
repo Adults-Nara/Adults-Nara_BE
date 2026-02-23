@@ -13,11 +13,14 @@ import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -160,14 +163,14 @@ public class UserService {
     // ====== Private Methods ======
 
     /**
-     * 선호 태그 수정
+     * 선호 태그 수정 (Bulk Operation)
      *
-     * 사용자가 마이페이지에서 선호 태그를 변경하면:
-     * 1. 기존 선호 태그 중 선택 해제된 태그를 DB/Redis에서 제거
-     * 2. 새로 선택된 태그에 기본 점수(10.0) 부여
-     * 3. Redis 취향 점수 동기화
+     * DB/Redis에 대한 호출을 최소화하기 위해 Set 연산으로 추가/제거 대상을 미리 계산하고
+     * Bulk 단위로 처리합니다.
      *
-     * preferredTagIds가 빈 리스트이면 모든 선호 태그를 초기화합니다.
+     * 1. Set 연산으로 제거할 태그(toRemove)와 추가할 태그(toAdd) 식별
+     * 2. DB: deleteAll / saveAll로 일괄 처리
+     * 3. Redis: ZREM / ZADD로 일괄 처리
      */
     private void updatePreferredTags(User user, List<Long> preferredTagIds) {
         Long userId = user.getId();
@@ -181,35 +184,44 @@ public class UserService {
                 .map(up -> up.getTag().getId())
                 .collect(Collectors.toSet());
 
-        // === 1. 선택 해제된 태그 제거 (기존에 있었지만 새 목록에 없는 태그) ===
-        for (UserPreference pref : existingPrefs) {
-            if (!newTagIdSet.contains(pref.getTag().getId())) {
-                // Redis에서 제거
-                stringRedisTemplate.opsForZSet().remove(redisKey, pref.getTag().getTagName());
-                // DB에서 제거
-                userPreferenceRepository.delete(pref);
-            }
+        // === 1. 제거 대상 식별 및 Bulk 삭제 ===
+        List<UserPreference> toRemove = existingPrefs.stream()
+                .filter(pref -> !newTagIdSet.contains(pref.getTag().getId()))
+                .collect(Collectors.toList());
+
+        if (!toRemove.isEmpty()) {
+            // Redis: ZREM 한 번에 여러 멤버 삭제
+            String[] tagNamesToRemove = toRemove.stream()
+                    .map(pref -> pref.getTag().getTagName())
+                    .toArray(String[]::new);
+            stringRedisTemplate.opsForZSet().remove(redisKey, (Object[]) tagNamesToRemove);
+
+            // DB: 일괄 삭제
+            userPreferenceRepository.deleteAll(toRemove);
         }
 
-        // === 2. 새로 추가된 태그에 기본 점수 부여 ===
-        List<Tag> newTags = tagRepository.findAllById(preferredTagIds);
-        double defaultPreferenceScore = 10.0;
+        // === 2. 추가 대상 식별 및 Bulk 추가 ===
+        Set<Long> toAddIds = new HashSet<>(newTagIdSet);
+        toAddIds.removeAll(existingTagIds);
 
-        for (Tag tag : newTags) {
-            if (!existingTagIds.contains(tag.getId())) {
-                // DB: 신규 선호 태그 추가
-                userPreferenceRepository.addScore(
-                        com.ott.common.util.IdGenerator.generate(),
-                        userId,
-                        tag.getId(),
-                        defaultPreferenceScore,
-                        java.time.LocalDateTime.now()
-                );
-                // Redis: 선호 태그 점수 추가
-                stringRedisTemplate.opsForZSet().add(redisKey, tag.getTagName(), defaultPreferenceScore);
-            }
+        if (!toAddIds.isEmpty()) {
+            List<Tag> newTags = tagRepository.findAllById(toAddIds);
+            double defaultPreferenceScore = 10.0;
+
+            // Redis: ZADD 한 번에 여러 멤버+점수 추가
+            Set<ZSetOperations.TypedTuple<String>> tuples = newTags.stream()
+                    .map(tag -> (ZSetOperations.TypedTuple<String>)
+                            new DefaultTypedTuple<>(tag.getTagName(), defaultPreferenceScore))
+                    .collect(Collectors.toSet());
+            stringRedisTemplate.opsForZSet().add(redisKey, tuples);
+
+            // DB: 일괄 추가
+            List<UserPreference> newPrefs = newTags.stream()
+                    .map(tag -> new UserPreference(user, tag, defaultPreferenceScore))
+                    .collect(Collectors.toList());
+            userPreferenceRepository.saveAll(newPrefs);
         }
 
-        log.info("[프로필 수정] 선호 태그 업데이트 - userId: {}, 태그 수: {}", userId, newTags.size());
+        log.info("[프로필 수정] 선호 태그 업데이트 - userId: {}, 제거: {}, 추가: {}", userId, toRemove.size(), toAddIds.size());
     }
 }

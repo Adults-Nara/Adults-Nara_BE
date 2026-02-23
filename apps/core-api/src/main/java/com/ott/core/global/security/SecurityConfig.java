@@ -101,7 +101,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
 
                         // --- 비디오 업로드 (UPLOADER/ADMIN) ---
-                        .requestMatchers(HttpMethod.POST, "/api/v1/videos/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/videos/**").hasAnyRole("UPLOADER", "ADMIN")
 
                         // ===================================================================
                         // 3. UPLOADER 전용
