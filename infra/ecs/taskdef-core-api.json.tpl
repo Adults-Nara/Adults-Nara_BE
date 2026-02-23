@@ -13,6 +13,7 @@
       "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
       "environment": [
         { "name": "SPRING_PROFILES_ACTIVE",               "value": "prod" },
+        { "name": "SPRING_JPA_DDL_AUTO",                  "value": "${SPRING_JPA_DDL_AUTO}" },
         { "name": "CORE_API_PORT",                         "value": "8080" },
         { "name": "AWS_REGION",                            "value": "${AWS_REGION}" },
         { "name": "DB_URL",                                "value": "${DB_URL}" },
