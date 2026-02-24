@@ -42,6 +42,13 @@ public enum ErrorCode {
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
 
+
+    DAILY_LIMIT_OVER("POINT-400-001", 400, "오늘 참여 가능한 광고 시청 횟수를 모두 채우셨습니다."),
+    DUPLICATE_AD_REWARD("POINT-409-001", 409, "이미 포인트 적립이 완료된 영상입니다."),
+    POINT_INSUFFICIENT_BALANCE("POINT-400-002", 400, "기프티콘 구매를 위한 포인트가 부족합니다."),
+    GIFTICON_OUT_OF_STOCK("POINT-500-001", 500, "현재 기프티콘 구매가 불가합니다.")
+    ,
+
     IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다.");
 
     private final String code;
