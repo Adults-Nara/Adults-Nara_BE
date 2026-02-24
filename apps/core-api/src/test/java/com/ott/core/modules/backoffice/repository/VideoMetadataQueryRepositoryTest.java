@@ -29,10 +29,12 @@ import static org.assertj.core.api.Assertions.*;
 @ActiveProfiles("test")
 class VideoMetadataQueryRepositoryTest {
 
+    @MockitoBean private SignedCookieProcessor signedCookieProcessor;
+    @MockitoBean private software.amazon.awssdk.services.s3.S3Client s3Client;
+    @MockitoBean private software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
+
     @Autowired EntityManager em;
-    @Autowired
-    VideoMetadataQueryRepository videoMetadataQueryRepository;
-    @MockitoBean SignedCookieProcessor signedCookieProcessor;
+    @Autowired VideoMetadataQueryRepository videoMetadataQueryRepository;
 
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
