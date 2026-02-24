@@ -10,6 +10,7 @@ import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.service.VideoService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,22 +23,25 @@ public class VideoController {
     }
 
     @PostMapping("/api/v1/videos/upload/multipart/init")
-    public ApiResponse<MultipartInitResponse> initMultipartUpload(@RequestBody MultipartInitRequest request) {
-        MultipartInitResult result = videoService.initMultipartUpload(request.contentType(), request.sizeBytes());
+    public ApiResponse<MultipartInitResponse> initMultipartUpload(@AuthenticationPrincipal String userId,
+                                                                  @RequestBody MultipartInitRequest request) {
+        MultipartInitResult result = videoService.initMultipartUpload(Long.parseLong(userId), request.contentType(), request.sizeBytes());
         return ApiResponse.success(MultipartInitResponse.of(result));
     }
 
     @PostMapping("/api/v1/videos/{videoId}/upload/multipart/complete")
     public ApiResponse<?> completeMultipartUpload(@PathVariable Long videoId,
-                                                     @RequestBody MultipartCompleteRequest request) {
-        videoService.completeMultipartUpload(videoId, request.uploadId(), request.parts(), request.sizeBytes());
+                                                  @AuthenticationPrincipal String userId,
+                                                  @RequestBody MultipartCompleteRequest request) {
+        videoService.completeMultipartUpload(videoId, Long.parseLong(userId), request.uploadId(), request.parts(), request.sizeBytes());
         return ApiResponse.success(null);
     }
 
     @PostMapping("/api/v1/videos/{videoId}/upload/multipart/abort")
     public ApiResponse<?> abortMultipartUpload(@PathVariable Long videoId,
-                                                  @RequestParam String uploadId) {
-        videoService.abortMultipartUpload(videoId, uploadId);
+                                               @AuthenticationPrincipal String userId,
+                                               @RequestParam String uploadId) {
+        videoService.abortMultipartUpload(videoId, Long.parseLong(userId), uploadId);
         return ApiResponse.success();
     }
 
@@ -49,13 +53,11 @@ public class VideoController {
      */
     @PostMapping("/api/v1/videos/{videoId}/upload")
     public ApiResponse<?> upload(@PathVariable Long videoId,
+                                 @AuthenticationPrincipal String userId,
                                  @RequestPart("image") MultipartFile image,
                                  @RequestPart("data") UploadRequest request) {
-        // todo: 사용자 ID 받아서 넣어주기
-        // todo: 카테고리 저장하기
-        // todo: visible 상태 값 받기
-        videoService.upload(videoId, null, image, request.title(), request.description(),
-                request.videoType(), request.otherVideoUrl());
+        videoService.upload(videoId, Long.parseLong(userId), image, request.title(), request.description(),
+                request.videoType(), request.otherVideoUrl(), request.tagIds(), request.visibility());
         return ApiResponse.success(null);
     }
 
