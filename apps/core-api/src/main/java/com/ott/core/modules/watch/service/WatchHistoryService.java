@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -130,11 +132,11 @@ public class WatchHistoryService {
     public WatchHistoryPageResponse getRecentWatchHistory(long userId, int page, int size) {
         OffsetDateTime threeMonthsAgo = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(3);
 
-        long offset = (long) page * size;
-        List<WatchHistory> histories = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, size + 1, offset);
+        Pageable pageable = PageRequest.of(page, size);
+        Slice<WatchHistory> slice = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, pageable);
 
-        boolean hasMore = histories.size() > size;
-        List<WatchHistory> pageItems = hasMore ? histories.subList(0, size) : histories;
+        boolean hasMore = slice.hasNext();
+        List<WatchHistory> pageItems = slice.getContent();
 
         Set<Long> uploaderIds = pageItems.stream()
                 .map(wh -> wh.getVideoMetadata().getUserId())

@@ -11,7 +11,6 @@ import com.ott.core.modules.video.service.SignedCookieProcessor;
 import com.ott.core.modules.watch.dto.response.WatchHistoryItemResponse;
 import com.ott.core.modules.watch.dto.response.WatchHistoryPageResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -2,13 +2,13 @@ package com.ott.core.modules.watch.repository;
 
 import com.ott.common.persistence.entity.WatchHistory;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Optional;
 
 public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long> {
@@ -34,19 +34,17 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
                             @Param("completed") boolean completed,
                             @Param("now") OffsetDateTime now);
 
-    @Query(value = """
-            SELECT wh.* FROM watch_history wh
-            JOIN video_metadata vm ON wh.video_metadata_id = vm.video_metadata_id
-            WHERE wh.user_id = :userId
-              AND wh.deleted = false
-              AND vm.deleted = false
-              AND wh.updated_at >= :threeMonthsAgo
-            ORDER BY wh.updated_at DESC
-            LIMIT :limit OFFSET :offset
-            """, nativeQuery = true)
-    List<WatchHistory> findRecentHistory(@Param("userId") Long userId,
-                                         @Param("threeMonthsAgo") OffsetDateTime threeMonthsAgo,
-                                         @Param("limit") int limit,
-                                         @Param("offset") long offset);
+    @Query("""
+            SELECT wh FROM WatchHistory wh
+            JOIN FETCH wh.videoMetadata vm
+            WHERE wh.user.id = :userId
+              AND wh.deleted = false 
+              AND vm.deleted = false 
+              AND wh.updatedAt >= :threeMonthsAgo
+            ORDER BY wh.updatedAt DESC 
+            """)
+    Slice<WatchHistory> findRecentHistory(@Param("userId") Long userId,
+                                          @Param("threeMonthsAgo") OffsetDateTime threeMonthsAgo,
+                                          Pageable pageable);
 
 }
