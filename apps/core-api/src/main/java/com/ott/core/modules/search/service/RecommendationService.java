@@ -22,15 +22,13 @@ public class RecommendationService {
 
     private final UserPreferenceService userPreferenceService;
     private final ElasticsearchOperations elasticsearchOperations;
-    private final RecommendationQueryBuilder queryBuilder; // ✅ 쿼리 공장 주입!
+    private final RecommendationQueryBuilder queryBuilder;
 
     // =========================================================================
     // [메인 홈 피드]
     // =========================================================================
     public List<VideoDocument> getPersonalizedFeed(Long userId, int page, int size) {
         List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, 5);
-
-        // 빌더에게 쿼리 조립을 시킵니다!
         NativeQuery searchQuery = userPreferences.isEmpty()
                 ? queryBuilder.buildFallbackQuery(page, size)
                 : queryBuilder.buildMainPersonalizedQuery(userPreferences, page, size);
@@ -39,7 +37,7 @@ public class RecommendationService {
     }
 
     // =========================================================================
-    // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤) 병렬 믹스
+    // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤)
     // =========================================================================
     public List<VideoDocument> getVerticalMixedFeed(Long userId, int size) {
         int personalSize = (int) Math.round(size * 0.7);
@@ -52,17 +50,18 @@ public class RecommendationService {
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                 executeSearch(userPreferences.isEmpty()
                         ? queryBuilder.buildPopularQuery(personalSize)
-                        : queryBuilder.buildMainPersonalizedQuery(userPreferences, 0, personalSize)) // 기존 쿼리 재활용!
+                        : queryBuilder.buildMainPersonalizedQuery(userPreferences, 0, personalSize))
         );
 
+        // 취향 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
                 executeSearch(queryBuilder.buildPopularQuery(popularSize + 5))
         );
-
+        // 랜덤 영상
         CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
                 executeSearch(queryBuilder.buildRandomQuery(randomSize + 5))
         );
-
+        // 인기 영상
         CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
 
         // 중복 제거 및 조립
@@ -81,17 +80,31 @@ public class RecommendationService {
     // =========================================================================
     //  [가로 스와이프 피드] - 상세페이지 연관 영상 추천
     // =========================================================================
-    public List<VideoDocument> getHorizontalRelatedVideos(Long videoMetadataId, int size) {
-        VideoDocument currentVideo = elasticsearchOperations.get(videoMetadataId.toString(), VideoDocument.class);
-        if (currentVideo == null || currentVideo.getTags().isEmpty()) {
+    public List<VideoDocument> getHorizontalRelatedVideos(Long videoId, int size) {
+        // 1. 물리적 videoId로 현재 비디오 찾기
+        NativeQuery findCurrentVideoQuery = NativeQuery.builder()
+                .withQuery(q -> q.term(t -> t.field("videoId").value(videoId)))
+                .build();
+
+        List<SearchHit<VideoDocument>> hits = elasticsearchOperations.search(findCurrentVideoQuery, VideoDocument.class).getSearchHits();
+
+        if (hits.isEmpty()) {
+            log.warn("[Related] 해당 videoId({})에 대한 엘라스틱서치 문서가 존재하지 않습니다.", videoId);
             return List.of();
+        }
+
+        VideoDocument currentVideo = hits.get(0).getContent();
+
+        if (currentVideo.getTags() == null || currentVideo.getTags().isEmpty()) {
+            return List.of(); // 태그가 없으면 추천 불가 -> 빈 리스트 반환
         }
 
         List<FieldValue> tagValues = currentVideo.getTags().stream()
                 .map(FieldValue::of)
                 .toList();
 
-        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, videoMetadataId, size);
+        // 2. 연관 검색 수행 (현재 비디오 제외)
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getId(), size);
         return executeSearch(searchQuery);
     }
 

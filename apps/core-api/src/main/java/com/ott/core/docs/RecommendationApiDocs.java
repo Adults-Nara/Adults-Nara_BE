@@ -53,7 +53,7 @@ public interface RecommendationApiDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     })
-    
+
     ResponseEntity<ApiResponse<List<VideoFeedResponseDto>>> getRelatedFeed(
             @Parameter(description = "현재 영상의 물리적 ID") Long videoId,
             @Parameter(description = "가져올 개수 (기본 10)") @Min(1) @Max(20) int size

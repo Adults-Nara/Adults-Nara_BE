@@ -7,8 +7,6 @@ import com.ott.core.modules.search.document.VideoDocument;
 import com.ott.core.modules.search.dto.SliceResponse;
 import com.ott.core.modules.search.dto.VideoFeedResponseDto;
 import com.ott.core.modules.search.service.RecommendationService;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -31,7 +29,7 @@ public class RecommendationController implements RecommendationApiDocs {
     public ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getFeed(
             @RequestParam Long userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10")  int size
+            @RequestParam(defaultValue = "10") int size
     ) {
         List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed(userId, page, size);
 
