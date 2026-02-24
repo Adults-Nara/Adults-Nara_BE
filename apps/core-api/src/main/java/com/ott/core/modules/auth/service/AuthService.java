@@ -9,6 +9,7 @@ import com.ott.core.modules.auth.dto.KakaoTokenResponse;
 import com.ott.core.modules.auth.dto.KakaoUserInfoResponse;
 import com.ott.core.modules.auth.dto.LoginResponse;
 import com.ott.core.modules.auth.dto.TokenRefreshResponse;
+import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import java.util.Optional;
  * 1. 카카오 OAuth 로그인 처리 (회원가입/로그인 통합)
  * 2. JWT 토큰 발급
  * 3. 토큰 갱신
+ * 4. 현재 사용자 정보 조회
  */
 @Slf4j
 @Service
@@ -93,7 +95,7 @@ public class AuthService {
                 isNewUser = false;
                 log.info("[카카오 로그인] 기존 이메일 사용자에 카카오 연동 - userId: {}", user.getId());
             } else {
-                // 완전 신규 사용자 생성
+                // 완전 신규 사용자 생성 (자동 회원가입)
                 user = new User(
                         kakaoUser.email(),
                         kakaoUser.nickname(),
@@ -107,7 +109,7 @@ public class AuthService {
 
                 userRepository.save(user);
                 isNewUser = true;
-                log.info("[카카오 로그인] 신규 사용자 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
+                log.info("[카카오 로그인] 신규 사용자 자동 회원가입 - userId: {}, email: {}", user.getId(), user.getEmail());
             }
         }
 
@@ -119,6 +121,25 @@ public class AuthService {
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
         return LoginResponse.of(user, accessToken, refreshToken, isNewUser);
+    }
+
+    /**
+     * [신규] 현재 로그인한 사용자 정보 조회
+     *
+     * 프론트엔드 마이페이지에서 사용합니다.
+     * - 비로그인: SecurityConfig에서 인증 필요이므로 이 메서드까지 도달하지 않음
+     * - 로그인: JWT에서 추출한 userId로 사용자 정보 반환
+     */
+    @Transactional(readOnly = true)
+    public UserDetailResponse getCurrentUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isDeleted()) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return UserDetailResponse.from(user);
     }
 
     /**
@@ -149,12 +170,8 @@ public class AuthService {
 
     /**
      * [Fix #6] 비활성화 계정 처리 정책 분리
-     * - USER_DEACTIVATED: 사용자 본인이 비활성화 → 로그인 시 자동 활성화
-     * - DEACTIVATED (관리자): 관리자가 비활성화 → 로그인 차단
-     *
-     * 현재는 BanStatus에 관리자/사용자 구분이 없으므로,
-     * DEACTIVATED는 사용자 본인 비활성화로 간주하고 자동 활성화합니다.
-     * 관리자 비활성화는 SUSPENDED 사용을 권장합니다.
+     * - DEACTIVATED: 사용자 본인이 비활성화 → 로그인 시 자동 활성화
+     * - SUSPENDED: 관리자가 정지 → 로그인 차단
      */
     private void validateLoginStatus(User user) {
         if (!user.canLogin()) {
@@ -162,8 +179,6 @@ public class AuthService {
                 throw new BusinessException(ErrorCode.USER_NOT_FOUND);
             }
             if (user.getBanned() == BanStatus.DEACTIVATED) {
-                // 사용자 본인 비활성화 → 로그인 시 자동 활성화
-                // 관리자 비활성화는 SUSPENDED 상태를 사용해야 합니다.
                 user.activate();
                 log.info("[카카오 로그인] 비활성화 계정 자동 활성화 - userId: {}", user.getId());
                 return;
