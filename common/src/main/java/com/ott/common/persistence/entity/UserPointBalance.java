@@ -14,7 +14,7 @@ public class UserPointBalance {
     private Long userId; // Users.user_id와 동일 (PK이자 FK)
 
     @Column(nullable = false)
-    private int currentBalance; // 현재 잔액
+    private int currentBalance = 0; // 현재 잔액
 
     private OffsetDateTime lastUpdatedAt;
 }
