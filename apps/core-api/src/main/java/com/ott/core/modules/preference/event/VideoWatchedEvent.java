@@ -2,7 +2,7 @@ package com.ott.core.modules.preference.event;
 
 public record VideoWatchedEvent(
         Long userId,
-        Long videoMetadataId,
+        Long videoId,
         Integer watchSeconds,
         boolean isCompleted
 ) {

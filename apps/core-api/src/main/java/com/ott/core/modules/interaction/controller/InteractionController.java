@@ -20,45 +20,45 @@ public class InteractionController {
 
     // 좋아요
     @Operation(summary = "좋아요 누르기", description = "해당 영상에 좋아요를 표시합니다.")
-    @PostMapping("/{videoMetadataId}/like")
+    @PostMapping("/{videoId}/like")
     public ResponseEntity<ApiResponse<?>> likeVideo(
-            @PathVariable Long videoMetadataId,
+            @PathVariable Long videoId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoMetadataId, InteractionType.LIKE);
+        interactionService.interact(userId, videoId, InteractionType.LIKE);
         return ResponseEntity.ok(ApiResponse.success());
     }
 
     // 싫어요
     @Operation(summary = "싫어요 누르기", description = "해당 영상에 싫어요를 표시합니다.")
-    @PostMapping("/{videoMetadataId}/dislike")
+    @PostMapping("/{videoId}/dislike")
     public ResponseEntity<ApiResponse<?>> dislikeVideo(
-            @PathVariable Long videoMetadataId,
+            @PathVariable Long videoId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoMetadataId, InteractionType.DISLIKE);
+        interactionService.interact(userId, videoId, InteractionType.DISLIKE);
         return ResponseEntity.ok(ApiResponse.success());
     }
 
     // 슈퍼라이크 (왕따봉)
     @Operation(summary = "슈퍼라이크(왕따봉) 누르기", description = "해당 영상에 최고예요를 표시합니다.")
-    @PostMapping("/{videoMetadataId}/superlike")
+    @PostMapping("/{videoId}/superlike")
     public ResponseEntity<ApiResponse<?>> superLikeVideo(
-            @PathVariable Long videoMetadataId,
+            @PathVariable Long videoId,
             @RequestParam Long userId) {
-        interactionService.interact(userId, videoMetadataId, InteractionType.SUPERLIKE);
+        interactionService.interact(userId, videoId, InteractionType.SUPERLIKE);
         return ResponseEntity.ok(ApiResponse.success());
     }
 
 
     @Operation(summary = "내 반응 조회", description = "내가 이 영상에 좋아요/싫어요를 했는지 확인합니다.")
-    @GetMapping("/{videoMetadataId}/my-status")
+    @GetMapping("/{videoId}/my-status")
     public ResponseEntity<ApiResponse<InteractionStatusResponseDto>> getMyInteractionStatus(
-            @PathVariable Long videoMetadataId,
+            @PathVariable Long videoId,
             @RequestParam Long userId) {
 
-        InteractionType type = interactionService.getInteractionStatus(userId, videoMetadataId).orElse(null);
+        InteractionType type = interactionService.getInteractionStatus(userId, videoId).orElse(null);
 
         InteractionStatusResponseDto responseDto = InteractionStatusResponseDto.from(type);
-        
+
         return ResponseEntity.ok(ApiResponse.success(responseDto));
     }
 }

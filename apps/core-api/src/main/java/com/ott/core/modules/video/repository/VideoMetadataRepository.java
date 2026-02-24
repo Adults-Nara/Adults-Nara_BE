@@ -11,6 +11,8 @@ import java.util.Optional;
 
 public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Long> {
 
+    Optional<VideoMetadata> findByVideoId(Long videoId);
+
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
     // ================= [좋아요] =================

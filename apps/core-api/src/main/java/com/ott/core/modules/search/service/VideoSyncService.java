@@ -9,8 +9,9 @@ import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 
 import java.util.List;
 
@@ -26,12 +27,12 @@ public class VideoSyncService {
         /**
          * DB의 모든 비디오 데이터를 엘라스틱서치로 동기화
          */
-        @Transactional(readOnly = true)
+        @Async
         public void syncAllVideosToElasticsearch() {
             log.info("[ES Sync] DB에서 비디오 메타데이터 조회를 시작합니다...");
 
             int page = 0;
-            int chunkSize = 1000; // 한 번에 1,000건씩만 가져옵니다.
+            int chunkSize = 1000;
             boolean hasNext = true;
             int totalSynced = 0;
 
@@ -43,10 +44,10 @@ public class VideoSyncService {
 
                 List<Long> videoIds = videoSlice.stream().map(VideoMetadata::getId).toList();
 
-                // 2. IN 절을 써서  "단 한 번의 쿼리"로 가져온다
+                // IN 절을 써서  "단 한 번의 쿼리"로 가져옴
                 List<VideoTag> allTagsForChunk = videoTagRepository.findWithTagByVideoMetadataIdIn(videoIds);
 
-                // 3. 가져온 태그들을 자바 메모리(RAM) 상에서 비디오 ID별로 분류(Grouping)
+                // DB에서 가져온 태그 목록을 비디오 ID별로 정리
                 // 결과: { 7777: ["SF", "로맨스"], 9999: ["액션", "SF"] }
                 java.util.Map<Long, List<String>> tagsByVideoId = allTagsForChunk.stream()
                         .collect(java.util.stream.Collectors.groupingBy(
@@ -54,16 +55,16 @@ public class VideoSyncService {
                                 java.util.stream.Collectors.mapping(vt -> vt.getTag().getTagName(), java.util.stream.Collectors.toList())
                         ));
 
-                // 4. 비디오 엔티티를 ES용 문서로 변환
+                // 비디오 엔티티를 ES용 문서로 변환
                 List<VideoDocument> documents = videoSlice.stream().map(video -> {
 
-                    // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 0.0001초 만에 빼온다.
+                    // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 ID로 태그를 꺼낸다.
                     List<String> tagNames = tagsByVideoId.getOrDefault(video.getId(), java.util.List.of());
 
-                    return VideoDocument.of(video, tagNames); // 문서 조립 책임을 위임!
+                    return VideoDocument.of(video, tagNames); // 조립
                 }).toList();
 
-                // 1000개 묶음을 엘라스틱서치에 벌크 저장
+                // Bulk Insert
                 videoSearchRepository.saveAll(documents);
                 totalSynced += documents.size();
 
