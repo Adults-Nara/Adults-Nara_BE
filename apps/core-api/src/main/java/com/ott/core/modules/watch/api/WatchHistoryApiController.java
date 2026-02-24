@@ -2,6 +2,7 @@ package com.ott.core.modules.watch.api;
 
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.watch.dto.request.WatchPositionRequest;
+import com.ott.core.modules.watch.dto.response.WatchHistoryPageResponse;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.service.WatchHistoryService;
 import lombok.RequiredArgsConstructor;
@@ -45,5 +46,16 @@ public class WatchHistoryApiController {
     ) {
         watchHistoryService.stopWatching(Long.parseLong(userId), videoId, request.getLastPosition(), request.getDuration());
         return ApiResponse.success();
+    }
+
+    // 최근 3개월간 시청 이력 조회
+    @GetMapping("/history/recent")
+    public ApiResponse<WatchHistoryPageResponse> getRecentWatchHistory(
+            @AuthenticationPrincipal String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        WatchHistoryPageResponse response = watchHistoryService.getRecentWatchHistory(Long.parseLong(userId), page, size);
+        return ApiResponse.success(response);
     }
 }

@@ -2,23 +2,32 @@ package com.ott.core.modules.watch.service;
 
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
+import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.preference.event.VideoWatchedEvent;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.watch.dto.WatchHistoryDto;
+import com.ott.core.modules.watch.dto.response.WatchHistoryItemResponse;
+import com.ott.core.modules.watch.dto.response.WatchHistoryPageResponse;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,6 +41,7 @@ public class WatchHistoryService {
     private final UserPreferenceService userPreferenceService;
     private final ApplicationEventPublisher eventPublisher;
     private final VideoMetadataRepository videoMetadataRepository;
+    private final UserRepository userRepository;
 
     /**
      *  시청 이력 조회
@@ -113,4 +123,51 @@ public class WatchHistoryService {
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
         eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoMetadataId, lastPosition, isCompleted));
     }
+
+    /**
+     * 최근 3개월 시청 이력 조회 (캐러셀 / 바텀시트 공용)
+     */
+    public WatchHistoryPageResponse getRecentWatchHistory(long userId, int page, int size) {
+        OffsetDateTime threeMonthsAgo = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(3);
+
+        List<WatchHistory> histories = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, PageRequest.of(page, size + 1));
+
+        boolean hasMore = histories.size() > size;
+        List<WatchHistory> pageItems = hasMore ? histories.subList(0, size) : histories;
+
+        Set<Long> uploaderIds = pageItems.stream()
+                .map(wh -> wh.getVideoMetadata().getUserId())
+                .collect(Collectors.toSet());
+
+        Map<Long, String> uploaderNameMap = userRepository.findAllById(uploaderIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getNickname));
+
+        List<WatchHistoryItemResponse> items = pageItems.stream()
+                .map(wh -> {
+                    VideoMetadata vm = wh.getVideoMetadata();
+                    return WatchHistoryItemResponse.builder()
+                            .videoId(String.valueOf(vm.getVideoId()))
+                            .title(vm.getTitle())
+                            .thumbnailUrl(vm.getThumbnailUrl())
+                            .viewCount(vm.getViewCount())
+                            .uploaderName(uploaderNameMap.getOrDefault(vm.getUserId(), ""))
+                            .watchProgressPercent(calculateWatchProgressPercent(wh.getLastPosition(), vm.getDuration()))
+                            .watchedAt(wh.getUpdatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return WatchHistoryPageResponse.builder()
+                .items(items)
+                .hasMore(hasMore)
+                .build();
+    }
+
+    private double calculateWatchProgressPercent(Integer lastPosition, Integer duration) {
+        if (duration == null || duration <= 0 || lastPosition == null) {
+            return 0.0;
+        }
+        return Math.min(100.0, (double) lastPosition / duration * 100);
+    }
+
 }
