@@ -2,7 +2,7 @@ spring:
   application:
     name: core-api
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE}
 
   servlet:
     multipart:
