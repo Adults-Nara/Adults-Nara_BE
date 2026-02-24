@@ -46,7 +46,7 @@ public interface RecommendationApiDocs {
     ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getVerticalFeed(
             @Parameter(description = "사용자 ID") Long userId,
             @Parameter(description = "가져올 개수 (기본 10)") @Min(1) @Max(50) int size
-    );;
+    );
 
     // 가로 스와이프 피드 (상세페이지 연관 영상)
     @Operation(summary = "연관 영상 추천 조회", description = "현재 시청 중인 영상과 태그가 비슷한 연관 영상을 추천합니다.")
