@@ -34,17 +34,16 @@ public class PointTransaction extends BaseEntity {
     @Column(nullable = false)
     private TransactionType type;
 
-    // 광고 시청인 경우 videoMetadataId, 구매인 경우 orderId 등을 저장하여 추적성 확보
+    // 광고 시청인 경우 videoMetadataId, 구매인 경우 gifticonPurchaseId 등을 저장하여 추적성 확보
     private Long referenceId;
 
     @Column(nullable = false)
-    private int balanceAfterTransaction; // 거래 후 잔액 스냅샷 (무결성 검증용)
+    private int balanceAfterTransaction; // 거래 후 잔액 스냅샷
 
     public enum TransactionType {
         AD_REWARD, //광고 시청 보상
         PURCHASE_BONUS, //구매 보상
-        GIFTICON_REDEEM, //기프티콘 교환
-        ADMIN_ADJUST //관리자 적용
+        GIFTICON_PURCHASE, //기프티콘 교환
     }
 
     @PrePersist

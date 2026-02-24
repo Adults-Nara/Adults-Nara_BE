@@ -13,7 +13,7 @@ import lombok.*;
 @Table(name = "gifticon_purchase")
 public class GifticonPurchase extends BaseEntity {
     @Id
-    @Column(name = "gifticon_redemption_id")
+    @Column(name = "gifticon_purchase_id")
     private Long id;
 
     @Column(nullable = false)
@@ -23,7 +23,7 @@ public class GifticonPurchase extends BaseEntity {
     private int pointsUsed; // 사용된 포인트 (예: 3000)
 
     @Column(length = 500)
-    private String gifticonCode; // 발급된 기프티콘 번호 또는 연동 ID
+    private String gifticonCode; // 발급된 기프티콘 번호(MOCK 처리)
 
     @Enumerated(EnumType.STRING)
     private PurchaseStatus status;

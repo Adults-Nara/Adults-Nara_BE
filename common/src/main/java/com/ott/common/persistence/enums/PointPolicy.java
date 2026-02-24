@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum PointPolicy {
     AD_REWARD(5, "광고 시청 적립"),
-    PURCHASE_RATE(3, "상품 구매 적립 비율(%)"),
+    PURCHASE_RATE(1, "상품 구매 적립 비율(%)"),
     MIN_REDEEM_AMOUNT(3000, "최소 환급 포인트"),
     DAILY_AD_LIMIT(10, "일일 광고 적립 제한 횟수");
 
