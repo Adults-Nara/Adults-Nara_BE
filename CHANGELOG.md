@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.2...v0.6.3) (2026-02-24)
+
+
+### Bug Fixes
+
+* 엔드포인트 변경 및 media-worker 스펙 업(1vcpu, 2GM ) ([20a1909](https://github.com/Adults-Nara/Adults-Nara_BE/commit/20a1909b915132c1c3981ed4b7c2e7633d307247))
+
 ## [0.6.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.1...v0.6.2) (2026-02-23)
 
 
