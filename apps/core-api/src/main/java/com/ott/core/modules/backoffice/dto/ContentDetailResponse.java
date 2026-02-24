@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 public record ContentDetailResponse(
-        String videoMetadataId,
+        String videoId,
         String title,
         String description,
         String thumbnailUrl,

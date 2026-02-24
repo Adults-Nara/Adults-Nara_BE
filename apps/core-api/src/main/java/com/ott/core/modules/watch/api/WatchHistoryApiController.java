@@ -16,34 +16,34 @@ public class WatchHistoryApiController {
     private final WatchHistoryService watchHistoryService;
 
     // 시청 위치 조회 (영상 재생 시작 전 호출)
-    @GetMapping("/{videoMetadataId}")
+    @GetMapping("/{videoId}")
     public ApiResponse<WatchHistoryResponse> getWatchHistory(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("videoMetadataId") Long videoMetadataId
+            @PathVariable("videoId") Long videoId
     ) {
-        WatchHistoryResponse response = watchHistoryService.getWatchHistory(userId, videoMetadataId);
+        WatchHistoryResponse response = watchHistoryService.getWatchHistory(userId, videoId);
         return ApiResponse.success(response);
     }
 
     // 영상 재생 중 시청 위치 업데이트 (10초마다 클라이언트에서 호출)
-    @PatchMapping("/{videoMetadataId}/position")
+    @PatchMapping("/{videoId}/position")
     public ApiResponse<?> updateWatchPosition(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("videoMetadataId") Long videoMetadataId,
+            @PathVariable("videoId") Long videoId,
             @RequestBody WatchPositionRequest request
     ) {
-        watchHistoryService.updateWatchPosition(userId, videoMetadataId, request.getLastPosition(), request.getDuration());
+        watchHistoryService.updateWatchPosition(userId, videoId, request.getLastPosition(), request.getDuration());
         return ApiResponse.success();
     }
 
     // 영상 시청 종료 시 최종 위치 저장
-    @PostMapping("/{videoMetadataId}/stop")
+    @PostMapping("/{videoId}/stop")
     public ApiResponse<?> stopWatching(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("videoMetadataId") Long videoMetadataId,
+            @PathVariable("videoId") Long videoId,
             @RequestBody WatchPositionRequest request
     ) {
-        watchHistoryService.stopWatching(userId, videoMetadataId, request.getLastPosition(), request.getDuration());
+        watchHistoryService.stopWatching(userId, videoId, request.getLastPosition(), request.getDuration());
         return ApiResponse.success();
     }
 }
