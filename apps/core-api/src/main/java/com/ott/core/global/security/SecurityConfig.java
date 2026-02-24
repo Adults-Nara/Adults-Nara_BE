@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
 
                         // --- 비디오 (비로그인 시청 가능) ---
-                        .requestMatchers("/api/v1/videos/**").permitAll()
+                        .requestMatchers("/api/v1/videos/*/play").permitAll()
 
                         // --- 검색/추천 (비로그인 사용 가능) ---
                         .requestMatchers("/api/v1/search/**").permitAll()
