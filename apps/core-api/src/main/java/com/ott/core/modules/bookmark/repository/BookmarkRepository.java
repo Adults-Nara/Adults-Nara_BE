@@ -14,7 +14,10 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     // 1. 객체로 찾기 (Toggle용 - 쓰기)
     Optional<Bookmark> findByUserAndVideoMetadata(User user, VideoMetadata videoMetadata);
 
-    // 2. ID로 찾기 (조회용 - 읽기)
-    @Query("select b from Bookmark b where b.user.id = :userId and b.videoMetadata.videoId = :videoId")
+    @Query("SELECT b FROM Bookmark b " +
+            "JOIN FETCH b.videoMetadata vm " +  // ① 핵심: FETCH JOIN
+            "WHERE b.user.id = :userId AND vm.videoId = :videoId") // ② 핵심: ID로 바로 비교
     Optional<Bookmark> findByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") Long videoId);
+
+    boolean existsByUserIdAndVideoMetadata_VideoId(Long userId, Long videoId);
 }
