@@ -9,6 +9,11 @@ import com.ott.core.modules.video.controller.response.PlayResponse;
 import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.service.VideoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
+import io.swagger.v3.oas.annotations.media.Schema;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -51,7 +56,22 @@ public class VideoController {
           -F "image=@thumbnail.jpg" \
           -F 'data={"title":"my title","description":"my description"};type=application/json'
      */
-    @PostMapping("/api/v1/videos/{videoId}/upload")
+    @Operation(
+            summary = "비디오 업로드 (썸네일 + 메타데이터)",
+            description = "multipart/form-data로 image(파일)과 data(JSON)를 함께 전송합니다."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(implementation = VideoUploadMultipart.class),
+                    // data 파트를 JSON으로 인코딩한다고 swagger에 알려줌 (중요)
+                    encoding = {
+                            @Encoding(name = "data", contentType = MediaType.APPLICATION_JSON_VALUE)
+                    }
+            )
+    )
+    @PostMapping(value = "/api/v1/videos/{videoId}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<?> upload(@PathVariable Long videoId,
                                  @AuthenticationPrincipal String userId,
                                  @RequestPart("image") MultipartFile image,
@@ -69,4 +89,15 @@ public class VideoController {
                 .body(ApiResponse.success(PlayResponse.of(result)));
     }
 
+    /**
+     * Swagger 문서용 multipart 스키마
+     */
+    class VideoUploadMultipart {
+
+        @Schema(type = "string", format = "binary", description = "썸네일 이미지 파일")
+        public MultipartFile image;
+
+        @Schema(description = "업로드 메타데이터(JSON)")
+        public UploadRequest data;
+    }
 }
