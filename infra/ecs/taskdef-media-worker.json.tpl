@@ -4,8 +4,8 @@
   "executionRoleArn": "${AWS_EXE_ROLE_ARN}",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
+  "cpu": "1024",
+  "memory": "2048",
   "containerDefinitions": [
     {
       "name": "media-worker",

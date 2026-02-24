@@ -58,7 +58,7 @@ public class VideoMetadataQueryRepository {
         // data 쿼리
         List<UploaderContentResponse> content = query
                 .select(Projections.constructor(UploaderContentResponse.class,
-                        videoMetadata.id.stringValue(),
+                        video.id.stringValue(),
                         videoMetadata.thumbnailUrl,
                         videoMetadata.title,
                         videoMetadata.description,
@@ -125,7 +125,7 @@ public class VideoMetadataQueryRepository {
 
         List<AdminContentResponse> content = query
                 .select(Projections.constructor(AdminContentResponse.class,
-                        videoMetadata.id.stringValue(),
+                        video.id.stringValue(),
                         videoMetadata.thumbnailUrl,
                         videoMetadata.title,
                         videoMetadata.description,

@@ -48,8 +48,8 @@ public class BackofficeService {
 
 
     @Transactional
-    public ContentUpdateResponse updateContent(long userId, Long videoMetadataId, ContentUpdateRequest request) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findById(videoMetadataId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    public ContentUpdateResponse updateContent(long userId, Long videoId, ContentUpdateRequest request) {
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -59,7 +59,7 @@ public class BackofficeService {
         if (request.description() != null) videoMetadata.setDescription(request.description());
         if (request.thumbnailUrl() != null) videoMetadata.setThumbnailUrl(request.thumbnailUrl());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoMetadata.getVideoId()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -72,19 +72,19 @@ public class BackofficeService {
             videoTagRepository.saveAll(videoTags);
         }
 
-        return new ContentUpdateResponse(String.valueOf(videoMetadataId));
+        return new ContentUpdateResponse(String.valueOf(videoId));
     }
 
     @Transactional
     public void deleteContent(long userId, boolean isAdmin, ContentDeleteRequest request) {
-        if (request.videoMetadataIds() == null || request.videoMetadataIds().isEmpty()) {
+        if (request.videoIds() == null || request.videoIds().isEmpty()) {
             return;
         }
 
         if (isAdmin) {
-            videoMetadataRepository.softDeleteByAdmin(request.videoMetadataIds());
+            videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            videoMetadataRepository.softDeleteByUploader(request.videoMetadataIds(), userId);
+            videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
         }
     }
 
@@ -119,19 +119,19 @@ public class BackofficeService {
         userRepository.softDeleteUserByAdmin(request.userIds(),BanStatus.DELETED, OffsetDateTime.now());
     }
 
-    public ContentDetailResponse getContentDetail(long userId, Long videoMetadataId) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findById(videoMetadataId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    public ContentDetailResponse getContentDetail(long userId, Long videoId) {
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        Video video = videoRepository.findById(videoMetadata.getVideoId()).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadataId);
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
         List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
 
         return new ContentDetailResponse(
-                String.valueOf(videoMetadataId),
+                String.valueOf(videoId),
                 videoMetadata.getTitle(),
                 videoMetadata.getDescription(),
                 videoMetadata.getThumbnailUrl(),
