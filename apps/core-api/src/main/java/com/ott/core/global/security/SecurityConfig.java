@@ -40,9 +40,9 @@ public class SecurityConfig {
 
                 .csrf(csrf -> csrf.disable())
 
-                // [Fix #4] state 파라미터 검증을 위해 세션 허용
+                // 완전 무상태 - JWT 인증이므로 세션/JSESSIONID 미생성
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 // JWT 인증 필터
@@ -140,6 +140,7 @@ public class SecurityConfig {
 
     /**
      * CORS 설정
+     * Set-Cookie는 CloudFront Signed Cookie(비디오 재생)에 필요하므로 유지
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
