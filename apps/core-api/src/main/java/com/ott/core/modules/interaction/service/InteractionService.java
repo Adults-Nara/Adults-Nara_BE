@@ -25,11 +25,12 @@ public class InteractionService {
     private final VideoMetadataRepository videoMetadataRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public void interact(Long userId, Long videoMetadataId, InteractionType newType) {
+    public void interact(Long userId, Long videoId, InteractionType newType) {
         User user = findUser(userId);
-        VideoMetadata video = findVideo(videoMetadataId);
+        VideoMetadata metadata = findMetadataByVideoId(videoId);
+        Long metadataId = metadata.getId();
 
-        Optional<Interaction> existingInteraction = interactionRepository.findByUserAndVideoMetadata(user, video);
+        Optional<Interaction> existingInteraction = interactionRepository.findByUserAndVideoMetadata(user, metadata);
 
             if (existingInteraction.isPresent()) {
                 Interaction interaction = existingInteraction.get();
@@ -38,34 +39,34 @@ public class InteractionService {
                 if (oldType == newType) {
                     // 같은 버튼 또 누름 -> 취소
                     interactionRepository.delete(interaction);
-                    decreaseCount(video.getId(), oldType);
+                    decreaseCount(metadataId, oldType);
 
                     // [이벤트 발행] 취소되었으므로 newType은 null로 보냄
-                    eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, oldType, null));
+                    eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, oldType, null));
                 } else {
                     // 변경
                     interaction.changeType(newType);
                     interactionRepository.save(interaction);
 
-                    decreaseCount(video.getId(), oldType); // 기존 거 깎고
-                    increaseCount(video.getId(), newType); // 새 거 올림
+                    decreaseCount(metadataId, oldType); // 기존 거 깎고
+                    increaseCount(metadataId, newType); // 새 거 올림
                     // [이벤트 발행] 변경 전/후 타입 모두 보냄
-                    eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, oldType, newType));
+                    eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, oldType, newType));
                 }
             } else {
                 // 생성
-                Interaction newInteraction = new Interaction(user, video, newType);
+                Interaction newInteraction = new Interaction(user, metadata, newType);
                 interactionRepository.save(newInteraction);
-                increaseCount(video.getId(), newType);
+                increaseCount(metadataId, newType);
                 // [이벤트 발행] 새로 생성되었으므로 oldType은 null로 보냄
-                eventPublisher.publishEvent(new InteractionEvent(userId, videoMetadataId, null, newType));
+                eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, null, newType));
             }
         }
 
     // 조회
     @Transactional(readOnly = true)
-    public Optional<InteractionType> getInteractionStatus(Long userId, Long videoMetadataId) {
-        return interactionRepository.findByUserIdAndVideoId(userId, videoMetadataId)
+    public Optional<InteractionType> getInteractionStatus(Long userId, Long videoId) {
+        return interactionRepository.findByUserIdAndVideoId(userId, videoId)
                 .map(Interaction::getInteractionType);
     }
 
@@ -90,8 +91,8 @@ public class InteractionService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private VideoMetadata findVideo(Long videoMetadataId) {
-        return videoMetadataRepository.findById(videoMetadataId)
+    private VideoMetadata findMetadataByVideoId(Long videoId) {
+        return videoMetadataRepository.findByVideoId(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
     }
 }

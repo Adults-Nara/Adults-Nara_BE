@@ -2,14 +2,14 @@ package com.ott.core.modules.video.service;
 
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
-import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.entity.*;
 import com.ott.common.persistence.enums.ProcessingStatus;
-import com.ott.common.persistence.entity.Video;
-import com.ott.common.persistence.entity.VideoUploadSession;
 import com.ott.common.persistence.enums.UploadSessionStatus;
 import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.persistence.enums.Visibility;
 import com.ott.common.util.IdGenerator;
+import com.ott.core.modules.tag.repository.TagRepository;
+import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
@@ -38,6 +38,9 @@ public class VideoService {
     private final VideoRepository videoRepository;
     private final VideoMetadataRepository videoMetadataRepository;
     private final VideoUploadSessionRepository sessionRepository;
+    private final VideoTagRepository videoTagRepository;
+    private final TagRepository tagRepository;
+
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
     private final S3ObjectStorage s3ObjectStorage;
@@ -54,6 +57,8 @@ public class VideoService {
     public VideoService(VideoRepository videoRepository,
                         VideoMetadataRepository videoMetadataRepository,
                         VideoUploadSessionRepository sessionRepository,
+                        VideoTagRepository videoTagRepository,
+                        TagRepository tagRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
                         S3ObjectStorage s3ObjectStorage,
                         ObjectStorageVerifier objectStorageVerifier,
@@ -65,6 +70,9 @@ public class VideoService {
         this.videoRepository = videoRepository;
         this.videoMetadataRepository = videoMetadataRepository;
         this.sessionRepository = sessionRepository;
+        this.videoTagRepository = videoTagRepository;
+        this.tagRepository = tagRepository;
+
         this.presignedMultipartProcessor = presignedMultipartProcessor;
         this.s3ObjectStorage = s3ObjectStorage;
         this.objectStorageVerifier = objectStorageVerifier;
@@ -77,21 +85,9 @@ public class VideoService {
     }
 
     @Transactional
-    public void updateVisibility(Long videoId, Visibility visibility) {
-        Video v = videoRepository.findById(videoId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
-
-        // READY 아닌데 공개 요청이면 차단
-        if (visibility == Visibility.PUBLIC && v.getProcessingStatus() != ProcessingStatus.READY) {
-            throw new BusinessException(ErrorCode.VIDEO_NOT_READY);
-        }
-
-        v.setVisibility(visibility);
-    }
-
-    @Transactional
-    public MultipartInitResult initMultipartUpload(String contentType, long sizeBytes) {
+    public MultipartInitResult initMultipartUpload(Long userId, String contentType, long sizeBytes) {
         if (sizeBytes <= 0) throw new BusinessException(ErrorCode.VIDEO_INVALID_SIZE);
+        if (userId == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
 
         Long videoId = IdGenerator.generate();
         String sourceKey = "videos/" + videoId + "/source/source.mp4";
@@ -108,6 +104,7 @@ public class VideoService {
         VideoUploadSession session = new VideoUploadSession(
                 IdGenerator.generate(),
                 videoId,
+                userId,
                 BUCKET,
                 sourceKey,
                 result.uploadId(),
@@ -121,7 +118,10 @@ public class VideoService {
     }
 
     @Transactional
-    public void completeMultipartUpload(Long videoId, String uploadId, List<CompletedPartDto> completedParts, long sizeBytes) {
+    public void completeMultipartUpload(Long videoId, Long userId, String uploadId, List<CompletedPartDto> completedParts, long sizeBytes) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
         Video v = videoRepository.findById(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
@@ -129,9 +129,9 @@ public class VideoService {
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        // uploadId 매칭 검증
-        if (!session.getS3UploadId().equals(uploadId)) {
-            throw new BusinessException(ErrorCode.VIDEO_MISMATCH);
+        // uploadId 및 userId 매칭 검증
+        if (!session.getS3UploadId().equals(uploadId) || !session.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
         // 만료 검증
@@ -148,6 +148,7 @@ public class VideoService {
 
         VideoMetadata metadata = VideoMetadata.builder()
                 .id(IdGenerator.generate())
+                .userId(userId)
                 .videoId(v.getId())
                 .build();
         videoMetadataRepository.save(metadata);
@@ -156,13 +157,17 @@ public class VideoService {
     }
 
     @Transactional
-    public void abortMultipartUpload(Long videoId, String uploadId) {
+    public void abortMultipartUpload(Long videoId, Long userId, String uploadId) {
         Video v = videoRepository.findById(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         VideoUploadSession session = sessionRepository
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (!session.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
 
         if (!session.getS3UploadId().equals(uploadId)) {
             throw new BusinessException(ErrorCode.VIDEO_MISMATCH);
@@ -174,18 +179,33 @@ public class VideoService {
 
     @Transactional
     public void upload(Long videoId, Long userId, MultipartFile thumbnail,
-                       String title, String description, VideoType videoType, String otherVideoUrl) {
+                       String title, String description, VideoType videoType, String otherVideoUrl,
+                       List<Long> tagIds, Visibility visibility) {
         VideoValidator.validateTitleLength(title);
         VideoValidator.validateDescription(description);
 
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        videoMetadata.setUserId(userId);
+        Video video = videoRepository.findById(videoId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+
+        if (!videoMetadata.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+
         videoMetadata.setTitle(title);
         videoMetadata.setDescription(description);
         videoMetadata.setVideoType(videoType);
         videoMetadata.setOtherVideoUrl(otherVideoUrl);
+
+        video.setVisibility(visibility);
+
+        List<Tag> tags = tagRepository.findAllById(tagIds);
+        List<VideoTag> videoTags = tags.stream()
+                .map(tag -> new VideoTag(videoMetadata, tag))
+                .toList();
+        videoTagRepository.saveAll(videoTags);
 
         if (thumbnail != null) {
             String thumbnailExtension = thumbnail.getOriginalFilename().substring(thumbnail.getOriginalFilename().lastIndexOf("."));

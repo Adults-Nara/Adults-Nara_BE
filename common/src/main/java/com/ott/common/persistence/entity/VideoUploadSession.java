@@ -18,6 +18,8 @@ public class VideoUploadSession {
 
     private Long videoId;
 
+    private Long userId;
+
     private String bucket;
 
     private String objectKey;
@@ -41,6 +43,7 @@ public class VideoUploadSession {
 
     public VideoUploadSession(Long id,
                               Long videoId,
+                              Long userId,
                               String bucket,
                               String objectKey,
                               String s3UploadId,
@@ -49,6 +52,7 @@ public class VideoUploadSession {
                               OffsetDateTime expiresAt) {
         this.id = id;
         this.videoId = videoId;
+        this.userId = userId;
         this.bucket = bucket;
         this.objectKey = objectKey;
         this.s3UploadId = s3UploadId;
@@ -125,5 +129,9 @@ public class VideoUploadSession {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 }

@@ -25,11 +25,11 @@ public class UserPreferenceEventListener {
     @Async("watchHistoryTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleVideoWatchedEvent(VideoWatchedEvent event) {
-        log.info("[Event] 시청 기록 감지 - User: {}, Video: {}", event.userId(), event.videoMetadataId());
+        log.info("[Event] 시청 기록 감지 - User: {}, Video: {}", event.userId(), event.videoId());
 
         userPreferenceService.reflectWatchScore(
                 event.userId(),
-                event.videoMetadataId(),
+                event.videoId(),
                 event.watchSeconds(),
                 event.isCompleted()
         );
@@ -40,11 +40,11 @@ public class UserPreferenceEventListener {
     public void handleInteractionEvent(InteractionEvent event) {
 
         log.info("[Event Received] 인터랙션 변경 감지 - userId: {}, videoId: {}, old: {}, new: {}",
-                event.userId(), event.videoMetadataId(), event.oldType(), event.newType());
+                event.userId(), event.videoId(), event.oldType(), event.newType());
 
         userPreferenceService.reflectInteractionScore(
                 event.userId(),
-                event.videoMetadataId(),
+                event.videoId(),
                 event.oldType(),
                 event.newType()
         );

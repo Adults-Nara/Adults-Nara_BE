@@ -19,24 +19,24 @@ public class BookmarkController {
 
     // 찜하기
     @Operation(summary = "찜하기(북마크) 토글", description = "누를 때마다 찜 상태가 켜지거나 꺼집니다.")
-    @PostMapping("/{videoMetadataId}")
+    @PostMapping("/{videoId}")
     public ResponseEntity<ApiResponse<?>> toggleBookmark(
-            @PathVariable("videoMetadataId") Long videoMetadataId,
+            @PathVariable("videoId") Long videoId,
             @RequestParam Long userId) {
 
-        bookmarkService.toggleBookmark(userId, videoMetadataId);
+        bookmarkService.toggleBookmark(userId, videoId);
 
         return ResponseEntity.ok(ApiResponse.success());
     }
 
     // 북마크 여부 조회
     @Operation(summary = "북마크 여부 조회", description = "내가 이 영상을 찜했는지 확인합니다.")
-    @GetMapping("/{videoMetadataId}/status")
+    @GetMapping("/{videoId}/status")
     public ResponseEntity<ApiResponse<BookmarkStatusResponseDto>> getBookmarkStatus(
-            @PathVariable("videoMetadataId") Long videoMetadataId,
+            @PathVariable("videoId") Long videoId,
             @RequestParam Long userId) {
 
-        boolean status = bookmarkService.isBookmarked(userId, videoMetadataId);
+        boolean status = bookmarkService.isBookmarked(userId, videoId);
         BookmarkStatusResponseDto responseDto = BookmarkStatusResponseDto.from(status);
 
         return ResponseEntity.ok(ApiResponse.success(responseDto));

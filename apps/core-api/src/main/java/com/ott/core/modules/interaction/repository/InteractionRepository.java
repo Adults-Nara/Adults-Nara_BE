@@ -15,6 +15,6 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
     Optional<Interaction> findByUserAndVideoMetadata(User user, VideoMetadata videoMetadata);
 
     // JPQL을 사용하여 ID로 바로 조회 (성능 + 정확성 둘 다 잡음)
-    @Query("select i from Interaction i where i.user.id = :userId and i.videoMetadata.id = :videoId")
+    @Query("select i from Interaction i where i.user.id = :userId and i.videoMetadata.videoId = :videoId")
     Optional<Interaction> findByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") Long videoId);
 }
