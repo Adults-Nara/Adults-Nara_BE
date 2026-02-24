@@ -9,13 +9,15 @@ import com.ott.core.modules.bookmark.repository.BookmarkRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookmarkService {
@@ -39,16 +41,23 @@ public class BookmarkService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, metadata);
+        try {
+            if (existingBookmark.isPresent()) {
+                // 이미 찜했으면 -> 취소
+                bookmarkRepository.delete(existingBookmark.get());
+                bookmarkRepository.flush(); // DB에 쿼리를 즉시 날려 예외가 있는지 먼저 확인
+                updateRedis(videoId, -1);   // 예외가 안 터졌을 때만 Redis 연산 실행 (안전 보장)
+            } else {
+                // 없으면 -> 찜하기
+                Bookmark newBookmark = new Bookmark(user, metadata);
+                bookmarkRepository.save(newBookmark);
+                bookmarkRepository.flush(); // DB 유니크 제약조건 위반 검사
+                updateRedis(videoId, 1);    // 정상 처리 시에만 Redis 연산 실행
+            }
+        } catch (DataIntegrityViolationException e) {
 
-        if (existingBookmark.isPresent()) {
-            // 이미 찜했으면 -> 취소
-            bookmarkRepository.delete(existingBookmark.get());
-            updateRedis(videoId, -1); // Redis: 점수 감소
-        } else {
-            // 없으면 -> 찜하기
-            Bookmark newBookmark = new Bookmark(user, metadata);
-            bookmarkRepository.save(newBookmark);
-            updateRedis(videoId, 1); // Redis: 점수 증가
+            log.warn("[Bookmark] 동시 요청으로 인한 중복 방어 - userId: {}, videoId: {}", userId, videoId);
+            throw new BusinessException(ErrorCode.BOOKMARK_CONFLICT);
         }
     }
 
