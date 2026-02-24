@@ -25,43 +25,43 @@ public class WatchHistoryRedisService {
     /**
      * 시청 이력 조회 (Redis)
      */
-    public WatchHistoryDto getWatchHistory(Long userId, Long videoMetadataId) {
-        String key = generateWatchKey(userId, videoMetadataId);
+    public WatchHistoryDto getWatchHistory(Long userId, Long videoId) {
+        String key = generateWatchKey(userId, videoId);
         Object value = redisTemplate.opsForValue().get(key);
 
         if (value instanceof WatchHistoryDto) {
-            log.debug("[Redis] Hit - userId: {}, videoMetadataId: {}", userId, videoMetadataId);
+            log.debug("[Redis] Hit - userId: {}, videoId: {}", userId, videoId);
             return (WatchHistoryDto) value;
         }
 
-        log.debug("[Redis] Miss - userId: {}, videoMetadataId: {}", userId, videoMetadataId);
+        log.debug("[Redis] Miss - userId: {}, videoId: {}", userId, videoId);
         return null;
     }
 
     /**
      * 시청 이력 저장 (Redis)
      */
-    public void saveWatchHistory(Long userId, Long videoMetadataId, Integer lastPosition, Integer duration) {
-        String key = generateWatchKey(userId, videoMetadataId);
+    public void saveWatchHistory(Long userId, Long videoId, Integer lastPosition, Integer duration) {
+        String key = generateWatchKey(userId, videoId);
 
         WatchHistoryDto watchHistory = WatchHistoryDto.builder()
                 .userId(userId)
-                .videoMetadataId(videoMetadataId)
+                .videoId(videoId)
                 .lastPosition(lastPosition)
                 .duration(duration)
                 .build();
 
         redisTemplate.opsForValue().set(key, watchHistory, WATCH_HISTORY_TTL_HOURS, TimeUnit.HOURS);
-        log.info("[Redis] Updated - userId: {}, videoMetadataId: {}, lastPosition: {}, duration: {}",
-                userId, videoMetadataId, lastPosition, duration);
+        log.info("[Redis] Updated - userId: {}, videoId: {}, lastPosition: {}, duration: {}",
+                userId, videoId, lastPosition, duration);
     }
 
     /**
      * Rate Limit 체크 (1분 주기로 DB 저장)
      * @return true: DB 저장 가능, false: DB 저장 스킵
      */
-    public boolean checkRateLimit(Long userId, Long videoMetadataId) {
-        String key = generateRateLimitKey(userId, videoMetadataId);
+    public boolean checkRateLimit(Long userId, Long videoId) {
+        String key = generateRateLimitKey(userId, videoId);
 
         // key가 존재하면 False, 존재하지 않으면 True 반환
         Boolean isFirstRequest = redisTemplate.opsForValue().setIfAbsent(key, "1", RATE_LIMIT_TTL_SECONDS, TimeUnit.SECONDS);
@@ -69,16 +69,16 @@ public class WatchHistoryRedisService {
         return Boolean.TRUE.equals(isFirstRequest);
     }
 
-    public void deleteWatchHistory(Long userId, Long videoMetadataId) {
-        String key = generateWatchKey(userId, videoMetadataId);
+    public void deleteWatchHistory(Long userId, Long videoId) {
+        String key = generateWatchKey(userId, videoId);
         redisTemplate.delete(key);
     }
 
-    private String generateWatchKey(Long userId, Long videoMetadataId) {
-        return WATCH_HISTORY_PREFIX + userId + ":" + videoMetadataId;
+    private String generateWatchKey(Long userId, Long videoId) {
+        return WATCH_HISTORY_PREFIX + userId + ":" + videoId;
     }
 
-    private String generateRateLimitKey(Long userId, Long videoMetadataId) {
-        return RATE_LIMIT_PREFIX + userId + ":" + videoMetadataId;
+    private String generateRateLimitKey(Long userId, Long videoId) {
+        return RATE_LIMIT_PREFIX + userId + ":" + videoId;
     }
 }

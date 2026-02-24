@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long> {
     Optional<WatchHistory> findByUserIdAndVideoMetadataId(Long userId, Long videoMetadataId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """                                                                                                                               
             INSERT INTO watch_history (watch_history_id, user_id, video_metadata_id, last_position, completed, deleted, created_at, updated_at)          
             VALUES (:id, :userId, :videoMetadataId, :lastPosition, :completed, false, :now, :now)

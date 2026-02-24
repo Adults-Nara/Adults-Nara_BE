@@ -57,11 +57,11 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     // ADMIN 전용 삭제
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.id IN :ids")
+    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.videoId IN :ids")
     void softDeleteByAdmin(@Param("ids") List<Long> ids);
 
     // UPLOADER 전용 삭제
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.id IN :ids AND vm.userId = :userId")
+    @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.videoId IN :ids AND vm.userId = :userId")
     void softDeleteByUploader(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 }

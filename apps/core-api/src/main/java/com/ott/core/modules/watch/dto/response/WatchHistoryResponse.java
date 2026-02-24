@@ -8,7 +8,7 @@ import lombok.Getter;
 @Builder
 @AllArgsConstructor
 public class WatchHistoryResponse {
-    private String videoMetadataId;
+    private String videoId;
     private Integer lastPosition;
     private Integer duration;
 }

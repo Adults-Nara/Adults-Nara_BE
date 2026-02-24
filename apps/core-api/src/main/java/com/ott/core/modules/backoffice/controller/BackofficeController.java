@@ -50,24 +50,24 @@ public class BackofficeController {
         return ApiResponse.success(result);
     }
 
-    @GetMapping("/contents/{videoMetadataId}")
+    @GetMapping("/contents/{videoId}")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentDetailResponse> getContentDetail(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("videoMetadataId") Long videoMetadataId
+            @PathVariable("videoId") Long videoId
     ) {
-        ContentDetailResponse response = backofficeService.getContentDetail(userId, videoMetadataId);
+        ContentDetailResponse response = backofficeService.getContentDetail(userId, videoId);
         return ApiResponse.success(response);
     }
 
-    @PutMapping("/contents/{videoMetadataId}")
+    @PutMapping("/contents/{videoId}")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
             @AuthenticationPrincipal Long userId,
-            @PathVariable("videoMetadataId") Long videoMetadataId,
+            @PathVariable("videoId") Long videoId,
             @RequestBody ContentUpdateRequest request
     ) {
-        ContentUpdateResponse response = backofficeService.updateContent(userId, videoMetadataId, request);
+        ContentUpdateResponse response = backofficeService.updateContent(userId, videoId, request);
         return ApiResponse.success(response);
     }
 
