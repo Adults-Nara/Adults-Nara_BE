@@ -34,17 +34,19 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
                             @Param("completed") boolean completed,
                             @Param("now") OffsetDateTime now);
 
-    @Query("""
-            SELECT wh FROM WatchHistory wh
-            JOIN FETCH wh.videoMetadata vm
-            WHERE wh.user.id = :userId
+    @Query(value = """
+            SELECT wh.* FROM watch_history wh
+            JOIN video_metadata vm ON wh.video_metadata_id = vm.video_metadata_id
+            WHERE wh.user_id = :userId
               AND wh.deleted = false
               AND vm.deleted = false
-              AND wh.updatedAt >= :threeMonthsAgo
-            ORDER BY wh.updatedAt DESC
-            """)
+              AND wh.updated_at >= :threeMonthsAgo
+            ORDER BY wh.updated_at DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
     List<WatchHistory> findRecentHistory(@Param("userId") Long userId,
                                          @Param("threeMonthsAgo") OffsetDateTime threeMonthsAgo,
-                                         Pageable pageable);
+                                         @Param("limit") int limit,
+                                         @Param("offset") long offset);
 
 }

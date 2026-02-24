@@ -130,7 +130,8 @@ public class WatchHistoryService {
     public WatchHistoryPageResponse getRecentWatchHistory(long userId, int page, int size) {
         OffsetDateTime threeMonthsAgo = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(3);
 
-        List<WatchHistory> histories = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, PageRequest.of(page, size + 1));
+        long offset = (long) page * size;
+        List<WatchHistory> histories = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, size + 1, offset);
 
         boolean hasMore = histories.size() > size;
         List<WatchHistory> pageItems = hasMore ? histories.subList(0, size) : histories;

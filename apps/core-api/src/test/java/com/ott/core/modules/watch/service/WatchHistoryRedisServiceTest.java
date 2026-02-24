@@ -22,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class WatchHistoryRedisServiceTest {
 
     @MockitoBean private SignedCookieProcessor signedCookieProcessor;
+    @MockitoBean private software.amazon.awssdk.services.s3.S3Client s3Client;
+    @MockitoBean private software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
+
     @Autowired private WatchHistoryRedisService watchHistoryRedisService;
     @Autowired private RedisTemplate<String, Object> redisTemplate;
 
