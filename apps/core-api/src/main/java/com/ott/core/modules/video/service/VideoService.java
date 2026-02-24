@@ -104,6 +104,7 @@ public class VideoService {
         VideoUploadSession session = new VideoUploadSession(
                 IdGenerator.generate(),
                 videoId,
+                userId,
                 BUCKET,
                 sourceKey,
                 result.uploadId(),
@@ -128,9 +129,9 @@ public class VideoService {
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        // uploadId 매칭 검증
-        if (!session.getS3UploadId().equals(uploadId)) {
-            throw new BusinessException(ErrorCode.VIDEO_MISMATCH);
+        // uploadId 및 userId 매칭 검증
+        if (!session.getS3UploadId().equals(uploadId) || !session.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
         // 만료 검증
@@ -164,10 +165,7 @@ public class VideoService {
                 .findFirstByVideoIdAndStatusOrderByCreatedAtDesc(videoId, UploadSessionStatus.UPLOADING)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
-
-        if (!videoMetadata.getUserId().equals(userId)) {
+        if (!session.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
