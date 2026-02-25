@@ -167,9 +167,12 @@ public class AuthController {
             String timestampStr = parts[1];
             String signature = parts[2];
 
-            // 서명 검증
+            // 서명 검증 (constant-time 비교로 타이밍 공격 방지)
             String payload = nonce + "." + timestampStr;
-            if (!hmacSign(payload).equals(signature)) {
+            String expectedSignature = hmacSign(payload);
+            if (!java.security.MessageDigest.isEqual(
+                    expectedSignature.getBytes(StandardCharsets.UTF_8),
+                    signature.getBytes(StandardCharsets.UTF_8))) {
                 log.warn("[카카오 OAuth] state 서명 불일치");
                 return false;
             }
