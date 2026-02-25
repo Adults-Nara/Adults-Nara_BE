@@ -63,8 +63,8 @@ public class AuthController {
             AuthService authService,
             @Value("${oauth2.kakao.client-id}") String kakaoClientId,
             @Value("${oauth2.kakao.redirect-uri}") String kakaoRedirectUri,
-            @Value("${oauth.state.secret}") String stateSecret,
-            @Value("${oauth.state.cookie-secure:true}") boolean secureCookie
+            @Value("${oauth2.state.secret}") String stateSecret,
+            @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie
     ) {
         this.authService = authService;
         this.kakaoClientId = kakaoClientId;
