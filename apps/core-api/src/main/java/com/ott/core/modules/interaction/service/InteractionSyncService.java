@@ -74,6 +74,20 @@ public class InteractionSyncService {
 
                 if (countObj != null) {
                     int latestCount = Integer.parseInt(countObj.toString());
+
+                    if (latestCount < 0) {
+                        log.warn("[Scheduler] 비정상적인 마이너스 카운트 감지 (Type: {}, videoId:{}). 0으로 교정합니다.", targetType, videoId);
+                        latestCount = 0;
+
+                        stringRedisTemplate.opsForHash().put(countKey, videoIdStr, "0");
+
+                        if("bookmark".equals(targetType)) {
+                            Double rankingScore = stringRedisTemplate.opsForZSet().score("video:ranking", videoIdStr);
+                            if (rankingScore !=null && rankingScore < 0){
+                                stringRedisTemplate.opsForZSet().add("videl:ranking", videoIdStr, 0.0);
+                            }
+                        }
+                    }
                     syncActionMap.get(targetType).accept(videoId, latestCount); // 정상적으로 트랜잭션 적용됨
                     successCount++;
                 }

@@ -20,4 +20,6 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     Optional<Bookmark> findByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") Long videoId);
 
     boolean existsByUserIdAndVideoMetadata_VideoId(Long userId, Long videoId);
+
+    long countByVideoMetadata_VideoId(Long videoId);
 }

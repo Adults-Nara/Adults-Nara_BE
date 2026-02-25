@@ -92,13 +92,34 @@ public class InteractionService {
 
         // 개별 카운트 증감 (Hash) - 상세 페이지 표시용
         String countKey = "video:count:" + typeLower;
-        stringRedisTemplate.opsForHash().increment(countKey, videoIdStr, delta);
-
-
         // 스케줄러 처리 대상 목록에 추가 (Set) - Write-Back 패턴
         String dirtyKey = "video:dirty:" + typeLower;
-        stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
+
+        Boolean hasKey = stringRedisTemplate.opsForHash().hasKey(countKey, videoIdStr);
+        if (Boolean.FALSE.equals(hasKey)) {
+            long dbRealCount = interactionRepository.countByVideoMetadata_VideoIdAndInteractionType(videoId, type);
+            stringRedisTemplate.opsForHash().put(countKey, videoIdStr, String.valueOf(dbRealCount));
+            log.info("[Redis Cache] 비어있는 {} 캐시 초기화 세팅 완료 - videoId: {}, 카운트: {}", typeLower, videoIdStr, dbRealCount);
         }
+
+        // 2. 증감 연산을 수행하고 그 결과값(최종 카운트)을 리턴받음
+        Long currentCount = stringRedisTemplate.opsForHash().increment(countKey, videoIdStr, delta);
+
+        // 3. [Active Self-Healing] 누군가 Redis를 지웠거나 데이터가 꼬여서 마이너스가 발생했다면?
+        if (currentCount != null && currentCount < 0) {
+            log.error("🚨 [Redis 오염 감지] 비디오 {}의 {} 카운트가 {}이 되었습니다. DB 기준으로 즉시 강제 동기화합니다.", videoIdStr, typeLower, currentCount);
+
+            // 즉시 DB에서 진짜 숫자 검증
+            currentCount = interactionRepository.countByVideoMetadata_VideoIdAndInteractionType(videoId, type);
+
+            // 오염된 데이터를 찢어버리고 진짜 숫자로 덮어쓰기
+            stringRedisTemplate.opsForHash().put(countKey, videoIdStr, String.valueOf(currentCount));
+            log.info("[Redis 복구 완료] 비디오 {}의 {} 카운트를 {}으로 덮어씌웠습니다.", videoIdStr, typeLower, currentCount);
+        }
+
+        // 4. 스케줄러 처리 대상 목록에 추가 (Write-Back)
+        stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
+    }
     private User findUser (Long userId){
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));

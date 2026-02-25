@@ -26,7 +26,7 @@ public class VideoInteractionScheduler {
             try {
                 syncService.syncForType(targetType);
             } catch (Exception e) {
-                log.error("[Scheduler] {} 동기화 중 치명적 에러 발생: {}", targetType, e.getMessage());
+                log.error("[Scheduler] {} 동기화 중 치명적 에러 발생: {}", targetType, e.getMessage(), e);
             }
         }
 

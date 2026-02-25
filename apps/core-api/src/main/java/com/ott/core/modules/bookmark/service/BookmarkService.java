@@ -41,6 +41,7 @@ public class BookmarkService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, metadata);
+
         try {
             if (existingBookmark.isPresent()) {
                 // 이미 찜했으면 -> 취소
@@ -69,13 +70,31 @@ public class BookmarkService {
     private void updateRedis(Long videoId, int delta) {
         String videoIdStr = String.valueOf(videoId);
 
-        // 화면 표시용 카운트 (Hash) -> 상세 페이지에서 보여줄 숫자
-        stringRedisTemplate.opsForHash().increment(KEY_VIDEO_COUNT, videoIdStr, delta);
+        Boolean hasKey = stringRedisTemplate.opsForHash().hasKey(KEY_VIDEO_COUNT, videoIdStr);
+        if (Boolean.FALSE.equals(hasKey)) {
+            long dbRealCount = bookmarkRepository.countByVideoMetadata_VideoId(videoId);
+            stringRedisTemplate.opsForHash().put(KEY_VIDEO_COUNT, videoIdStr, String.valueOf(dbRealCount));
+            log.info("[Redis Cache] 비어있는 캐시 초기화 세팅 완료 - videoId: {}, 카운트: {}", videoIdStr, dbRealCount);
+        }
 
-        // 인기 차트용 점수 (Sorted Set) -> 실시간 랭킹 반영
-        stringRedisTemplate.opsForZSet().incrementScore(KEY_RANKING, videoIdStr, delta);
+        // 증감 연산을 수행하고 그 결과값(최종 카운트)을 리턴받음
+        Long currentCount = stringRedisTemplate.opsForHash().increment(KEY_VIDEO_COUNT, videoIdStr, delta);
 
-        // [Write-Back] 변경 감지 목록에 추가 -> 스케줄러가 이 Set을 뒤져서 DB에 반영함. (중복 방지를 위해 Set 사용)
+        if (currentCount != null && currentCount < 0) {
+            log.error("🚨 [Redis 오염 감지] 비디오 {}의 카운트가 {}이 되었습니다. DB 기준으로 즉시 강제 동기화합니다.", videoIdStr, currentCount);
+
+            // 즉시 DB에서 진짜 숫자 검증
+            currentCount = bookmarkRepository.countByVideoMetadata_VideoId(videoId);
+
+            // 오염된 데이터를 찢어버리고 진짜 숫자로 덮어쓰기
+            stringRedisTemplate.opsForHash().put(KEY_VIDEO_COUNT, videoIdStr, String.valueOf(currentCount));
+            log.info("[Redis 복구 완료] 비디오 {} 카운트를 {}으로 덮어씌웠습니다.", videoIdStr, currentCount);
+        }
+
+        // 4. 안전한 최신 카운트로 랭킹(ZSet) 덮어쓰기 (increment 대신 add 사용)
+        stringRedisTemplate.opsForZSet().add(KEY_RANKING, videoIdStr, currentCount != null ? currentCount.doubleValue() : 0.0);
+
+        // 5. 스케줄러 동기화 큐 적재
         stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);
     }
 }

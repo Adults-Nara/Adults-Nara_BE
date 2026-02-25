@@ -13,24 +13,29 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     Optional<VideoMetadata> findByVideoId(Long videoId);
 
+    List<VideoMetadata> findAllByVideoIdIn(List<Long> videoIds);
+
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE VideoMetadata v SET v.likeCount = :count WHERE v.videoId = :videoId")
+    @Query("UPDATE VideoMetadata v SET v.likeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateLikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE VideoMetadata v SET v.dislikeCount = :count WHERE v.videoId = :videoId")
+    @Query("UPDATE VideoMetadata v SET v.dislikeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateDislikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE VideoMetadata v SET v.superLikeCount = :count WHERE v.videoId = :videoId")
+    @Query("UPDATE VideoMetadata v SET v.superLikeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateSuperLikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE VideoMetadata v SET v.bookmarkCount = :count WHERE v.videoId = :videoId")
+    @Query("UPDATE VideoMetadata v SET v.bookmarkCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateBookmarkCount(@Param("videoId") Long videoId, @Param("count") int count);
+
+    @Query("SELECT v FROM VideoMetadata v WHERE v.bookmarkCount > 0")
+    List<VideoMetadata> findAllWithBookmarks();
 
     // =========================================================================
 
