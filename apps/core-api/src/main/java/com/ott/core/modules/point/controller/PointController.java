@@ -20,24 +20,24 @@ public class PointController {
 
     @GetMapping
     public ApiResponse<UserPointBalanceResponse> getMyPointBalance(
-            @AuthenticationPrincipal Long userId) {
-        return ApiResponse.success(pointService.findUserCurrentPoint(userId));
+            @AuthenticationPrincipal String userId) {
+        return ApiResponse.success(pointService.findUserCurrentPoint(Long.parseLong(userId)));
     }
 
     @GetMapping("/details")
     public ApiResponse<List<PointTransactionHistoryResponse>> getMyPointTransactionHistory(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             PointTransactionHistoryRequest req) {
-        return ApiResponse.success(pointService.findUserPointHistory(userId, req));
+        return ApiResponse.success(pointService.findUserPointHistory(Long.parseLong(userId), req));
     }
 
     @PostMapping("/purchase/reward")
     public ApiResponse<Void> rewardPurchasePoint(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             @RequestBody ProductPurchaseRequest request) {
 
         // 내부적으로 DuplicateKeyException 발생 시 멱등성을 지키기 위해 BusinessException으로 차단됨
-        pointService.rewardPurchaseReward(userId, request);
+        pointService.rewardPurchaseReward(Long.parseLong(userId), request);
 
         return ApiResponse.success(null);
     }
