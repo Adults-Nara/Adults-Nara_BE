@@ -3,11 +3,13 @@ package com.ott.core.modules.point.service;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.PointTransaction;
+import com.ott.common.persistence.entity.UserPointBalance;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.PointKeyGenerator;
 import com.ott.core.modules.point.dto.PointTransactionHistoryDTO;
 import com.ott.core.modules.point.dto.ProductPurchaseRequest;
+import com.ott.core.modules.point.dto.UserPointBalanceResponse;
 import com.ott.core.modules.point.repository.PointRepository;
 import com.ott.core.modules.point.repository.PointTransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +48,7 @@ public class PointService {
         }
 
         // 2. 잔액 조회 및 수정
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId);
+        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
         int newBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
 
         // 3. 고유 키 생성 (비즈니스 파라미터 조합)
@@ -77,7 +79,7 @@ public class PointService {
     // 상품 구매 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rewardPurchaseReward(Long userId, ProductPurchaseRequest req) {
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId);
+        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
 
         int rewardAmount = Math.toIntExact((req.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
         int newBalance = currentBalance + rewardAmount;
@@ -102,8 +104,12 @@ public class PointService {
     }
 
     @Transactional(readOnly = true)
-    public int findUserCurrentPoint(Long userId) {
-        return pointRepository.findUserPointBalanceByUserId(userId);
+    public UserPointBalanceResponse findUserCurrentPoint(Long userId) {
+        UserPointBalance userPointBalance =  pointRepository.findUserPointBalanceByUserId(userId);
+        return UserPointBalanceResponse.builder()
+                .currentBalance(userPointBalance.getCurrentBalance())
+                .lastUpdated(userPointBalance.getLastUpdatedAt())
+                .build();
     }
 
     @Transactional(readOnly = true)

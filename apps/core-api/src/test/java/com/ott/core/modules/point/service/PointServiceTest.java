@@ -50,7 +50,7 @@ class PointServiceTest {
         given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                 .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(currentBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
 
         // when
         pointService.rewardAdPoint(userId, video);
@@ -89,7 +89,7 @@ class PointServiceTest {
         given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                 .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(currentBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
         given(pointTransactionRepository.save(any(PointTransaction.class)))
                 .willThrow(new DataIntegrityViolationException("Unique index violation"));
 
@@ -107,7 +107,7 @@ class PointServiceTest {
         ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L); // orderId, productId, price
         int currentBalance = 1000;
 
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(currentBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
 
         // when
         pointService.rewardPurchaseReward(userId, request);
@@ -126,10 +126,10 @@ class PointServiceTest {
         // given
         Long userId = 1L;
         int expectedBalance = 5000;
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(expectedBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(expectedBalance);
 
         // when
-        int actualBalance = pointService.findUserCurrentPoint(userId);
+        int actualBalance = pointService.findUserCurrentPoint(userId).getCurrentBalance();
 
         // then
         assertThat(actualBalance).isEqualTo(expectedBalance);
