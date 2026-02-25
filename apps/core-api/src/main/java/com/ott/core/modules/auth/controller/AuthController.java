@@ -69,7 +69,8 @@ public class AuthController {
         this.authService = authService;
         this.kakaoClientId = kakaoClientId;
         this.kakaoRedirectUri = kakaoRedirectUri;
-        this.stateSigningKey = Base64.getDecoder().decode(stateSecret);
+        // Base64 디코딩 대신 raw bytes 사용 — 어떤 문자열이든 안전하게 동작
+        this.stateSigningKey = stateSecret.getBytes(StandardCharsets.UTF_8);
         this.secureCookie = secureCookie;
     }
 
