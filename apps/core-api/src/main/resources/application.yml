@@ -55,7 +55,7 @@ jwt:
 oauth2:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
-    client-secret: ${KAKAO_CLIENT_SECRET:}
+    client-secret: ${KAKAO_CLIENT_SECRET}
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
   state:
     secret: ${OAUTH_STATE_SECRET}
