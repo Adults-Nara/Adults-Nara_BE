@@ -2,24 +2,35 @@ package com.ott.core.modules.watch.service;
 
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
+import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.point.service.PointService;
 import com.ott.core.modules.preference.event.VideoWatchedEvent;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.watch.dto.WatchHistoryDto;
+import com.ott.core.modules.watch.dto.response.WatchHistoryItemResponse;
+import com.ott.core.modules.watch.dto.response.WatchHistoryPageResponse;
 import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -131,4 +142,52 @@ public class WatchHistoryService {
             }
         }
     }
+
+    /**
+     * 최근 3개월 시청 이력 조회 (캐러셀 / 바텀시트 공용)
+     */
+    public WatchHistoryPageResponse getRecentWatchHistory(long userId, int page, int size) {
+        OffsetDateTime threeMonthsAgo = OffsetDateTime.now(ZoneOffset.UTC).minusMonths(3);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Slice<WatchHistory> slice = watchHistoryRepository.findRecentHistory(userId, threeMonthsAgo, pageable);
+
+        boolean hasMore = slice.hasNext();
+        List<WatchHistory> pageItems = slice.getContent();
+
+        Set<Long> uploaderIds = pageItems.stream()
+                .map(wh -> wh.getVideoMetadata().getUserId())
+                .collect(Collectors.toSet());
+
+        Map<Long, String> uploaderNameMap = userRepository.findAllById(uploaderIds).stream()
+                .collect(Collectors.toMap(User::getId, User::getNickname));
+
+        List<WatchHistoryItemResponse> items = pageItems.stream()
+                .map(wh -> {
+                    VideoMetadata vm = wh.getVideoMetadata();
+                    return WatchHistoryItemResponse.builder()
+                            .videoId(String.valueOf(vm.getVideoId()))
+                            .title(vm.getTitle())
+                            .thumbnailUrl(vm.getThumbnailUrl())
+                            .viewCount(vm.getViewCount())
+                            .uploaderName(uploaderNameMap.getOrDefault(vm.getUserId(), ""))
+                            .watchProgressPercent(calculateWatchProgressPercent(wh.getLastPosition(), vm.getDuration()))
+                            .watchedAt(wh.getUpdatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return WatchHistoryPageResponse.builder()
+                .items(items)
+                .hasMore(hasMore)
+                .build();
+    }
+
+    private double calculateWatchProgressPercent(Integer lastPosition, Integer duration) {
+        if (duration == null || duration <= 0 || lastPosition == null) {
+            return 0.0;
+        }
+        return Math.min(100.0, (double) lastPosition / duration * 100);
+    }
+
 }

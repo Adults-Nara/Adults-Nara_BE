@@ -40,9 +40,9 @@ public class SecurityConfig {
 
                 .csrf(csrf -> csrf.disable())
 
-                // [Fix #4] state 파라미터 검증을 위해 세션 허용
+                // 완전 무상태 - JWT 인증이므로 세션/JSESSIONID 미생성
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 // JWT 인증 필터
@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
 
                         // --- 비디오 (비로그인 시청 가능) ---
-                        .requestMatchers("/api/v1/videos/**").permitAll()
+                        .requestMatchers("/api/v1/videos/*/play").permitAll()
 
                         // --- 검색/추천 (비로그인 사용 가능) ---
                         .requestMatchers("/api/v1/search/**").permitAll()
@@ -94,7 +94,8 @@ public class SecurityConfig {
 
                         // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
                         .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
+//                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").permitAll()
 
                         // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
@@ -140,6 +141,7 @@ public class SecurityConfig {
 
     /**
      * CORS 설정
+     * Set-Cookie는 CloudFront Signed Cookie(비디오 재생)에 필요하므로 유지
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

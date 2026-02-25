@@ -77,6 +77,7 @@ public class VideoMetadataQueryRepository {
                 .where(where)
                 .groupBy(
                         videoMetadata.id,
+                        video.id,
                         videoMetadata.thumbnailUrl,
                         videoMetadata.title,
                         videoMetadata.description,
@@ -144,6 +145,7 @@ public class VideoMetadataQueryRepository {
                 .where(where)
                 .groupBy(
                         videoMetadata.id,
+                        video.id,
                         videoMetadata.thumbnailUrl,
                         videoMetadata.title,
                         videoMetadata.description,

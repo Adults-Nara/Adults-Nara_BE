@@ -2,7 +2,7 @@ spring:
   application:
     name: core-api
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE}
 
   servlet:
     multipart:
@@ -10,11 +10,6 @@ spring:
       max-request-size: 10MB
   jpa:
     open-in-view: false
-  oauth2:
-    kakao:
-      client-id: ${KAKAO_CLIENT_ID}
-      client-secret: ${KAKAO_CLIENT_SECRET:}
-      redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -53,5 +48,14 @@ aws:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000
+  access-token-expiration: 1800000
   refresh-token-expiration: 1209600000
+
+
+oauth2:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+  state:
+    secret: ${OAUTH_STATE_SECRET}
