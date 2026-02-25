@@ -19,9 +19,12 @@ spring:
         spring.json.value.default.type: "com.ott.media.modules.transcode.dto.VideoTranscodeRequestedEvent" # 실제 경로로 수정
         # 헤더에 담긴 타입 정보를 신뢰하지 않도록 설정
         spring.json.use.type.headers: false
-
-    listener:
-      ack-mode: manual
+    producer:
+      acks: ${KAFKA_ACKS:all}
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
 
 server:
   port: ${MEDIA_WORKER_PORT:8081}

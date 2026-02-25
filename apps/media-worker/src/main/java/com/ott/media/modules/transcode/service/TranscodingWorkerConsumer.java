@@ -46,7 +46,7 @@ public class TranscodingWorkerConsumer {
     }
 
     @KafkaListener(topics = "video-transcode-requested", groupId = "transcode-worker-group")
-    public void onMessage(VideoTranscodeRequestedEvent evt, Acknowledgment ack) {
+    public void onMessage(VideoTranscodeRequestedEvent evt) {
         // 작업 디렉터리 준비
         Path workRoot = Paths.get("/tmp/transcode")
                 .resolve(evt.videoId().toString())
@@ -58,7 +58,6 @@ public class TranscodingWorkerConsumer {
             // 이미 READY면 스킵 (중복/재처리 방지)
             if (video.getProcessingStatus() == ProcessingStatus.READY) {
                 logger.info("[transcode] 이미 READY. skip videoId={}", evt.videoId());
-                ack.acknowledge();
                 return;
             }
 
@@ -87,8 +86,6 @@ public class TranscodingWorkerConsumer {
 
             // 성공 기록
             videoUpdater.updateReady(evt.videoId(), ENCODE_VERSION);
-
-            ack.acknowledge();
         } catch (Exception ex) {
             // 실패 처리
             logger.error("[ffmpeg] 실패 videoId = {} ", evt.videoId(), ex);
