@@ -67,17 +67,18 @@ public class InteractionService {
                 updateRedis(videoId, newType, 1);
                 // [이벤트 발행] 새로 생성되었으므로 oldType은 null로 보냄
                 eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, null, newType));
-                }
-            } catch (DataIntegrityViolationException e) {
-                // [동시성 제어] DB 유니크 제약 조건 위반 시 Redis 카운트 꼬임 방지
-                log.warn("[Interaction] 동시 요청으로 인한 중복 반영 방어 - userId: {}, videoId: {}", userId, videoId);
-                throw new BusinessException(ErrorCode.INTERACTION_CONFLICT);
             }
+        } catch(DataIntegrityViolationException e){
+            // [동시성 제어] DB 유니크 제약 조건 위반 시 Redis 카운트 꼬임 방지
+            log.warn("[Interaction] 동시 요청으로 인한 중복 반영 방어 - userId: {}, videoId: {}", userId, videoId);
+            throw new BusinessException(ErrorCode.INTERACTION_CONFLICT);
         }
+    }
+
 
     // 조회
     @Transactional(readOnly = true)
-    public Optional<InteractionType> getInteractionStatus(Long userId, Long videoId) {
+    public Optional<InteractionType> getInteractionStatus (Long userId, Long videoId){
         return interactionRepository.findByUserIdAndVideoId(userId, videoId)
                 .map(Interaction::getInteractionType);
     }
@@ -85,7 +86,7 @@ public class InteractionService {
     /**
      * Redis 카운트, 랭킹, 그리고 스케줄러 동기화 큐(Dirty Set) 업데이트
      */
-    private void updateRedis(Long videoId, InteractionType type, int delta) {
+    private void updateRedis (Long videoId, InteractionType type,int delta){
         String videoIdStr = String.valueOf(videoId);
         String typeLower = type.name().toLowerCase(); // like, dislike, superlike
 
@@ -97,14 +98,12 @@ public class InteractionService {
         // 스케줄러 처리 대상 목록에 추가 (Set) - Write-Back 패턴
         String dirtyKey = "video:dirty:" + typeLower;
         stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
-    }
-
-    private User findUser(Long userId) {
+        }
+    private User findUser (Long userId){
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
-
-    private VideoMetadata findMetadataByVideoId(Long videoId) {
+    private VideoMetadata findMetadataByVideoId (Long videoId){
         return videoMetadataRepository.findByVideoId(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
     }
