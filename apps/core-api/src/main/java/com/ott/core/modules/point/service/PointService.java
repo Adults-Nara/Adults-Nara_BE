@@ -6,9 +6,9 @@ import com.ott.common.persistence.entity.PointTransaction;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.PointKeyGenerator;
+import com.ott.core.modules.point.dto.ProductPurchaseRequest;
 import com.ott.core.modules.point.repository.PointRepository;
 import com.ott.core.modules.point.repository.PointTransactionRepository;
-import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -54,14 +54,41 @@ public class PointService {
                     .balanceAfterTransaction(newBalance)
                     .build();
 
-            pointTransactionRepository.save(transaction); // 여기서 중복이면 Exception 발생
+            pointTransactionRepository.save(transaction);
 
             // 5. 사용자 실제 잔액 업데이트
             pointTransactionRepository.updateUserPoint(userId, newBalance);
 
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
-            log.warn("중복 적립 요청 감지 및 차단: {}", txKey);
+            log.warn("중복 광고 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_AD_REWARD);
+        }
+    }
+
+    //상품 구매 시 포인트 지급
+    @Transactional
+    public void rewardPurchaseReward(Long userId, ProductPurchaseRequest req){
+        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId);
+
+        int rewardAmount = Math.toIntExact((req.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
+        int newBalance = currentBalance + rewardAmount;
+
+        String txKey = PointKeyGenerator.generatePurchaseKey(userId, req.getOrderId());
+
+        try {
+            PointTransaction transaction = PointTransaction.builder()
+                    .userId(userId)
+                    .transactionKey(txKey)
+                    .amount(rewardAmount) // 💡
+                    .type(PointTransaction.TransactionType.PURCHASE_BONUS) // 💡 3. 트랜잭션 타입 변경
+                    .referenceId(req.getOrderId())
+                    .balanceAfterTransaction(newBalance)
+                    .build();
+            pointTransactionRepository.save(transaction);
+            pointTransactionRepository.updateUserPoint(userId, newBalance);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
+            throw new BusinessException(ErrorCode.DUPLICATE_PURCHASE_REWARD);
         }
     }
 }
