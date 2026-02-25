@@ -1,6 +1,7 @@
 package com.ott.media.modules.transcode.service;
 
 import com.ott.common.persistence.entity.Video;
+import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.media.modules.transcode.dto.VideoTranscodeRequestedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,9 +53,17 @@ public class TranscodingWorkerConsumer {
                 .resolve("v" + ENCODE_VERSION);
 
         try {
+            Video video = videoUpdater.readByVideo(evt.videoId());
+
+            // 이미 READY면 스킵 (중복/재처리 방지)
+            if (video.getProcessingStatus() == ProcessingStatus.READY) {
+                logger.info("[transcode] 이미 READY. skip videoId={}", evt.videoId());
+                ack.acknowledge();
+                return;
+            }
+
             Files.createDirectories(workRoot);
 
-            Video video = videoUpdater.readByVideo(evt.videoId());
 
             // 소스 다운로드
             Path input = workRoot.resolve("source.mp4");
@@ -78,13 +87,16 @@ public class TranscodingWorkerConsumer {
 
             // 성공 기록
             videoUpdater.updateReady(evt.videoId(), ENCODE_VERSION);
+
+            ack.acknowledge();
         } catch (Exception ex) {
             // 실패 처리
-            logger.info("[ffmpeg] 실패 ", ex);
+            logger.error("[ffmpeg] 실패 videoId = {} ", evt.videoId(), ex);
+
+            throw new RuntimeException(ex);
         } finally {
             // 8) 로컬 정리(실패해도 정리)
             safeDeleteDirectory(workRoot);
-            ack.acknowledge();
         }
     }
 
