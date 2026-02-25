@@ -15,6 +15,8 @@ spring:
       client-id: ${KAKAO_CLIENT_ID}
       client-secret: ${KAKAO_CLIENT_SECRET:}
       redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/api/v1/auth/kakao/callback}
+    state:
+      secret: ${OAUTH_STATE_SECRET}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -53,5 +55,5 @@ aws:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000
+  access-token-expiration: 1800000
   refresh-token-expiration: 1209600000
