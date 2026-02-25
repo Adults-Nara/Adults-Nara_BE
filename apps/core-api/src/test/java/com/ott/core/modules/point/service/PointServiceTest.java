@@ -5,7 +5,8 @@ import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.PointTransaction;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.PointPolicy;
-import com.ott.core.modules.point.dto.PointTransactionHistoryDTO;
+import com.ott.core.modules.point.dto.PointTransactionHistoryRequest;
+import com.ott.core.modules.point.dto.PointTransactionHistoryResponse;
 import com.ott.core.modules.point.dto.ProductPurchaseRequest;
 import com.ott.core.modules.point.repository.PointRepository;
 import com.ott.core.modules.point.repository.PointTransactionRepository;
@@ -141,6 +142,9 @@ class PointServiceTest {
         // given
         Long userId = 1L;
         OffsetDateTime startOfDay = OffsetDateTime.now();
+        OffsetDateTime endOfDay = OffsetDateTime.now().plusDays(1);
+        PointTransactionHistoryRequest request = new PointTransactionHistoryRequest(startOfDay, endOfDay);
+
         PointTransaction tx1 = PointTransaction.builder()
                 .id(1L)
                 .amount(5)
@@ -152,11 +156,12 @@ class PointServiceTest {
                 .type(PointTransaction.TransactionType.PURCHASE_BONUS)
                 .build();
 
-        given(pointTransactionRepository.findAllByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(userId, startOfDay))
+        given(pointTransactionRepository.findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, startOfDay,
+                endOfDay))
                 .willReturn(List.of(tx1, tx2));
 
         // when
-        List<PointTransactionHistoryDTO> history = pointService.findUserPointHistory(userId, startOfDay);
+        List<PointTransactionHistoryResponse> history = pointService.findUserPointHistory(userId, request);
 
         // then
         assertThat(history).hasSize(2);

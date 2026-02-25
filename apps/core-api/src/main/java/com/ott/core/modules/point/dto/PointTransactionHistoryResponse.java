@@ -8,15 +8,15 @@ import java.time.OffsetDateTime;
 
 @Getter
 @Builder
-public class PointTransactionHistoryDTO {
+public class PointTransactionHistoryResponse {
     private Long transactionId;
     private int amount;
     private PointTransaction.TransactionType type;
     private int balanceAfterTransaction;
     private OffsetDateTime createdAt;
 
-    public static PointTransactionHistoryDTO from(PointTransaction transaction) {
-        return PointTransactionHistoryDTO.builder()
+    public static PointTransactionHistoryResponse from(PointTransaction transaction) {
+        return PointTransactionHistoryResponse.builder()
                 .transactionId(transaction.getId())
                 .amount(transaction.getAmount())
                 .type(transaction.getType())

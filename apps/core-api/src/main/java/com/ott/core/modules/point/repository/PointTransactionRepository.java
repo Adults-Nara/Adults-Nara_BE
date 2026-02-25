@@ -17,7 +17,8 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
     int countByUserIdAndTypeAndCreatedAtAfter(Long userId, PointTransaction.TransactionType type,
             OffsetDateTime startOfDay);
 
-    List<PointTransaction> findAllByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(Long userId, OffsetDateTime startOfDay);
+    List<PointTransaction> findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long userId,
+            OffsetDateTime startOfDay, OffsetDateTime endOfDay);
 
     @Modifying(clearAutomatically = true)
     @Lock(LockModeType.PESSIMISTIC_WRITE) // 비관적 락

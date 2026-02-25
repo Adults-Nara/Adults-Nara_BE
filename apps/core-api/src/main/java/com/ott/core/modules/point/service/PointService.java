@@ -7,7 +7,8 @@ import com.ott.common.persistence.entity.UserPointBalance;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.PointKeyGenerator;
-import com.ott.core.modules.point.dto.PointTransactionHistoryDTO;
+import com.ott.core.modules.point.dto.PointTransactionHistoryRequest;
+import com.ott.core.modules.point.dto.PointTransactionHistoryResponse;
 import com.ott.core.modules.point.dto.ProductPurchaseRequest;
 import com.ott.core.modules.point.dto.UserPointBalanceResponse;
 import com.ott.core.modules.point.repository.PointRepository;
@@ -105,7 +106,7 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public UserPointBalanceResponse findUserCurrentPoint(Long userId) {
-        UserPointBalance userPointBalance =  pointRepository.findUserPointBalanceByUserId(userId);
+        UserPointBalance userPointBalance = pointRepository.findUserPointBalanceByUserId(userId);
         return UserPointBalanceResponse.builder()
                 .currentBalance(userPointBalance.getCurrentBalance())
                 .lastUpdated(userPointBalance.getLastUpdatedAt())
@@ -113,11 +114,11 @@ public class PointService {
     }
 
     @Transactional(readOnly = true)
-    public List<PointTransactionHistoryDTO> findUserPointHistory(Long userId, OffsetDateTime startOfDay) {
+    public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
         List<PointTransaction> transactions = pointTransactionRepository
-                .findAllByUserIdAndCreatedAtAfterOrderByCreatedAtDesc(userId, startOfDay);
+                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, req.getStartDate(), req.getEndDate());
         return transactions.stream()
-                .map(PointTransactionHistoryDTO::from)
+                .map(PointTransactionHistoryResponse::from)
                 .toList();
     }
 }
