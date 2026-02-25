@@ -3,6 +3,7 @@ package com.ott.core.modules.point.service;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.PointTransaction;
+import com.ott.common.persistence.entity.UserPointBalance;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.dto.PointTransactionHistoryRequest;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,10 +50,13 @@ class PointServiceTest {
         VideoMetadata video = VideoMetadata.builder().id(100L).build();
         int currentBalance = 1000;
 
+        UserPointBalance userPointBalance = mock(UserPointBalance.class);
+        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+
         given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                 .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
 
         // when
         pointService.rewardAdPoint(userId, video);
@@ -87,10 +92,13 @@ class PointServiceTest {
         VideoMetadata video = VideoMetadata.builder().id(100L).build();
         int currentBalance = 1000;
 
+        UserPointBalance userPointBalance = mock(UserPointBalance.class);
+        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+
         given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                 .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
         given(pointTransactionRepository.save(any(PointTransaction.class)))
                 .willThrow(new DataIntegrityViolationException("Unique index violation"));
 
@@ -108,7 +116,10 @@ class PointServiceTest {
         ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L); // orderId, productId, price
         int currentBalance = 1000;
 
-        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(currentBalance);
+        UserPointBalance userPointBalance = mock(UserPointBalance.class);
+        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+
+        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
 
         // when
         pointService.rewardPurchaseReward(userId, request);
@@ -127,7 +138,9 @@ class PointServiceTest {
         // given
         Long userId = 1L;
         int expectedBalance = 5000;
-        given(pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance()).willReturn(expectedBalance);
+        UserPointBalance userPointBalance = mock(UserPointBalance.class);
+        given(userPointBalance.getCurrentBalance()).willReturn(expectedBalance);
+        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
 
         // when
         int actualBalance = pointService.findUserCurrentPoint(userId).getCurrentBalance();
