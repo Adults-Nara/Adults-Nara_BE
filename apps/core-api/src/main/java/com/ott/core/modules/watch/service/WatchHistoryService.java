@@ -44,6 +44,7 @@ public class WatchHistoryService {
     private final UserPreferenceService userPreferenceService;
     private final ApplicationEventPublisher eventPublisher;
     private final VideoMetadataRepository videoMetadataRepository;
+    private final UserRepository userRepository;
     private final PointService pointService;
 
     /**

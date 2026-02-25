@@ -49,7 +49,7 @@ public enum ErrorCode {
     POINT_INSUFFICIENT_BALANCE("POINT-400-002", 400, "기프티콘 구매를 위한 포인트가 부족합니다."),
     GIFTICON_OUT_OF_STOCK("POINT-500-001", 500, "현재 기프티콘 구매가 불가합니다."),
 
-    IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다.");
+    IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다."),
     // ===== Bookmark (찜하기 관련 세분화) =====
     BOOKMARK_CONFLICT("BOOKMARK-409-001", 409, "이미 처리 중이거나 완료된 찜하기 요청입니다. 잠시 후 다시 시도해주세요."),
     BOOKMARK_NOT_FOUND("BOOKMARK-404-001", 404, "해당 찜하기 내역을 찾을 수 없습니다."),
@@ -59,9 +59,9 @@ public enum ErrorCode {
 
     // ===== System / Sync (백그라운드 스케줄러 & Redis 세분화) =====
     REDIS_DATA_PARSING_ERROR("SYSTEM-500-001", 500, "Redis 캐시 데이터 파싱 중 오류가 발생했습니다."),
-    DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다."),
+    DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다.")
 
-    IO_EXCEPTION("IOE-500-001", 500, "IOException이 발생했습니다.");
+    ;
 
     private final String code;
     private final int httpStatus;
