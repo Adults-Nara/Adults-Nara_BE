@@ -50,12 +50,12 @@ public class AuthController {
             AuthService authService,
             @Value("${oauth2.kakao.client-id}") String kakaoClientId,
             @Value("${oauth2.kakao.redirect-uri}") String kakaoRedirectUri,
-            @Value("${jwt.secret}") String jwtSecret
+            @Value("${oauth.state.secret}") String stateSecret
     ) {
         this.authService = authService;
         this.kakaoClientId = kakaoClientId;
         this.kakaoRedirectUri = kakaoRedirectUri;
-        this.stateSigningKey = Base64.getDecoder().decode(jwtSecret);
+        this.stateSigningKey = Base64.getDecoder().decode(stateSecret);
     }
 
     /**
@@ -198,7 +198,7 @@ public class AuthController {
             mac.init(new SecretKeySpec(stateSigningKey, HMAC_ALGORITHM));
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
-        } catch (Exception e) {
+        } catch (java.security.NoSuchAlgorithmException | java.security.InvalidKeyException e) {
             throw new RuntimeException("HMAC 서명 생성 실패", e);
         }
     }
