@@ -15,8 +15,8 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     Optional<Bookmark> findByUserAndVideoMetadata(User user, VideoMetadata videoMetadata);
 
     @Query("SELECT b FROM Bookmark b " +
-            "JOIN FETCH b.videoMetadata vm " +  // ① 핵심: FETCH JOIN
-            "WHERE b.user.id = :userId AND vm.videoId = :videoId") // ② 핵심: ID로 바로 비교
+            "JOIN FETCH b.videoMetadata vm " +  // FETCH JOIN
+            "WHERE b.user.id = :userId AND vm.videoId = :videoId") // ID로 바로 비교
     Optional<Bookmark> findByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") Long videoId);
 
     boolean existsByUserIdAndVideoMetadata_VideoId(Long userId, Long videoId);
