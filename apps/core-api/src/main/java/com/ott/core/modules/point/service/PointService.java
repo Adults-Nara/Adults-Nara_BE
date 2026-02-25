@@ -21,6 +21,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.transaction.annotation.Propagation;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -29,8 +31,8 @@ public class PointService {
     private final PointRepository pointRepository;
 
     // 광고 시청 시 포인트 지급
-    @Transactional
-    public void rewardAdPoint(Long userId, VideoMetadata video) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
         // 1. 오늘 이미 적립한 횟수 조회
         OffsetDateTime startOfToday = LocalDate.now(ZoneId.of("Asia/Seoul"))
                 .atStartOfDay(ZoneId.of("Asia/Seoul"))
@@ -48,7 +50,7 @@ public class PointService {
         int newBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
 
         // 3. 고유 키 생성 (비즈니스 파라미터 조합)
-        String txKey = PointKeyGenerator.generateAdRewardKey(userId, video.getId(), currentCount + 1);
+        String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
 
         try {
             // 4. 트랜잭션 로그 생성 시도
@@ -57,7 +59,7 @@ public class PointService {
                     .transactionKey(txKey)
                     .amount(PointPolicy.AD_REWARD.getValue())
                     .type(PointTransaction.TransactionType.AD_REWARD)
-                    .referenceId(video.getId())
+                    .referenceId(videoMetadata.getId())
                     .balanceAfterTransaction(newBalance)
                     .build();
 
@@ -73,7 +75,7 @@ public class PointService {
     }
 
     // 상품 구매 시 포인트 지급
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rewardPurchaseReward(Long userId, ProductPurchaseRequest req) {
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId);
 
