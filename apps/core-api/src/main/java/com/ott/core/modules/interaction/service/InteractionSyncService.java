@@ -84,7 +84,7 @@ public class InteractionSyncService {
                         if("bookmark".equals(targetType)) {
                             Double rankingScore = stringRedisTemplate.opsForZSet().score("video:ranking", videoIdStr);
                             if (rankingScore !=null && rankingScore < 0){
-                                stringRedisTemplate.opsForZSet().add("videl:ranking", videoIdStr, 0.0);
+                                stringRedisTemplate.opsForZSet().add("video:ranking", videoIdStr, 0.0);
                             }
                         }
                     }
