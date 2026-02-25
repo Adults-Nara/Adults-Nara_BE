@@ -15,7 +15,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -28,9 +30,12 @@ public class PointService {
     @Transactional
     public void rewardAdPoint(Long userId, VideoMetadata video) {
         // 1. 오늘 이미 적립한 횟수 조회
+        OffsetDateTime startOfToday = LocalDate.now(ZoneId.of("Asia/Seoul"))
+                .atStartOfDay(ZoneId.of("Asia/Seoul"))
+                .toOffsetDateTime();
+
         int currentCount = pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(
-                userId, PointTransaction.TransactionType.AD_REWARD, OffsetDateTime.now()
-        );
+                userId, PointTransaction.TransactionType.AD_REWARD, startOfToday);
 
         if (currentCount >= PointPolicy.DAILY_AD_LIMIT.getValue()) {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
