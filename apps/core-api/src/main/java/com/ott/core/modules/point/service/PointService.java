@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Propagation;
 public class PointService {
     private final PointTransactionRepository pointTransactionRepository;
     private final PointRepository pointRepository;
+    private final PointPolicyService pointPolicyService;
 
     // 광고 시청 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -44,13 +45,15 @@ public class PointService {
         int currentCount = pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(
                 userId, PointTransaction.TransactionType.AD_REWARD, startOfToday);
 
-        if (currentCount >= PointPolicy.DAILY_AD_LIMIT.getValue()) {
+        int dailyLimit = pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT);
+        if (currentCount >= dailyLimit) {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
         }
 
         // 2. 잔액 조회 및 수정
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
-        int newBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
+        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
+        int newBalance = currentBalance + adRewardValue;
 
         // 3. 고유 키 생성 (비즈니스 파라미터 조합)
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
@@ -60,7 +63,7 @@ public class PointService {
             PointTransaction transaction = PointTransaction.builder()
                     .userId(userId)
                     .transactionKey(txKey)
-                    .amount(PointPolicy.AD_REWARD.getValue())
+                    .amount(adRewardValue)
                     .type(PointTransaction.TransactionType.AD_REWARD)
                     .referenceId(videoMetadata.getId())
                     .balanceAfterTransaction(newBalance)
@@ -82,7 +85,8 @@ public class PointService {
     public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
 
-        int rewardAmount = Math.toIntExact((req.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
+        int purchaseRate = pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE);
+        int rewardAmount = Math.toIntExact((req.getPrice() * purchaseRate) / 100);
         int newBalance = currentBalance + rewardAmount;
 
         String txKey = PointKeyGenerator.generatePurchaseKey(userId, req.getOrderId());

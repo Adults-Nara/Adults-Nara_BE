@@ -33,152 +33,175 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class PointServiceTest {
 
-    @InjectMocks
-    private PointService pointService;
+        @InjectMocks
+        private PointService pointService;
 
-    @Mock
-    private PointTransactionRepository pointTransactionRepository;
+        @Mock
+        private PointTransactionRepository pointTransactionRepository;
 
-    @Mock
-    private PointRepository pointRepository;
+        @Mock
+        private PointRepository pointRepository;
 
-    @Test
-    @DisplayName("광고 시청 보상 적립 성공")
-    void rewardAdPoint_success() {
-        // given
-        Long userId = 1L;
-        VideoMetadata video = VideoMetadata.builder().id(100L).build();
-        int currentBalance = 1000;
+        @Mock
+        private PointPolicyService pointPolicyService;
 
-        UserPointBalance userPointBalance = mock(UserPointBalance.class);
-        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+        @Test
+        @DisplayName("광고 시청 보상 적립 성공")
+        void rewardAdPoint_success() {
+                // given
+                Long userId = 1L;
+                VideoMetadata video = VideoMetadata.builder().id(100L).build();
+                int currentBalance = 1000;
 
-        given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                UserPointBalance userPointBalance = mock(UserPointBalance.class);
+                given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
 
-        // when
-        pointService.rewardAdPoint(userId, video);
+                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
+                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
+                                .willReturn(0);
+                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
+                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
+                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
+                                .willReturn(PointPolicy.AD_REWARD.getValue());
 
-        // then
-        int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
-        verify(pointTransactionRepository).save(any(PointTransaction.class));
-        verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
-    }
+                // when
+                pointService.rewardAdPoint(userId, video);
 
-    @Test
-    @DisplayName("일일 광고 시청 제한 초과 시 예외 발생")
-    void rewardAdPoint_dailyLimitExceeded() {
-        // given
-        Long userId = 1L;
-        VideoMetadata video = VideoMetadata.builder().id(100L).build();
+                // then
+                int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
+                verify(pointTransactionRepository).save(any(PointTransaction.class));
+                verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
+        }
 
-        given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
+        @Test
+        @DisplayName("일일 광고 시청 제한 초과 시 예외 발생")
+        void rewardAdPoint_dailyLimitExceeded() {
+                // given
+                Long userId = 1L;
+                VideoMetadata video = VideoMetadata.builder().id(100L).build();
 
-        // when & then
-        assertThatThrownBy(() -> pointService.rewardAdPoint(userId, video))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DAILY_LIMIT_OVER);
-    }
+                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
+                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
+                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
+                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
+                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
 
-    @Test
-    @DisplayName("중복 광고 시청 보상 시 예외 발생 (DB 키 제약 조건)")
-    void rewardAdPoint_duplicateKey() {
-        // given
-        Long userId = 1L;
-        VideoMetadata video = VideoMetadata.builder().id(100L).build();
-        int currentBalance = 1000;
+                // when & then
+                assertThatThrownBy(() -> pointService.rewardAdPoint(userId, video))
+                                .isInstanceOf(BusinessException.class)
+                                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DAILY_LIMIT_OVER);
+        }
 
-        UserPointBalance userPointBalance = mock(UserPointBalance.class);
-        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+        @Test
+        @DisplayName("중복 광고 시청 보상 시 예외 발생 (DB 키 제약 조건)")
+        void rewardAdPoint_duplicateKey() {
+                // given
+                Long userId = 1L;
+                VideoMetadata video = VideoMetadata.builder().id(100L).build();
+                int currentBalance = 1000;
 
-        given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                .willReturn(0);
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
-        given(pointTransactionRepository.save(any(PointTransaction.class)))
-                .willThrow(new DataIntegrityViolationException("Unique index violation"));
+                UserPointBalance userPointBalance = mock(UserPointBalance.class);
+                given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
 
-        // when & then
-        assertThatThrownBy(() -> pointService.rewardAdPoint(userId, video))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_AD_REWARD);
-    }
+                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
+                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
+                                .willReturn(0);
+                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
+                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
+                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
+                                .willReturn(PointPolicy.AD_REWARD.getValue());
+                given(pointTransactionRepository.save(any(PointTransaction.class)))
+                                .willThrow(new DataIntegrityViolationException("Unique index violation"));
 
-    @Test
-    @DisplayName("상품 구매 보상 적립 성공")
-    void rewardPurchaseReward_success() {
-        // given
-        Long userId = 1L;
-        ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L); // orderId, productId, price
-        int currentBalance = 1000;
+                // when & then
+                assertThatThrownBy(() -> pointService.rewardAdPoint(userId, video))
+                                .isInstanceOf(BusinessException.class)
+                                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_AD_REWARD);
+        }
 
-        UserPointBalance userPointBalance = mock(UserPointBalance.class);
-        given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+        @Test
+        @DisplayName("상품 구매 보상 적립 성공")
+        void rewardPurchaseBonus_success() {
+                // given
+                Long userId = 1L;
+                ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L); // orderId, productId,
+                                                                                                 // price
+                int currentBalance = 1000;
 
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                UserPointBalance userPointBalance = mock(UserPointBalance.class);
+                given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
 
-        // when
-        pointService.rewardPurchaseBonus(userId, request);
+                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE))
+                                .willReturn(PointPolicy.PURCHASE_RATE.getValue());
 
-        // then
-        int expectedRewardAmount = Math.toIntExact((request.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
-        int expectedNewBalance = currentBalance + expectedRewardAmount;
+                // when
+                pointService.rewardPurchaseBonus(userId, request);
 
-        verify(pointTransactionRepository).save(any(PointTransaction.class));
-        verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
-    }
+                // then
+                int expectedRewardAmount = Math
+                                .toIntExact((request.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
+                int expectedNewBalance = currentBalance + expectedRewardAmount;
 
-    @Test
-    @DisplayName("사용자 현재 잔액 조회")
-    void findUserCurrentPoint() {
-        // given
-        Long userId = 1L;
-        int expectedBalance = 5000;
-        UserPointBalance userPointBalance = mock(UserPointBalance.class);
-        given(userPointBalance.getCurrentBalance()).willReturn(expectedBalance);
-        given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                verify(pointTransactionRepository).save(any(PointTransaction.class));
+                verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
+        }
 
-        // when
-        int actualBalance = pointService.findUserCurrentPoint(userId).getCurrentBalance();
+        @Test
+        @DisplayName("사용자 현재 잔액 조회")
+        void findUserCurrentPoint() {
+                // given
+                Long userId = 1L;
+                int expectedBalance = 5000;
+                UserPointBalance userPointBalance = mock(UserPointBalance.class);
+                given(userPointBalance.getCurrentBalance()).willReturn(expectedBalance);
+                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
 
-        // then
-        assertThat(actualBalance).isEqualTo(expectedBalance);
-    }
+                // when
+                int actualBalance = pointService.findUserCurrentPoint(userId).getCurrentBalance();
 
-    @Test
-    @DisplayName("사용자 포인트 내역 조회")
-    void findUserPointHistory() {
-        // given
-        Long userId = 1L;
-        OffsetDateTime startOfDay = OffsetDateTime.now();
-        OffsetDateTime endOfDay = OffsetDateTime.now().plusDays(1);
-        PointTransactionHistoryRequest request = new PointTransactionHistoryRequest(startOfDay, endOfDay);
+                // then
+                assertThat(actualBalance).isEqualTo(expectedBalance);
+        }
 
-        PointTransaction tx1 = PointTransaction.builder()
-                .id(1L)
-                .amount(5)
-                .type(PointTransaction.TransactionType.AD_REWARD)
-                .build();
-        PointTransaction tx2 = PointTransaction.builder()
-                .id(2L)
-                .amount(100)
-                .type(PointTransaction.TransactionType.PURCHASE_BONUS)
-                .build();
+        @Test
+        @DisplayName("사용자 포인트 내역 조회")
+        void findUserPointHistory() {
+                // given
+                Long userId = 1L;
+                String startDate = "2026-02-01";
+                String endDate = "2026-02-02";
+                java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Seoul");
+                OffsetDateTime startOfDay = java.time.LocalDate.parse(startDate).atStartOfDay(zoneId)
+                                .toOffsetDateTime();
+                OffsetDateTime endOfDay = java.time.LocalDate.parse(endDate).plusDays(1).atStartOfDay(zoneId)
+                                .toOffsetDateTime().minusNanos(1);
+                PointTransactionHistoryRequest request = new PointTransactionHistoryRequest(startDate, endDate);
 
-        given(pointTransactionRepository.findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, startOfDay,
-                endOfDay))
-                .willReturn(List.of(tx1, tx2));
+                PointTransaction tx1 = PointTransaction.builder()
+                                .id(1L)
+                                .amount(5)
+                                .type(PointTransaction.TransactionType.AD_REWARD)
+                                .build();
+                PointTransaction tx2 = PointTransaction.builder()
+                                .id(2L)
+                                .amount(100)
+                                .type(PointTransaction.TransactionType.PURCHASE_BONUS)
+                                .build();
 
-        // when
-        List<PointTransactionHistoryResponse> history = pointService.findUserPointHistory(userId, request);
+                given(pointTransactionRepository.findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId,
+                                startOfDay,
+                                endOfDay))
+                                .willReturn(List.of(tx1, tx2));
 
-        // then
-        assertThat(history).hasSize(2);
-        assertThat(history.get(0).getTransactionId()).isEqualTo(1L);
-        assertThat(history.get(1).getTransactionId()).isEqualTo(2L);
-    }
+                // when
+                List<PointTransactionHistoryResponse> history = pointService.findUserPointHistory(userId, request);
+
+                // then
+                assertThat(history).hasSize(2);
+                assertThat(history.get(0).getTransactionId()).isEqualTo(1L);
+                assertThat(history.get(1).getTransactionId()).isEqualTo(2L);
+        }
 }
