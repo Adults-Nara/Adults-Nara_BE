@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Transactional
@@ -33,8 +33,7 @@ class GetRecentWatchHistoryTest {
     @MockitoBean private software.amazon.awssdk.services.s3.S3Client s3Client;
     @MockitoBean private software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
 
-    @Autowired
-    private WatchHistoryService watchHistoryService;
+    @Autowired private WatchHistoryService watchHistoryService;
     @Autowired private WatchHistoryRepository watchHistoryRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private VideoMetadataRepository videoMetadataRepository;

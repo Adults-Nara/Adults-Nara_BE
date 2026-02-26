@@ -174,6 +174,7 @@ public class WatchHistoryService {
                             .uploaderName(uploaderNameMap.getOrDefault(vm.getUserId(), ""))
                             .watchProgressPercent(calculateWatchProgressPercent(wh.getLastPosition(), vm.getDuration()))
                             .watchedAt(wh.getUpdatedAt())
+                            .duration(vm.getDuration())
                             .build();
                 })
                 .collect(Collectors.toList());
