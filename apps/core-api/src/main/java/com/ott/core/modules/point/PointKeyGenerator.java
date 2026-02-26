@@ -1,7 +1,7 @@
 package com.ott.core.modules.point;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
 public class PointKeyGenerator {
@@ -19,7 +19,7 @@ public class PointKeyGenerator {
         return String.format("AD_%d_%d_%s_%d",
                 userId,
                 videoId,
-                LocalDate.now(ZoneId.of("Asia/Seoul")).format(DATE_FORMATTER),
+                LocalDate.now(ZoneOffset.UTC).format(DATE_FORMATTER),
                 dailySequence);
     }
 

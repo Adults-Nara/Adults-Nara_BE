@@ -48,6 +48,7 @@ public enum ErrorCode {
     DUPLICATE_PURCHASE_REWARD("POINT-409-002", 409, "이미 포인트 적립이 완료된 주문입니다."),
     POINT_INSUFFICIENT_BALANCE("POINT-400-002", 400, "기프티콘 구매를 위한 포인트가 부족합니다."),
     GIFTICON_OUT_OF_STOCK("POINT-500-001", 500, "현재 기프티콘 구매가 불가합니다."),
+    POLICY_NOT_FOUND("POINT-404-001", 404, "지원하지 않는 정책입니다."),
 
     IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다."),
     // ===== Bookmark (찜하기 관련 세분화) =====

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.springframework.transaction.annotation.Propagation;
@@ -32,25 +33,28 @@ import org.springframework.transaction.annotation.Propagation;
 public class PointService {
     private final PointTransactionRepository pointTransactionRepository;
     private final PointRepository pointRepository;
+    private final PointPolicyService pointPolicyService;
 
     // 광고 시청 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
         // 1. 오늘 이미 적립한 횟수 조회
-        OffsetDateTime startOfToday = LocalDate.now(ZoneId.of("Asia/Seoul"))
-                .atStartOfDay(ZoneId.of("Asia/Seoul"))
+        OffsetDateTime startOfToday = LocalDate.now(ZoneOffset.UTC)
+                .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime();
 
         int currentCount = pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(
                 userId, PointTransaction.TransactionType.AD_REWARD, startOfToday);
 
-        if (currentCount >= PointPolicy.DAILY_AD_LIMIT.getValue()) {
+        int dailyLimit = pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT);
+        if (currentCount >= dailyLimit) {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
         }
 
         // 2. 잔액 조회 및 수정
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
-        int newBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
+        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
+        int newBalance = currentBalance + adRewardValue;
 
         // 3. 고유 키 생성 (비즈니스 파라미터 조합)
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
@@ -60,7 +64,7 @@ public class PointService {
             PointTransaction transaction = PointTransaction.builder()
                     .userId(userId)
                     .transactionKey(txKey)
-                    .amount(PointPolicy.AD_REWARD.getValue())
+                    .amount(adRewardValue)
                     .type(PointTransaction.TransactionType.AD_REWARD)
                     .referenceId(videoMetadata.getId())
                     .balanceAfterTransaction(newBalance)
@@ -69,7 +73,8 @@ public class PointService {
             pointTransactionRepository.save(transaction);
 
             // 5. 사용자 실제 잔액 업데이트
-            pointTransactionRepository.updateUserPoint(userId, newBalance);
+            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
 
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
             log.warn("중복 광고 적립 요청 감지 및 차단: {}", txKey);
@@ -79,10 +84,11 @@ public class PointService {
 
     // 상품 구매 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void rewardPurchaseReward(Long userId, ProductPurchaseRequest req) {
+    public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
 
-        int rewardAmount = Math.toIntExact((req.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
+        int purchaseRate = pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE);
+        int rewardAmount = Math.toIntExact((req.getPrice() * purchaseRate) / 100);
         int newBalance = currentBalance + rewardAmount;
 
         String txKey = PointKeyGenerator.generatePurchaseKey(userId, req.getOrderId());
@@ -97,7 +103,9 @@ public class PointService {
                     .balanceAfterTransaction(newBalance)
                     .build();
             pointTransactionRepository.save(transaction);
-            pointTransactionRepository.updateUserPoint(userId, newBalance);
+
+            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
         } catch (DataIntegrityViolationException e) {
             log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_PURCHASE_REWARD);
@@ -115,8 +123,22 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
+        ZoneId kstZone = ZoneId.of("Asia/Seoul");
+
+        OffsetDateTime start = LocalDate.parse(req.getStartDate())
+                .atStartOfDay(kstZone)
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .toOffsetDateTime();
+
+        OffsetDateTime end = LocalDate.parse(req.getEndDate())
+                .plusDays(1)
+                .atStartOfDay(kstZone)
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .toOffsetDateTime()
+                .minusNanos(1);
+
         List<PointTransaction> transactions = pointTransactionRepository
-                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, req.getStartDate(), req.getEndDate());
+                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
         return transactions.stream()
                 .map(PointTransactionHistoryResponse::from)
                 .toList();
