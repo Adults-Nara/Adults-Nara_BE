@@ -1,6 +1,5 @@
 package com.ott.core.modules.preference.repository;
 
-import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.UserPreference;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -34,7 +33,4 @@ public interface UserPreferenceRepository extends JpaRepository<UserPreference, 
 
     @Query("SELECT up FROM UserPreference up JOIN FETCH up.tag WHERE up.user.id = :userId ORDER BY up.score DESC")
     List<UserPreference> findWithTagByUserId(@Param("userId") Long userId);
-
-    @Query("SELECT up.tag FROM UserPreference up JOIN up.tag t WHERE up.user.id = :userId AND t.parent IS NOT NULL ORDER BY up.score DESC")
-    List<Tag> findChildTagsByUserId(@Param("userId") Long userId);
 }
