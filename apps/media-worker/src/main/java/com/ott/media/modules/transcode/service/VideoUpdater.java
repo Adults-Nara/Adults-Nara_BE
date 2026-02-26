@@ -4,6 +4,7 @@ import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.media.modules.transcode.repository.VideoMetadataRepository;
 import com.ott.media.modules.transcode.repository.VideoRepository;
 import jakarta.transaction.Transactional;
@@ -37,5 +38,11 @@ public class VideoUpdater {
     public Video readByVideo(Long videoId) {
         return videoRepository.findById(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("video not found"));
+    }
+
+    @Transactional
+    public void updateFail(Long videoId) {
+        Video video = readByVideo(videoId);
+        video.setProcessingStatus(ProcessingStatus.FAILED);
     }
 }

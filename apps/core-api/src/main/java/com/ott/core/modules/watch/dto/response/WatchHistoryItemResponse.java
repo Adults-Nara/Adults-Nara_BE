@@ -17,4 +17,5 @@ public class WatchHistoryItemResponse {
     private String uploaderName;
     private double watchProgressPercent;
     private OffsetDateTime watchedAt;
+    private Integer duration;
 }
