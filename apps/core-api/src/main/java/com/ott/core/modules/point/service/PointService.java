@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -122,14 +123,17 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
+        ZoneId kstZone = ZoneId.of("Asia/Seoul");
 
         OffsetDateTime start = LocalDate.parse(req.getStartDate())
-                .atStartOfDay(ZoneOffset.UTC)
+                .atStartOfDay(kstZone)
+                .withZoneSameInstant(ZoneOffset.UTC)
                 .toOffsetDateTime();
 
         OffsetDateTime end = LocalDate.parse(req.getEndDate())
                 .plusDays(1)
-                .atStartOfDay(ZoneOffset.UTC)
+                .atStartOfDay(kstZone)
+                .withZoneSameInstant(ZoneOffset.UTC)
                 .toOffsetDateTime()
                 .minusNanos(1);
 

@@ -4,6 +4,8 @@ import com.ott.common.persistence.entity.PointPolicyEntity;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.dto.PointPolicyResponse;
 import com.ott.core.modules.point.repository.PointPolicyRepository;
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -120,7 +122,7 @@ class PointPolicyServiceTest {
 
         // when & then
         assertThatThrownBy(() -> pointPolicyService.updatePolicyValue(policy, 100))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("지원하지 않는 정책입니다");
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.POLICY_NOT_FOUND);
     }
 }

@@ -175,11 +175,12 @@ class PointServiceTest {
                 Long userId = 1L;
                 String startDate = "2026-02-01";
                 String endDate = "2026-02-02";
-                OffsetDateTime startOfDay = java.time.LocalDate.parse(startDate).atStartOfDay(java.time.ZoneOffset.UTC)
-                                .toOffsetDateTime();
-                OffsetDateTime endOfDay = java.time.LocalDate.parse(endDate).plusDays(1)
-                                .atStartOfDay(java.time.ZoneOffset.UTC)
-                                .toOffsetDateTime().minusNanos(1);
+                java.time.ZoneId kstZone = java.time.ZoneId.of("Asia/Seoul");
+
+                OffsetDateTime startOfDay = java.time.LocalDate.parse(startDate).atStartOfDay(kstZone)
+                                .withZoneSameInstant(java.time.ZoneOffset.UTC).toOffsetDateTime();
+                OffsetDateTime endOfDay = java.time.LocalDate.parse(endDate).plusDays(1).atStartOfDay(kstZone)
+                                .withZoneSameInstant(java.time.ZoneOffset.UTC).toOffsetDateTime().minusNanos(1);
                 PointTransactionHistoryRequest request = new PointTransactionHistoryRequest(startDate, endDate);
 
                 PointTransaction tx1 = PointTransaction.builder()
