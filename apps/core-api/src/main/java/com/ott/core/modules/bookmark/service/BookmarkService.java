@@ -28,15 +28,13 @@ public class BookmarkService {
     private final StringRedisTemplate stringRedisTemplate;
 
     // Redis Key 상수
-    private static final String KEY_VIDEO_COUNT = "video:count:bookmark"; // Hash 구조
-    private static final String KEY_RANKING = "video:ranking"; // ZSet 구조
-    private static final String KEY_DIRTY_DATA = "video:dirty:bookmark"; // 변경된 영상 ID 목록 (Set)
+    private static final String KEY_RANKING = "video:ranking"; // 실시간 차트 (ZSet)
+    private static final String KEY_DIRTY = "video:dirty:bookmark"; // 스케줄러 대기열 (Set)
 
     @Transactional
     public void toggleBookmark(Long userId, Long videoId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
         VideoMetadata metadata = videoMetadataRepository.findByVideoId(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
@@ -44,57 +42,32 @@ public class BookmarkService {
 
         try {
             if (existingBookmark.isPresent()) {
-                // 이미 찜했으면 -> 취소
                 bookmarkRepository.delete(existingBookmark.get());
-                bookmarkRepository.flush(); // DB에 쿼리를 즉시 날려 예외가 있는지 먼저 확인
-                updateRedis(videoId, -1);   // 예외가 안 터졌을 때만 Redis 연산 실행 (안전 보장)
+                bookmarkRepository.flush(); // 즉시 삭제 쿼리 실행
             } else {
-                // 없으면 -> 찜하기
                 Bookmark newBookmark = new Bookmark(user, metadata);
                 bookmarkRepository.save(newBookmark);
-                bookmarkRepository.flush(); // DB 유니크 제약조건 위반 검사
-                updateRedis(videoId, 1);    // 정상 처리 시에만 Redis 연산 실행
+                bookmarkRepository.flush(); // 즉시 저장 쿼리 실행
             }
-        } catch (DataIntegrityViolationException e) {
 
-            log.warn("[Bookmark] 동시 요청으로 인한 중복 방어 - userId: {}, videoId: {}", userId, videoId);
-            throw new BusinessException(ErrorCode.BOOKMARK_CONFLICT);
+            // 1. DB 저장이 완료된 후, 실제 북마크 개수를 다시 셉니다. (가장 정확한 팩트 데이터)
+            long realCount = bookmarkRepository.countByVideoId(videoId);
+            String videoIdStr = String.valueOf(videoId);
+
+            // 2. Redis ZSet 실시간 랭킹 차트 갱신
+            stringRedisTemplate.opsForZSet().add(KEY_RANKING, videoIdStr, realCount);
+
+            stringRedisTemplate.opsForSet().add(KEY_DIRTY, videoIdStr);
+
+            log.info("[Bookmark] 비디오 {} 북마크 변경 완료. 현재 총 카운트: {} (스케줄러 대기열 적재 완료)", videoIdStr, realCount);
+
+        } catch (DataIntegrityViolationException e) {
+            log.warn("[Bookmark] 동시성 방어 (따닥 클릭 무시) - userId: {}, videoId: {}", userId, videoId);
         }
     }
 
     @Transactional(readOnly = true)
     public boolean isBookmarked(Long userId, Long videoId) {
-        return bookmarkRepository.existsByUserIdAndVideoMetadata_VideoId(userId, videoId);
-    }
-
-    private void updateRedis(Long videoId, int delta) {
-        String videoIdStr = String.valueOf(videoId);
-
-        Boolean hasKey = stringRedisTemplate.opsForHash().hasKey(KEY_VIDEO_COUNT, videoIdStr);
-        if (Boolean.FALSE.equals(hasKey)) {
-            long dbRealCount = bookmarkRepository.countByVideoMetadata_VideoId(videoId);
-            stringRedisTemplate.opsForHash().put(KEY_VIDEO_COUNT, videoIdStr, String.valueOf(dbRealCount));
-            log.info("[Redis Cache] 비어있는 캐시 초기화 세팅 완료 - videoId: {}, 카운트: {}", videoIdStr, dbRealCount);
-        }
-
-        // 증감 연산을 수행하고 그 결과값(최종 카운트)을 리턴받음
-        Long currentCount = stringRedisTemplate.opsForHash().increment(KEY_VIDEO_COUNT, videoIdStr, delta);
-
-        if (currentCount != null && currentCount < 0) {
-            log.error("🚨 [Redis 오염 감지] 비디오 {}의 카운트가 {}이 되었습니다. DB 기준으로 즉시 강제 동기화합니다.", videoIdStr, currentCount);
-
-            // 즉시 DB에서 진짜 숫자 검증
-            currentCount = bookmarkRepository.countByVideoMetadata_VideoId(videoId);
-
-            // 오염된 데이터를 찢어버리고 진짜 숫자로 덮어쓰기
-            stringRedisTemplate.opsForHash().put(KEY_VIDEO_COUNT, videoIdStr, String.valueOf(currentCount));
-            log.info("[Redis 복구 완료] 비디오 {} 카운트를 {}으로 덮어씌웠습니다.", videoIdStr, currentCount);
-        }
-
-        // 4. 안전한 최신 카운트로 랭킹(ZSet) 덮어쓰기 (increment 대신 add 사용)
-        stringRedisTemplate.opsForZSet().add(KEY_RANKING, videoIdStr, currentCount != null ? currentCount.doubleValue() : 0.0);
-
-        // 5. 스케줄러 동기화 큐 적재
-        stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);
+        return bookmarkRepository.existsByUserIdAndVideoId(userId, videoId);
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,22 +19,27 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.likeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateLikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.dislikeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateDislikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.superLikeCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateSuperLikeCount(@Param("videoId") Long videoId, @Param("count") int count);
 
+    @Transactional
     @Modifying(clearAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.bookmarkCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateBookmarkCount(@Param("videoId") Long videoId, @Param("count") int count);
 
+    @Transactional
     @Query("SELECT v FROM VideoMetadata v WHERE v.bookmarkCount > 0")
     List<VideoMetadata> findAllWithBookmarks();
 
