@@ -11,5 +11,5 @@ import java.util.List;
 public interface UserTagRepository extends JpaRepository<UserTag, Long> {
 
     @Query("SELECT ut.tag FROM UserTag ut JOIN ut.tag t WHERE ut.user.id = :userId AND t.parent IS NOT NULL")
-    List<Tag> findChildTagsByUserId(@Param("userId") Long userID);
+    List<Tag> findChildTagsByUserId(@Param("userId") Long userId);
 }
