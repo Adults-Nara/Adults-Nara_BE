@@ -5,13 +5,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.OffsetDateTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class PointTransactionHistoryRequest {
-    private OffsetDateTime startDate;
-    private OffsetDateTime endDate;
+    private String startDate; // "26-02-01" 포멧으로
+    private String endDate;
 }

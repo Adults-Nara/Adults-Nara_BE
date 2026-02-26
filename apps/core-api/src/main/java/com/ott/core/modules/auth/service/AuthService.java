@@ -3,12 +3,14 @@ package com.ott.core.modules.auth.service;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.User;
+import com.ott.common.persistence.entity.UserPointBalance;
 import com.ott.common.persistence.enums.BanStatus;
 import com.ott.core.global.security.jwt.JwtTokenProvider;
 import com.ott.core.modules.auth.dto.KakaoTokenResponse;
 import com.ott.core.modules.auth.dto.KakaoUserInfoResponse;
 import com.ott.core.modules.auth.dto.LoginResponse;
 import com.ott.core.modules.auth.dto.TokenRefreshResponse;
+import com.ott.core.modules.point.repository.PointRepository;
 import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 /**
@@ -35,6 +38,7 @@ public class AuthService {
     private final KakaoOAuthService kakaoOAuthService;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final PointRepository pointRepository;
 
     /**
      * 카카오 로그인 처리
@@ -108,6 +112,12 @@ public class AuthService {
                 }
 
                 userRepository.save(user);
+                pointRepository.save(UserPointBalance.builder()
+                                .userId(user.getId())
+                                .currentBalance(0)
+                                .lastUpdatedAt(OffsetDateTime.now())
+                            .build());
+
                 isNewUser = true;
                 log.info("[카카오 로그인] 신규 사용자 자동 회원가입 - userId: {}, email: {}", user.getId(), user.getEmail());
             }

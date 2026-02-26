@@ -115,8 +115,20 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
+        ZoneId zoneId = ZoneId.of("Asia/Seoul");
+
+        OffsetDateTime start = LocalDate.parse(req.getStartDate())
+                .atStartOfDay(zoneId)
+                .toOffsetDateTime();
+
+        OffsetDateTime end = LocalDate.parse(req.getEndDate())
+                .plusDays(1)
+                .atStartOfDay(zoneId)
+                .toOffsetDateTime()
+                .minusNanos(1);
+
         List<PointTransaction> transactions = pointTransactionRepository
-                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, req.getStartDate(), req.getEndDate());
+                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
         return transactions.stream()
                 .map(PointTransactionHistoryResponse::from)
                 .toList();
