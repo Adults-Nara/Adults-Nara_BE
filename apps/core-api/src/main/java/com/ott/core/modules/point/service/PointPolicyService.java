@@ -1,5 +1,7 @@
 package com.ott.core.modules.point.service;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.PointPolicyEntity;
 import com.ott.common.persistence.enums.PointPolicy;
 import com.ott.core.modules.point.dto.PointPolicyResponse;
@@ -35,7 +37,7 @@ public class PointPolicyService {
     @Transactional
     public void updatePolicyValue(PointPolicy policy, int newValue) {
         PointPolicyEntity entity = policyRepository.findById(policy)
-                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 정책입니다: " + policy));
+                .orElseThrow(() -> new BusinessException(ErrorCode.POLICY_NOT_FOUND));
 
         entity.updateValue(newValue);
     }

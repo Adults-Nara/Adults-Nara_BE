@@ -5,12 +5,14 @@ import com.ott.core.modules.point.dto.PointPolicyResponse;
 import com.ott.core.modules.point.dto.PointPolicyUpdateRequest;
 import com.ott.core.modules.point.service.PointPolicyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 @RequestMapping("/api/v1/admin/point/policies")
 public class PointPolicyController {
 
