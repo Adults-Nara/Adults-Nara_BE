@@ -27,8 +27,6 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-    listener:
-      ack-mode: manual
 
 server:
   port: ${CORE_API_PORT:8080}
