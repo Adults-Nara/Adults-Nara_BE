@@ -21,6 +21,8 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
                         OffsetDateTime startOfDay, OffsetDateTime endOfDay);
 
         @Modifying(clearAutomatically = true, flushAutomatically = true)
-        @Query("UPDATE UserPointBalance b SET b.currentBalance = :newBalance, b.lastUpdatedAt = CURRENT_TIMESTAMP WHERE b.userId = :userId")
-        void updateUserPoint(@Param("userId") Long userId, @Param("newBalance") int newBalance);
+        @Query("UPDATE UserPointBalance b SET b.currentBalance = :newBalance, b.lastUpdatedAt = :newUpdatedAt WHERE b.userId = :userId")
+        void updateUserPoint(@Param("userId") Long userId,
+                             @Param("newBalance") int newBalance,
+                             @Param("newUpdatedAt") OffsetDateTime newUpdatedAt);
 }

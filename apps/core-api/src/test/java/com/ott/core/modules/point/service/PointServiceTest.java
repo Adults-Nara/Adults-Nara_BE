@@ -71,7 +71,8 @@ class PointServiceTest {
                 // then
                 int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
                 verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
+                verify(pointTransactionRepository).updateUserPoint(eq(userId), eq(expectedNewBalance),
+                                any(OffsetDateTime.class));
         }
 
         @Test
@@ -146,7 +147,8 @@ class PointServiceTest {
                 int expectedNewBalance = currentBalance + expectedRewardAmount;
 
                 verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(pointTransactionRepository).updateUserPoint(userId, expectedNewBalance);
+                verify(pointTransactionRepository).updateUserPoint(eq(userId), eq(expectedNewBalance),
+                                any(OffsetDateTime.class));
         }
 
         @Test
@@ -173,10 +175,10 @@ class PointServiceTest {
                 Long userId = 1L;
                 String startDate = "2026-02-01";
                 String endDate = "2026-02-02";
-                java.time.ZoneId zoneId = java.time.ZoneId.of("Asia/Seoul");
-                OffsetDateTime startOfDay = java.time.LocalDate.parse(startDate).atStartOfDay(zoneId)
+                OffsetDateTime startOfDay = java.time.LocalDate.parse(startDate).atStartOfDay(java.time.ZoneOffset.UTC)
                                 .toOffsetDateTime();
-                OffsetDateTime endOfDay = java.time.LocalDate.parse(endDate).plusDays(1).atStartOfDay(zoneId)
+                OffsetDateTime endOfDay = java.time.LocalDate.parse(endDate).plusDays(1)
+                                .atStartOfDay(java.time.ZoneOffset.UTC)
                                 .toOffsetDateTime().minusNanos(1);
                 PointTransactionHistoryRequest request = new PointTransactionHistoryRequest(startDate, endDate);
 

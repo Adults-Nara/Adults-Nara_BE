@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.springframework.transaction.annotation.Propagation;
@@ -38,8 +38,8 @@ public class PointService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
         // 1. 오늘 이미 적립한 횟수 조회
-        OffsetDateTime startOfToday = LocalDate.now(ZoneId.of("Asia/Seoul"))
-                .atStartOfDay(ZoneId.of("Asia/Seoul"))
+        OffsetDateTime startOfToday = LocalDate.now(ZoneOffset.UTC)
+                .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime();
 
         int currentCount = pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(
@@ -72,7 +72,8 @@ public class PointService {
             pointTransactionRepository.save(transaction);
 
             // 5. 사용자 실제 잔액 업데이트
-            pointTransactionRepository.updateUserPoint(userId, newBalance);
+            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
 
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
             log.warn("중복 광고 적립 요청 감지 및 차단: {}", txKey);
@@ -101,7 +102,9 @@ public class PointService {
                     .balanceAfterTransaction(newBalance)
                     .build();
             pointTransactionRepository.save(transaction);
-            pointTransactionRepository.updateUserPoint(userId, newBalance);
+
+            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
         } catch (DataIntegrityViolationException e) {
             log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_PURCHASE_REWARD);
@@ -119,15 +122,14 @@ public class PointService {
 
     @Transactional(readOnly = true)
     public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
-        ZoneId zoneId = ZoneId.of("Asia/Seoul");
 
         OffsetDateTime start = LocalDate.parse(req.getStartDate())
-                .atStartOfDay(zoneId)
+                .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime();
 
         OffsetDateTime end = LocalDate.parse(req.getEndDate())
                 .plusDays(1)
-                .atStartOfDay(zoneId)
+                .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime()
                 .minusNanos(1);
 
