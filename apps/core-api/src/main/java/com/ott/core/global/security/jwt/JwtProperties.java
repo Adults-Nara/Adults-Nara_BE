@@ -19,9 +19,9 @@ public class JwtProperties {
 
     /**
      * Access Token 만료 시간 (밀리초)
-     * 기본값: 1시간 (3600000ms)
+     * 기본값: 30분 (1800000ms)
      */
-    private long accessTokenExpiration = 3600000L;
+    private long accessTokenExpiration = 1800000L;
 
     /**
      * Refresh Token 만료 시간 (밀리초)
