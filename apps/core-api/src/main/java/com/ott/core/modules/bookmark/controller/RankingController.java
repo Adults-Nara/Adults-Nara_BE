@@ -12,15 +12,17 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/ranking")
 @RequiredArgsConstructor
-
 public class RankingController {
 
     private final RankingService rankingService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<RankingResponse>>> getTop10Ranking(){
-        List<RankingResponse> top10Videos = rankingService.getTop10Videos();
-        return ResponseEntity.ok(ApiResponse.success(top10Videos));
+    public ResponseEntity<ApiResponse<List<RankingResponse>>> getBookmarkRanking(
+        @RequestParam(name = "limit", defaultValue = "10") int limit) {
+
+        List<RankingResponse> rankingList = rankingService.getTopBookmarkVideos(limit);
+
+        return ResponseEntity.ok(ApiResponse.success(rankingList));
     }
 }
 

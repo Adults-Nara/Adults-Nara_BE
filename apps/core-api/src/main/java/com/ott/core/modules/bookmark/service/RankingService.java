@@ -23,44 +23,47 @@ public class RankingService {
 
     private static final String KEY_RANKING = "video:ranking";
 
+    /**
+     * [Step 3] Redis에 저장된 카운트를 통해 실시간 인기 차트 제공
+     */
     @Transactional(readOnly = true)
-    public List<RankingResponse> getTop10Videos() {
-        // Redis ZSet에서 상위 10개 ID와 점수(Score)를 내림차순으로 가져옴 (0등 ~ 9등)
-        Set<ZSetOperations.TypedTuple<String>> top10Tuples =
-                stringRedisTemplate.opsForZSet().reverseRangeWithScores(KEY_RANKING, 0, 9);
+    public List<RankingResponse> getTopBookmarkVideos(int limit) {
+        // 1. Redis에서 순위대로 꺼내옴
+        Set<ZSetOperations.TypedTuple<String>> topRankings = stringRedisTemplate.opsForZSet()
+                .reverseRangeWithScores(KEY_RANKING, 0, limit - 1);
 
-        // 랭킹 데이터가 없으면 빈 리스트 반환
-        if (top10Tuples == null || top10Tuples.isEmpty()) {
-            return Collections.emptyList();
+        if (topRankings == null || topRankings.isEmpty()) {
+            return List.of();
         }
 
-        // 빠른 조회를 위해 Redis에서 꺼낸 데이터를 Map과 List로 분리
-        List<Long> videoIds = new ArrayList<>();
-        Map<Long, Double> scoreMap = new HashMap<>(); // videoId -> 점수
-        Map<Long, Integer> rankMap = new HashMap<>(); // videoId -> 순위(1, 2, 3...)
+        List<Long> rankedVideoIds = new ArrayList<>();
+        Map<Long, Double> scoreMap = new HashMap<>();
 
+        for (ZSetOperations.TypedTuple<String> tuple : topRankings) {
+            String value = tuple.getValue();
+            if (value != null) {
+                Long videoId = Long.valueOf(value);
+                rankedVideoIds.add(videoId);
+                scoreMap.put(videoId, tuple.getScore());
+            }
+        }
+
+        // 2. DB에서 메타데이터 긁어오기 (순서 섞임 주의)
+        List<VideoMetadata> metadataList = videoMetadataRepository.findAllByVideoIdIn(rankedVideoIds);
+        Map<Long, VideoMetadata> metadataMap = metadataList.stream()
+                .collect(Collectors.toMap(VideoMetadata::getVideoId, m -> m));
+
+        // 3. Redis가 알려준 정확한 순서대로 재배치하여 DTO 응답
+        List<RankingResponse> responseList = new ArrayList<>();
         int currentRank = 1;
-        for (ZSetOperations.TypedTuple<String> tuple : top10Tuples) {
-            Long videoId = Long.valueOf(tuple.getValue());
-            Double score = tuple.getScore() != null ? tuple.getScore() : 0.0;
 
-            videoIds.add(videoId);
-            scoreMap.put(videoId, score);
-            rankMap.put(videoId, currentRank++);
+        for (Long videoId : rankedVideoIds) {
+            VideoMetadata metadata = metadataMap.get(videoId);
+            if (metadata != null && !metadata.isDeleted()) {
+                responseList.add(RankingResponse.of(currentRank++, metadata, scoreMap.get(videoId)));
+            }
         }
 
-        // DB에서 메타데이터 일괄 조회
-        List<VideoMetadata> metadataList = videoMetadataRepository.findAllByVideoIdIn(videoIds);
-
-        // 애플리케이션 메모리 단에서 Redis가 알려준 순위 재정렬
-        return metadataList.stream()
-                .map(meta -> RankingResponse.of(
-                        rankMap.get(meta.getVideoId()), // Map에서 순위 꺼내오기
-                        meta,
-                        scoreMap.get(meta.getVideoId()) // Map에서 실시간 점수 꺼내오기
-                ))
-                // DTO에 부여된 rank(순위) 필드를 기준으로 오름차순(1위 -> 10위) 정렬
-                .sorted(Comparator.comparingInt(RankingResponse::getRank))
-                .collect(Collectors.toList());
+        return responseList;
     }
 }
