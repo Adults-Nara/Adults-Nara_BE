@@ -3,12 +3,12 @@ package com.ott.core.modules.tag.service;
 import com.ott.common.persistence.entity.*;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.common.util.IdGenerator;
-import com.ott.core.modules.preference.repository.UserPreferenceRepository;
 import com.ott.core.modules.tag.dto.response.ChildTagResponse;
 import com.ott.core.modules.tag.dto.response.TagVideoResponse;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
+import com.ott.core.modules.usertag.repository.UserTagRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.service.SignedCookieProcessor;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
@@ -38,7 +38,7 @@ class TagServiceTest {
     @Autowired private UserRepository userRepository;
     @Autowired private TagRepository tagRepository;
     @Autowired private VideoMetadataRepository videoMetadataRepository;
-    @Autowired private UserPreferenceRepository userPreferenceRepository;
+    @Autowired private UserTagRepository userTagRepository;
     @Autowired private TagService tagService;
     @Autowired private VideoTagRepository videoTagRepository;
     @Autowired private WatchHistoryRepository watchHistoryRepository;
@@ -74,23 +74,22 @@ class TagServiceTest {
     }
 
     @Test
-    @DisplayName("사용자와 자식 태그 목록을 점수 내림차순으로 반환")
+    @DisplayName("사용자와 자식 태그 목록 반환")
     void 자식태그_정상반환() {
         User user = saveUser("user@test.com", "유저");
         Tag parentTag = saveParentTag("기술");
         Tag javaTag = saveChildTag("자바", parentTag);
         Tag springTag = saveChildTag("스프링", parentTag);
 
-        userPreferenceRepository.save(new UserPreference(user, javaTag, 5.0));
-        userPreferenceRepository.save(new UserPreference(user, springTag, 10.0));
+        userTagRepository.save(UserTag.builder().user(user).tag(javaTag).build());
+        userTagRepository.save(UserTag.builder().user(user).tag(springTag).build());
 
         em.flush();
         em.clear();
 
         List<ChildTagResponse> result = tagService.getUserChildTags(user.getId());
         assertThat(result).hasSize(2);
-        assertThat(result.getFirst().tagName()).isEqualTo("스프링");
-        assertThat(result.getLast().tagName()).isEqualTo("자바");
+        assertThat(result).extracting("tagName").containsExactlyInAnyOrder("자바", "스프링");
     }
 
     @Test
@@ -100,8 +99,8 @@ class TagServiceTest {
         Tag parentTag = saveParentTag("기술");
         Tag javaTag = saveChildTag("자바", parentTag);
 
-        userPreferenceRepository.save(new UserPreference(user, parentTag, 20.0));
-        userPreferenceRepository.save(new UserPreference(user, javaTag, 10.0));
+        userTagRepository.save(UserTag.builder().user(user).tag(parentTag).build());
+        userTagRepository.save(UserTag.builder().user(user).tag(javaTag).build());
 
         em.flush();
         em.clear();

@@ -4,11 +4,11 @@ import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.WatchHistory;
-import com.ott.core.modules.preference.repository.UserPreferenceRepository;
 import com.ott.core.modules.tag.dto.response.ChildTagResponse;
 import com.ott.core.modules.tag.dto.response.TagVideoResponse;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
+import com.ott.core.modules.usertag.repository.UserTagRepository;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class TagService {
 
-    private final UserPreferenceRepository userPreferenceRepository;
+    private final UserTagRepository userTagRepository;
     private final VideoTagRepository videoTagRepository;
     private final UserRepository userRepository;
     private final WatchHistoryRepository watchHistoryRepository;
 
     public List<ChildTagResponse> getUserChildTags(Long userId) {
-        List<Tag> tagList = userPreferenceRepository.findChildTagsByUserId(userId);
+        List<Tag> tagList = userTagRepository.findChildTagsByUserId(userId);
         return tagList.stream()
                 .map(tag -> new ChildTagResponse(
                         String.valueOf(tag.getId()),
