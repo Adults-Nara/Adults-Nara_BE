@@ -10,6 +10,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PointTransactionHistoryRequest {
-    private String startDate; // "26-02-01" 포멧으로
+    private String startDate; // "yyyy-MM-dd" 형식
     private String endDate;
 }
