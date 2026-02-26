@@ -30,13 +30,9 @@ public class Bookmark extends BaseEntity {
     @JoinColumn(name = "video_metadata_id", nullable = false)
     private VideoMetadata videoMetadata;
 
-    private OffsetDateTime createdAt;
-
-
     public Bookmark(User user, VideoMetadata videoMetadata) {
         this.user = user;
         this.videoMetadata = videoMetadata;
-        createdAt = OffsetDateTime.now();
     }
 
     @PrePersist
