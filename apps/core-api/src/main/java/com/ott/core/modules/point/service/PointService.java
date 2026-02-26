@@ -79,7 +79,7 @@ public class PointService {
 
     // 상품 구매 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void rewardPurchaseReward(Long userId, ProductPurchaseRequest req) {
+    public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
         int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
 
         int rewardAmount = Math.toIntExact((req.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);

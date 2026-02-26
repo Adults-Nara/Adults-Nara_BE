@@ -122,7 +122,7 @@ class PointServiceTest {
         given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
 
         // when
-        pointService.rewardPurchaseReward(userId, request);
+        pointService.rewardPurchaseBonus(userId, request);
 
         // then
         int expectedRewardAmount = Math.toIntExact((request.getPrice() * PointPolicy.PURCHASE_RATE.getValue()) / 100);
