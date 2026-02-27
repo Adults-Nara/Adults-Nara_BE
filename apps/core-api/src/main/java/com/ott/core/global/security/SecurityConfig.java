@@ -125,7 +125,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
 
                         // --- 특정 유저 시청 통계 조회 (관리자) ---
-                        .requestMatchers("/api/v1/stats/*/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/stats/{userId:\\d+}/**").hasRole("ADMIN")
 
                         // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
                         .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
