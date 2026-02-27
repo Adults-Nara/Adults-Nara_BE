@@ -94,8 +94,7 @@ public class SecurityConfig {
 
                         // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
                         .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**").authenticated()
-//                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
 
                         // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
