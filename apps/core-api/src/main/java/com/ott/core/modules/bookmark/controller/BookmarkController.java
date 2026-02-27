@@ -1,7 +1,10 @@
 package com.ott.core.modules.bookmark.controller;
 
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.response.ApiResponse;
+import com.ott.core.modules.bookmark.dto.BookmarkPageResponse;
 import com.ott.core.modules.bookmark.dto.BookmarkStatusResponseDto;
+import com.ott.core.modules.bookmark.dto.BookmarkSummaryResponse;
 import com.ott.core.modules.bookmark.service.BookmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,5 +44,24 @@ public class BookmarkController {
         BookmarkStatusResponseDto responseDto = BookmarkStatusResponseDto.from(status);
 
         return ApiResponse.success(responseDto);
+    }
+
+    // 찜 재생목록 요약 조회
+    @GetMapping("/summary")
+    public ApiResponse<BookmarkSummaryResponse> getBookmarkSummary(@AuthenticationPrincipal String userId) {
+        BookmarkSummaryResponse response = bookmarkService.getBookmarkSummary(Long.parseLong(userId));
+        return ApiResponse.success(response);
+    }
+
+    // 찜한 영상 목록 조회
+    @GetMapping
+    public ApiResponse<BookmarkPageResponse> getBookmarkList(
+            @AuthenticationPrincipal String userId,
+            @RequestParam VideoType videoType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        BookmarkPageResponse response = bookmarkService.getBookmarkList(Long.parseLong(userId), videoType, page, size);
+        return ApiResponse.success(response);
     }
 }
