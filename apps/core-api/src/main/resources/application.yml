@@ -48,8 +48,8 @@ aws:
 # JWT 설정
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 1800000
-  refresh-token-expiration: 1209600000
+  access-token-expiration: 36000000
+  refresh-token-expiration: 3600000000000000
 
 
 oauth2:
