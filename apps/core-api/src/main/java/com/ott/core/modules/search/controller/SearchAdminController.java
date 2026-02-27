@@ -17,9 +17,9 @@ public class SearchAdminController implements SearchAdminApiDocs {
     private final VideoSyncService videoSyncService;
     @Override
     @PostMapping("/sync")
-    public ResponseEntity<ApiResponse<String>> syncData() {
+    public ApiResponse<String> syncData() {
         videoSyncService.syncAllVideosToElasticsearch();
         String message = "✅ 엘라스틱서치 데이터 동기화가 백그라운드에서 완료되었습니다. 콘솔 로그를 확인하세요!";
-        return ResponseEntity.ok(ApiResponse.success(message));
+        return ApiResponse.success(message);
     }
 }

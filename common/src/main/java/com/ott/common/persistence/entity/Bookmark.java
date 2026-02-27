@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.OffsetDateTime;
+
 
 @Entity
 @Getter
@@ -27,7 +29,6 @@ public class Bookmark extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "video_metadata_id", nullable = false)
     private VideoMetadata videoMetadata;
-
 
     public Bookmark(User user, VideoMetadata videoMetadata) {
         this.user = user;

@@ -28,9 +28,9 @@ public interface RecommendationApiDocs {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 피드 조회 성공 (데이터가 없으면 빈 배열 반환)")
     })
-    ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getFeed(
+    ApiResponse<SliceResponse<VideoFeedResponseDto>> getFeed(
             @Parameter(description = "조회할 사용자의 고유 ID", example = "9999", required = true)
-            Long userId,
+            String userId,
 
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
             @Min(0) int page,
@@ -43,8 +43,8 @@ public interface RecommendationApiDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     })
-    ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getVerticalFeed(
-            @Parameter(description = "사용자 ID") Long userId,
+    ApiResponse<SliceResponse<VideoFeedResponseDto>> getVerticalFeed(
+            @Parameter(description = "사용자 ID") String userId,
             @Parameter(description = "가져올 개수 (기본 10)") @Min(1) @Max(50) int size
     );
 
@@ -54,7 +54,7 @@ public interface RecommendationApiDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     })
 
-    ResponseEntity<ApiResponse<List<VideoFeedResponseDto>>> getRelatedFeed(
+    ApiResponse<List<VideoFeedResponseDto>> getRelatedFeed(
             @Parameter(description = "현재 영상의 물리적 ID") Long videoId,
             @Parameter(description = "가져올 개수 (기본 10)") @Min(1) @Max(20) int size
     );

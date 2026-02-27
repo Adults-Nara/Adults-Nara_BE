@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "상호작용 API", description = "좋아요/싫어요 기능")
@@ -21,44 +22,44 @@ public class InteractionController {
     // 좋아요
     @Operation(summary = "좋아요 누르기", description = "해당 영상에 좋아요를 표시합니다.")
     @PostMapping("/{videoId}/like")
-    public ResponseEntity<ApiResponse<?>> likeVideo(
+    public ApiResponse<?> likeVideo(
             @PathVariable Long videoId,
-            @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.LIKE);
-        return ResponseEntity.ok(ApiResponse.success());
+            @AuthenticationPrincipal String userId) {
+        interactionService.interact(Long.parseLong(userId), videoId, InteractionType.LIKE);
+        return ApiResponse.success();
     }
 
     // 싫어요
     @Operation(summary = "싫어요 누르기", description = "해당 영상에 싫어요를 표시합니다.")
     @PostMapping("/{videoId}/dislike")
-    public ResponseEntity<ApiResponse<?>> dislikeVideo(
+    public ApiResponse<?> dislikeVideo(
             @PathVariable Long videoId,
-            @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.DISLIKE);
-        return ResponseEntity.ok(ApiResponse.success());
+            @AuthenticationPrincipal String userId) {
+        interactionService.interact(Long.parseLong(userId), videoId, InteractionType.DISLIKE);
+        return ApiResponse.success();
     }
 
     // 슈퍼라이크 (왕따봉)
     @Operation(summary = "슈퍼라이크(왕따봉) 누르기", description = "해당 영상에 최고예요를 표시합니다.")
     @PostMapping("/{videoId}/superlike")
-    public ResponseEntity<ApiResponse<?>> superLikeVideo(
+    public ApiResponse<?> superLikeVideo(
             @PathVariable Long videoId,
-            @RequestParam Long userId) {
-        interactionService.interact(userId, videoId, InteractionType.SUPERLIKE);
-        return ResponseEntity.ok(ApiResponse.success());
+            @AuthenticationPrincipal String userId) {
+        interactionService.interact(Long.parseLong(userId), videoId, InteractionType.SUPERLIKE);
+        return ApiResponse.success();
     }
 
 
     @Operation(summary = "내 반응 조회", description = "내가 이 영상에 좋아요/싫어요를 했는지 확인합니다.")
     @GetMapping("/{videoId}/my-status")
-    public ResponseEntity<ApiResponse<InteractionStatusResponseDto>> getMyInteractionStatus(
+    public ApiResponse<InteractionStatusResponseDto> getMyInteractionStatus(
             @PathVariable Long videoId,
-            @RequestParam Long userId) {
+            @AuthenticationPrincipal String userId) {
 
-        InteractionType type = interactionService.getInteractionStatus(userId, videoId).orElse(null);
+        InteractionType type = interactionService.getInteractionStatus(Long.parseLong(userId), videoId).orElse(null);
 
         InteractionStatusResponseDto responseDto = InteractionStatusResponseDto.from(type);
 
-        return ResponseEntity.ok(ApiResponse.success(responseDto));
+        return ApiResponse.success(responseDto);
     }
 }
