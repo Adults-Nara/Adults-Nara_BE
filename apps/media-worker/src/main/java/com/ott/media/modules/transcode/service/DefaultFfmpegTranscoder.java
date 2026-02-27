@@ -32,34 +32,7 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
         }
 
         double fps = ffprobeMediaProbe.readFps(inputFile);
-
-        // 렌디션별 설정(출발점) - 운영하면서 콘텐츠에 맞게 조정
-        // bitrate는 예시값
-        Map<Integer, Rendition> ladder = Map.of(
-                360, new Rendition(640, 360,  900, 1100, 1800),
-                720, new Rendition(1280,720, 2800,3500, 5000),
-                1080, new Rendition(1920,1080,5500,6500, 9000)
-        );
-
-        // 필요한 화질만 만들기
-        List<Rendition> targets = new ArrayList<>();
-        for (Integer r : renditions) {
-            Rendition rendition = ladder.get(r);
-            if (rendition == null) {
-                throw new IllegalArgumentException("Unsupported rendition: " + r);
-            }
-            targets.add(rendition);
-        }
-
-        // 단순/안정: 화질별 FFmpeg 개별 실행(처음엔 이게 운영이 편함)
-        // 추후 성능 최적화로 1회 실행 멀티출력으로 바꿔도 됨.
-        for (Rendition rendition : targets) {
-            Path variantDir = outputRoot.resolve(rendition.height() + "p");
-            runSingleRendition(inputFile, variantDir, rendition, segmentSeconds, fps);
-        }
-
-        // master.m3u8 생성(직접 생성)
-        createMasterPlaylist(outputRoot, targets);
+        runMultiRenditionsHls(inputFile, outputRoot, segmentSeconds, fps);
     }
 
     private void runSingleRendition(Path inputFile, Path variantDir, Rendition rendition, int segSec, double fps) {
@@ -119,6 +92,69 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
         );
 
         processRunner.run(cmd, variantDir);
+    }
+
+    private void runMultiRenditionsHls(Path inputFile, Path outputRoot, int segSec, double fps) {
+        try {
+            Files.createDirectories(outputRoot);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create outputRoot: " + outputRoot, e);
+        }
+
+        int gop = calcGop(segSec, fps);
+
+        String filter = String.join("",
+                "[0:v]split=3[v360][v720][v1080];",
+                "[v360]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2[v360out];",
+                "[v720]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v720out];",
+                "[v1080]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2[v1080out]"
+        );
+
+        String segmentPattern = outputRoot.resolve("%v/seg_%05d.ts").toString();
+        String playlistPattern = outputRoot.resolve("%v/playlist.m3u8").toString();
+
+        List<String> cmd = new ArrayList<>(List.of(
+                "ffmpeg", "-y",
+                "-i", inputFile.toString(),
+                "-filter_complex", filter,
+
+                // 360p
+                "-map", "[v360out]", "-map", "0:a:0?",
+                "-c:v:0", "libx264", "-profile:v:0", "main", "-pix_fmt", "yuv420p",
+                "-b:v:0", "900k", "-maxrate:v:0", "1100k", "-bufsize:v:0", "1800k",
+                "-g:v:0", String.valueOf(gop), "-keyint_min:v:0", String.valueOf(gop),
+                "-sc_threshold:v:0", "0",
+                "-c:a:0", "aac", "-b:a:0", "128k", "-ac:a:0", "2",
+
+                // 720p
+                "-map", "[v720out]", "-map", "0:a:0?",
+                "-c:v:1", "libx264", "-profile:v:1", "main", "-pix_fmt", "yuv420p",
+                "-b:v:1", "2800k", "-maxrate:v:1", "3500k", "-bufsize:v:1", "5000k",
+                "-g:v:1", String.valueOf(gop), "-keyint_min:v:1", String.valueOf(gop),
+                "-sc_threshold:v:1", "0",
+                "-c:a:1", "aac", "-b:a:1", "128k", "-ac:a:1", "2",
+
+                // 1080p
+                "-map", "[v1080out]", "-map", "0:a:0?",
+                "-c:v:2", "libx264", "-profile:v:2", "main", "-pix_fmt", "yuv420p",
+                "-b:v:2", "5500k", "-maxrate:v:2", "6500k", "-bufsize:v:2", "9000k",
+                "-g:v:2", String.valueOf(gop), "-keyint_min:v:2", String.valueOf(gop),
+                "-sc_threshold:v:2", "0",
+                "-c:a:2", "aac", "-b:a:2", "128k", "-ac:a:2", "2",
+
+                // HLS
+                "-f", "hls",
+                "-hls_time", String.valueOf(segSec),
+                "-hls_playlist_type", "vod",
+                "-hls_flags", "independent_segments",
+                "-hls_segment_type", "mpegts",
+                "-master_pl_name", "master.m3u8",
+                "-var_stream_map", "v:0,a:0,name:360p v:1,a:1,name:720p v:2,a:2,name:1080p",
+                "-hls_segment_filename", segmentPattern,
+                playlistPattern
+        ));
+
+        processRunner.run(cmd, outputRoot);
     }
 
     private void createMasterPlaylist(Path outputRoot, List<Rendition> renditions) {
