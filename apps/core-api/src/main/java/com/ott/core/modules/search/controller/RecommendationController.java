@@ -54,7 +54,7 @@ public class RecommendationController implements RecommendationApiDocs {
             @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed(Long.parseLong(userId), size);
+        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed((userId != null) ? Long.parseLong(userId) : null, size);
 
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
                 .map(VideoFeedResponseDto::from)
