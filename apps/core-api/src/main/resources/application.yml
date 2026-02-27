@@ -46,11 +46,12 @@ aws:
     ttl: 7200
 
 # JWT 설정
+# AccessToken: 10시간 (36000000ms) - 로그인 유지를 위해 넉넉하게 설정
+# RefreshToken: 90일 (7776000000ms) - Redis에서 관리하므로 로그아웃 시 즉시 무효화 가능
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: 36000000
-  refresh-token-expiration: 3600000000000000
-
+  refresh-token-expiration: 7776000000
 
 oauth2:
   kakao:
