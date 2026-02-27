@@ -32,7 +32,7 @@ public class RecommendationController implements RecommendationApiDocs {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed(Long.parseLong(userId), page, size);
+        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed((userId != null) ? Long.parseLong(userId) : null, page, size);
 
         // Document -> DTO 로 변환
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
