@@ -9,6 +9,7 @@ import com.ott.core.modules.search.dto.VideoFeedResponseDto;
 import com.ott.core.modules.search.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,12 +27,12 @@ public class RecommendationController implements RecommendationApiDocs {
     // ==========================================
     @Override
     @GetMapping("/feed")
-    public ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getFeed(
-            @RequestParam Long userId,
+    public ApiResponse<SliceResponse<VideoFeedResponseDto>> getFeed(
+            @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed(userId, page, size);
+        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed((userId != null) ? Long.parseLong(userId) : null, page, size);
 
         // Document -> DTO 로 변환
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
@@ -42,18 +43,18 @@ public class RecommendationController implements RecommendationApiDocs {
         boolean hasNext = rawDocuments.size() == size;
         SliceResponse<VideoFeedResponseDto> response = SliceResponse.of(dtoList, page, size, hasNext);
 
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ApiResponse.success(response);
     }
     // ==========================================
     // 세로 믹스 피드
     // ==========================================
     @Override
     @GetMapping("/feed/vertical")
-    public ResponseEntity<ApiResponse<SliceResponse<VideoFeedResponseDto>>> getVerticalFeed(
-            @RequestParam Long userId,
+    public ApiResponse<SliceResponse<VideoFeedResponseDto>> getVerticalFeed(
+            @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed(userId, size);
+        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed((userId != null) ? Long.parseLong(userId) : null, size);
 
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
                 .map(VideoFeedResponseDto::from)
@@ -63,7 +64,7 @@ public class RecommendationController implements RecommendationApiDocs {
         boolean hasNext = !rawDocuments.isEmpty();
         SliceResponse<VideoFeedResponseDto> sliceResponse = SliceResponse.of(dtoList, 0, size, hasNext);
 
-        return ResponseEntity.ok(ApiResponse.success(sliceResponse));
+        return ApiResponse.success(sliceResponse);
     }
 
     // ==========================================
@@ -71,7 +72,7 @@ public class RecommendationController implements RecommendationApiDocs {
     // ==========================================
     @Override
     @GetMapping("/{videoId}/related")
-    public ResponseEntity<ApiResponse<List<VideoFeedResponseDto>>> getRelatedFeed(
+    public ApiResponse<List<VideoFeedResponseDto>> getRelatedFeed(
             @PathVariable("videoId") Long videoId,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -82,6 +83,6 @@ public class RecommendationController implements RecommendationApiDocs {
                 .toList();
 
         // 가로 스와이프는 보통 10~20개로 고정되어 끝나는 경우가 많아 일반 List
-        return ResponseEntity.ok(ApiResponse.success(dtoList));
+        return ApiResponse.success(dtoList);
     }
 }
