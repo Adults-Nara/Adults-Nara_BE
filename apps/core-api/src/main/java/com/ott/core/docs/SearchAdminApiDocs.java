@@ -19,5 +19,5 @@ public interface SearchAdminApiDocs {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "동기화 성공 메시지 반환")
     })
-    ResponseEntity<com.ott.common.response.ApiResponse<String>> syncData();
+    com.ott.common.response.ApiResponse<String> syncData();
 }
