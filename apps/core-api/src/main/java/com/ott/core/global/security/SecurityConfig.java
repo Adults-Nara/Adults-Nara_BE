@@ -101,6 +101,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
                         .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
 
+                        // --- 시청 통계 (로그인 필수) ---
+                        .requestMatchers("/api/v1/stats/me/**").authenticated()
+
                         // ===================================================================
                         // 3. UPLOADER 전용
                         // ===================================================================
@@ -120,6 +123,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
+
+                        // --- 특정 유저 시청 통계 조회 (관리자) ---
+                        .requestMatchers("/api/v1/stats/*/tags").hasRole("ADMIN")
 
                         // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
                         .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
