@@ -40,6 +40,7 @@ public enum ErrorCode {
     VIDEO_INVALID_SIZE("VIDEO-400-005", 400, "비디오 사이즈가 올바르지 않습니다."),
     VIDEO_NOT_PUBLIC("VIDEO-403-001", 403, "비디오가 public이 아닙니다."),
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
+    VIDEO_DELETION_FORBIDDEN("VIDEO-403-003", 403, "요청한 영상을 삭제할 권한이 없습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
 
     AD_NOT_FOUND("AD-404-001", 404, "광고를 찾을 수 없습니다."),

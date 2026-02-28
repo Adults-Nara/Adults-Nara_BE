@@ -16,7 +16,9 @@ import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.repository.VideoRepository;
+import com.ott.core.modules.video.service.S3ObjectStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,8 @@ public class BackofficeService {
     private final TagRepository tagRepository;
     private final UserQueryRepository userQueryRepository;
     private final UserRepository userRepository;
+    private final S3ObjectStorage s3ObjectStorage;
+    private @Value("${aws.s3.source-bucket}") String bucket;
 
     public Page<UploaderContentResponse> getUploaderContents(Long userId, String keyword, Pageable pageable) {
         return videoMetadataQueryRepository.findUploaderContents(userId, keyword, pageable);
@@ -84,7 +88,19 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
+            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllById(request.videoIds());
+            videoMetadataList.stream()
+                    .forEach(videoMetadata -> {
+                        if (!videoMetadata.getUserId().equals(userId)) {
+                            throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+                        }
+                    });
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
+        }
+
+        videoRepository.softDeleteByIds(request.videoIds());
+        for (Long videoId : request.videoIds()) {
+            s3ObjectStorage.deleteByPrefix(bucket, "videos/" + videoId + "/");
         }
     }
 
