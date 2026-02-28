@@ -39,6 +39,7 @@ oauth2:
   state:
     secret: ${OAUTH_STATE_SECRET}
     cookie-secure: false
+    validate: false
 
 jwt:
   secret: ${JWT_SECRET}
