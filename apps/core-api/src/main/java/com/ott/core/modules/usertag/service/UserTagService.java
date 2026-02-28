@@ -28,6 +28,11 @@ public class UserTagService {
         User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         List<Tag> tagList = tagRepository.findAllById(tagIds);
+
+        if (tagList.size() != tagIds.size()) {
+            throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
+        }
+
         List<UserTag> userTagList = tagList.stream()
                 .map(tag -> UserTag.builder()
                         .user(user)
@@ -39,6 +44,7 @@ public class UserTagService {
 
     @Transactional
     public void updateUserTags(Long userId, List<Long> newTagIds) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         List<Long> currentTagIds = userTagRepository.findTagIdsByUserId(userId);
 
         List<Long> toDelete = currentTagIds.stream()
@@ -54,8 +60,12 @@ public class UserTagService {
         }
 
         if (!toAdd.isEmpty()) {
-            User user = userRepository.findById(userId).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
             List<Tag> tagList = tagRepository.findAllById(toAdd);
+
+            if (tagList.size() != toAdd.size()) {
+                throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
+            }
+
             List<UserTag> userTagList = tagList.stream()
                     .map(tag -> UserTag.builder()
                             .user(user)

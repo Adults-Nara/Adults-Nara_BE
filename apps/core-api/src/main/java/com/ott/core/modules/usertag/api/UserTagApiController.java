@@ -23,7 +23,7 @@ public class UserTagApiController {
     }
 
     @PutMapping
-    public ApiResponse<?> updateUserTags(@AuthenticationPrincipal String userId, @RequestBody UpdateUserTagRequest request) {
+    public ApiResponse<?> updateUserTags(@AuthenticationPrincipal String userId, @Valid @RequestBody UpdateUserTagRequest request) {
         userTagService.updateUserTags(Long.parseLong(userId), request.tagIds());
         return ApiResponse.success();
     }
