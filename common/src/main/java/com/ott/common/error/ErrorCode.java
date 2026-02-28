@@ -40,8 +40,10 @@ public enum ErrorCode {
     VIDEO_INVALID_SIZE("VIDEO-400-005", 400, "비디오 사이즈가 올바르지 않습니다."),
     VIDEO_NOT_PUBLIC("VIDEO-403-001", 403, "비디오가 public이 아닙니다."),
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
+    VIDEO_DELETION_FORBIDDEN("VIDEO-403-003", 403, "요청한 영상을 삭제할 권한이 없습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
 
+    AD_NOT_FOUND("AD-404-001", 404, "광고를 찾을 수 없습니다."),
 
     DAILY_LIMIT_OVER("POINT-400-001", 400, "오늘 참여 가능한 광고 시청 횟수를 모두 채우셨습니다."),
     DUPLICATE_AD_REWARD("POINT-409-001", 409, "이미 포인트 적립이 완료된 영상입니다."),

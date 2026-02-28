@@ -1,12 +1,16 @@
 package com.ott.core.modules.bookmark.controller;
 
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.response.ApiResponse;
+import com.ott.core.modules.bookmark.dto.BookmarkPageResponse;
 import com.ott.core.modules.bookmark.dto.BookmarkStatusResponseDto;
+import com.ott.core.modules.bookmark.dto.BookmarkSummaryResponse;
 import com.ott.core.modules.bookmark.service.BookmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "북마크 API", description = "찜하기 기능")
@@ -20,25 +24,44 @@ public class BookmarkController {
     // 찜하기
     @Operation(summary = "찜하기(북마크) 토글", description = "누를 때마다 찜 상태가 켜지거나 꺼집니다.")
     @PostMapping("/{videoId}")
-    public ResponseEntity<ApiResponse<?>> toggleBookmark(
+    public ApiResponse<?> toggleBookmark(
             @PathVariable("videoId") Long videoId,
-            @RequestParam Long userId) {
+            @AuthenticationPrincipal String userId) {
 
-        bookmarkService.toggleBookmark(userId, videoId);
+        bookmarkService.toggleBookmark(Long.parseLong(userId), videoId);
 
-        return ResponseEntity.ok(ApiResponse.success());
+        return ApiResponse.success();
     }
 
     // 북마크 여부 조회
     @Operation(summary = "북마크 여부 조회", description = "내가 이 영상을 찜했는지 확인합니다.")
     @GetMapping("/{videoId}/status")
-    public ResponseEntity<ApiResponse<BookmarkStatusResponseDto>> getBookmarkStatus(
+    public ApiResponse<BookmarkStatusResponseDto> getBookmarkStatus(
             @PathVariable("videoId") Long videoId,
-            @RequestParam Long userId) {
+            @AuthenticationPrincipal String userId) {
 
-        boolean status = bookmarkService.isBookmarked(userId, videoId);
+        boolean status = bookmarkService.isBookmarked(Long.parseLong(userId), videoId);
         BookmarkStatusResponseDto responseDto = BookmarkStatusResponseDto.from(status);
 
-        return ResponseEntity.ok(ApiResponse.success(responseDto));
+        return ApiResponse.success(responseDto);
+    }
+
+    // 찜 재생목록 요약 조회
+    @GetMapping("/summary")
+    public ApiResponse<BookmarkSummaryResponse> getBookmarkSummary(@AuthenticationPrincipal String userId) {
+        BookmarkSummaryResponse response = bookmarkService.getBookmarkSummary(Long.parseLong(userId));
+        return ApiResponse.success(response);
+    }
+
+    // 찜한 영상 목록 조회
+    @GetMapping
+    public ApiResponse<BookmarkPageResponse> getBookmarkList(
+            @AuthenticationPrincipal String userId,
+            @RequestParam VideoType videoType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        BookmarkPageResponse response = bookmarkService.getBookmarkList(Long.parseLong(userId), videoType, page, size);
+        return ApiResponse.success(response);
     }
 }

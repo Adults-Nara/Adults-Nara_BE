@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +15,14 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     Optional<VideoMetadata> findByVideoId(Long videoId);
 
+    List<VideoMetadata> findAllByVideoIdIsIn(Collection<Long> videoIds);
+
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
+
+    List<VideoMetadata> findAllByTitleIsNullAndCreatedAtBeforeAndDeletedIsFalse(OffsetDateTime createdAtBefore);
+
+    @Query(value = "SELECT * FROM video_metadata WHERE is_ad = true AND deleted = false ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<VideoMetadata> findRandomAd();
 
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
     @Modifying(clearAutomatically = true)
