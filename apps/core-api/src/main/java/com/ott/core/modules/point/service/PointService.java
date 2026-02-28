@@ -73,7 +73,7 @@ public class PointService {
             pointTransactionRepository.save(transaction);
 
             // 5. 사용자 실제 잔액 업데이트
-            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            OffsetDateTime nowUtc = transaction.getCreatedAt();
             pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
 
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
@@ -104,7 +104,7 @@ public class PointService {
                     .build();
             pointTransactionRepository.save(transaction);
 
-            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
+            OffsetDateTime nowUtc = transaction.getCreatedAt();
             pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
         } catch (DataIntegrityViolationException e) {
             log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
