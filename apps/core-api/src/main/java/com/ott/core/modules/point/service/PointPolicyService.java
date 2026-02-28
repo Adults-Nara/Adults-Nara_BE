@@ -9,6 +9,7 @@ import com.ott.core.modules.point.repository.PointPolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -38,7 +39,10 @@ public class PointPolicyService {
                 .toList();
     }
 
-    @CacheEvict(value = {"pointPolicy", "allPointPolicies"}, key = "#policy.name()", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "pointPolicy", key = "#policy.name()"),
+            @CacheEvict(value = "allPointPolicies", allEntries = true)
+    })
     @Transactional
     public void updatePolicyValue(PointPolicy policy, int newValue) {
         PointPolicyEntity entity = policyRepository.findById(policy)
