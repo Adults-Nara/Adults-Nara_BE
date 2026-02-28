@@ -25,7 +25,7 @@ public class UploadCleanupScheduler {
     @Value("${aws.s3.source-bucket}")
     private String bucket;
 
-    @Scheduled(cron = "0 */1 * * * *", zone = "Asia/Seoul") // 15분마다
+    @Scheduled(cron = "0 */15 * * * *", zone = "Asia/Seoul") // 15분마다
     @Transactional
     public void cleanup() {
         // 하루 전 ~ 하루 전 + 1시간
