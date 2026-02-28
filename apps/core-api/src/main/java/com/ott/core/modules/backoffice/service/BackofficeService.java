@@ -88,7 +88,7 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllById(request.videoIds());
+            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
             videoMetadataList.stream()
                     .forEach(videoMetadata -> {
                         if (!videoMetadata.getUserId().equals(userId)) {
@@ -99,9 +99,19 @@ public class BackofficeService {
         }
 
         videoRepository.softDeleteByIds(request.videoIds());
-        for (Long videoId : request.videoIds()) {
-            s3ObjectStorage.deleteByPrefix(bucket, "videos/" + videoId + "/");
-        }
+
+        // 커밋 이후 실행
+        List<Long> ids = List.copyOf(request.videoIds());
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (Long videoId : ids) {
+                            s3ObjectStorage.deleteByPrefix(bucket, "videos/" + videoId + "/");
+                        }
+                    }
+                }
+        );
     }
 
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
