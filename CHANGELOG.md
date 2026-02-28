@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.7.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.3...v0.7.0) (2026-02-28)
+
+
+### Features
+
+* S3 삭제 구현 ([a55edfe](https://github.com/Adults-Nara/Adults-Nara_BE/commit/a55edfefbde9f41e0f89d37e3bbf77e9118f2383))
+* 광고 API 만들기 ([3e693f0](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3e693f028276bc5b2e8d007cc93bf9d87c6926b2))
+
+
+### Bug Fixes
+
+* accessToken 시간 수정 ([b53979a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b53979a31ef9838087f03a5c13024fe68b33e27a))
+* application 파일 수정 ([3740cce](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3740cce9b7def65b2b15d1c45f70e0608144fe2a))
+* application 파일 오타 수정 ([d945f1e](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d945f1e024414a5ab9c17fdd7ee50b11fad2c511))
+* AuthController 타이밍 공격 수정 ([0ed5658](https://github.com/Adults-Nara/Adults-Nara_BE/commit/0ed5658400192eea027fc634677c4f12cbee19c6))
+* AuthController 환경변수 수정 ([08d7d10](https://github.com/Adults-Nara/Adults-Nara_BE/commit/08d7d10d2a9528f3ed54a6879eb3ebf1a3945975))
+* CORS ([71bc9ee](https://github.com/Adults-Nara/Adults-Nara_BE/commit/71bc9ee740d08292267ae6fc41e56f52d1d050d8))
+* ErrorCode IOE httpStatus 500으로 수정 ([f631cc7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f631cc7928b64981ec743c9c553118678739f488))
+* Gemini 지적 사항 수정 ([9a650bd](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9a650bd9fa5e227fe4e88522485c5c358b7b49e5))
+* JWT 서멍 키와 ouath state 서명 키 분리 ([b2f71f7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b2f71f701d676ae724f45fad36fe50d80eb951f7))
+* SecurityConfig 세션 관련 수정 및 accessToken 시간 수정 ([9811596](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9811596af61c01090be81a65d75e91ac134e465e))
+* SecurityConfig 코드 리뷰 반영 ([092133f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/092133f4ced9c75e3c0aa6c2b59aa96866e22d8f))
+* SecurityConfig 특정 유저 시청 통계 조회 로직 추가 ([c9fd764](https://github.com/Adults-Nara/Adults-Nara_BE/commit/c9fd7649c74d62f3e8fd593752274c8ecef40ac2))
+* Spring Profiles 환경변수화 ([26be91b](https://github.com/Adults-Nara/Adults-Nara_BE/commit/26be91b0dd7b3768062b64acc91ef573514dda91))
+* Swagger API Auth 토큰 입력 칸 추가 ([5ecb39f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5ecb39ffdfe871f5ddb598ddfffca1a97773d7fe))
+* Swagger API server 호출 설정 변경 ([fd90749](https://github.com/Adults-Nara/Adults-Nara_BE/commit/fd90749ef5c3671e2b159323921a776072d2431c))
+* VideoService userId 검증 로직 추가 ([1cfc46b](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1cfc46b201729d40d1d22e51cd17fdccfb1e42e2))
+* VideoType Long, Short Enum String으로 변경 ([2b9b55d](https://github.com/Adults-Nara/Adults-Nara_BE/commit/2b9b55d3bfde903a42f3ba5458de4396aa810065))
+* 광고 API 성능 개선 ([d6750c5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d6750c522e5d87d1e5b26947fa47dc49ba82bd68))
+* 구글 코드 리뷰 피드백 ([68bec1b](https://github.com/Adults-Nara/Adults-Nara_BE/commit/68bec1b9755d40a08ae84a89660d14e1b3899eb3))
+* 로그아웃 로직 구현 및 토큰 수정 ([4e7c05e](https://github.com/Adults-Nara/Adults-Nara_BE/commit/4e7c05ee60dc45588ed472256ce85b1daee7342a))
+* 시간 UTC 설정으로 고정 ([7b56d4f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7b56d4f57343f4df7da5ed23dc5c545e966222b0))
+* 영상 API 유저 ID 받기 및 업로드 양식 수정 ([1c9d12a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1c9d12a8a9b105048be16c18348128d47ec6b26f))
+* 영상 업로드 API swagger 파일 업로드 설정 ([a303c54](https://github.com/Adults-Nara/Adults-Nara_BE/commit/a303c54f91af12d8e88530869c65bba581cdee8f))
+* 영상 트랜스코딩 실패 재시도 로직 수정 및 오류 해결 ([9ad30ee](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9ad30eedf421c3e8bb5bd2d6784e5af2a344b722))
+* 영상 트랜스코딩 실패 재시도 로직 추가 ([f5f70c5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f5f70c5d17a704cc4c04456177864dad001d0a4e))
+* 제미나이 피드백 반영 ([b6ccd2b](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b6ccd2b1b958bfcf8bfd1d75a9aefc94d64caeb7))
+* 코드 리뷰 수정 ([2876a83](https://github.com/Adults-Nara/Adults-Nara_BE/commit/2876a83d7ac428f669b4a6db51500f930314a7af))
+* 코드 리뷰 피드백 반영 ([46f4cc0](https://github.com/Adults-Nara/Adults-Nara_BE/commit/46f4cc0106120b5ed4b29632865c806b0a1c8dec))
+
 ## [0.6.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.2...v0.6.3) (2026-02-24)
 
 
