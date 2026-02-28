@@ -109,30 +109,7 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        if (validateState) {
-            if (state == null || !verifySignedState(state)) {
-                log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
-                throw new BusinessException(ErrorCode.UNAUTHORIZED);
-            }
-
-            String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
-            if (cookieNonce == null) {
-                log.warn("[카카오 OAuth] nonce 쿠키 없음 - CSRF 공격 의심");
-                throw new BusinessException(ErrorCode.UNAUTHORIZED);
-            }
-
-            String stateNonce = state.split("\\.")[0];
-            if (!MessageDigest.isEqual(
-                    stateNonce.getBytes(StandardCharsets.UTF_8),
-                    cookieNonce.getBytes(StandardCharsets.UTF_8))) {
-                log.warn("[카카오 OAuth] nonce 불일치 - CSRF 공격 의심");
-                throw new BusinessException(ErrorCode.UNAUTHORIZED);
-            }
-
-            clearNonceCookie(response);
-        } else {
-            log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
-        }
+        validateOAuthState(state, request, response);
 
         log.info("[카카오 OAuth] 콜백 수신 - 인가코드 길이: {}", code.length());
         LoginResponse loginResponse = authService.kakaoLogin(code, state);
@@ -200,6 +177,38 @@ public class AuthController {
     }
 
     // ====== Private Methods ======
+
+    /**
+     * OAuth state/nonce 검증을 수행합니다.
+     * validateState=false(로컬 테스트 모드)인 경우 검증을 우회합니다.
+     */
+    private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
+        if (!validateState) {
+            log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
+            return;
+        }
+
+        if (state == null || !verifySignedState(state)) {
+            log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
+        if (cookieNonce == null) {
+            log.warn("[카카오 OAuth] nonce 쿠키 없음 - CSRF 공격 의심");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        String stateNonce = state.split("\\.")[0];
+        if (!MessageDigest.isEqual(
+                stateNonce.getBytes(StandardCharsets.UTF_8),
+                cookieNonce.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("[카카오 OAuth] nonce 불일치 - CSRF 공격 의심");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        clearNonceCookie(response);
+    }
 
     private String generateSignedState(String nonce) {
         long timestamp = System.currentTimeMillis() / 1000;
