@@ -51,10 +51,10 @@ public class PointService {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
         }
 
-        // 2. 잔액 조회 및 수정
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
+        // 2. 잔액 조회
+        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
         int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
-        int newBalance = currentBalance + adRewardValue;
+        int newBalance = currentBalance.getCurrentBalance() + adRewardValue;
 
         // 3. 고유 키 생성 (비즈니스 파라미터 조합)
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
@@ -74,8 +74,8 @@ public class PointService {
 
             // 5. 사용자 실제 잔액 업데이트
             OffsetDateTime nowUtc = transaction.getCreatedAt();
-            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
-
+            currentBalance.setCurrentBalance(newBalance);
+            currentBalance.setLastUpdatedAt(OffsetDateTime.now(nowUtc.getOffset()));
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
             log.warn("중복 광고 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_AD_REWARD);
@@ -85,11 +85,11 @@ public class PointService {
     // 상품 구매 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
+        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
 
         int purchaseRate = pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE);
         int rewardAmount = Math.toIntExact((req.getPrice() * purchaseRate) / 100);
-        int newBalance = currentBalance + rewardAmount;
+        int newBalance = currentBalance.getCurrentBalance() + rewardAmount;
 
         String txKey = PointKeyGenerator.generatePurchaseKey(userId, req.getOrderId());
 
@@ -105,7 +105,8 @@ public class PointService {
             pointTransactionRepository.save(transaction);
 
             OffsetDateTime nowUtc = transaction.getCreatedAt();
-            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
+            currentBalance.setCurrentBalance(newBalance);
+            currentBalance.setLastUpdatedAt(OffsetDateTime.now(nowUtc.getOffset()));
         } catch (DataIntegrityViolationException e) {
             log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_PURCHASE_REWARD);
