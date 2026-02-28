@@ -16,13 +16,7 @@ public class AdService {
     private final VideoMetadataRepository videoMetadataRepository;
 
     public VideoMetadata getAd() {
-        List<VideoMetadata> ads = videoMetadataRepository.findAllByIsAdAndDeleted(true, false);
-
-        if (ads.isEmpty()) {
-            throw new BusinessException(ErrorCode.AD_NOT_FOUND);
-        }
-
-        int randomIndex = ThreadLocalRandom.current().nextInt(ads.size());
-        return ads.get(randomIndex);
+        return videoMetadataRepository.findRandomAd()
+                .orElseThrow(() -> new BusinessException(ErrorCode.AD_NOT_FOUND));
     }
 }
