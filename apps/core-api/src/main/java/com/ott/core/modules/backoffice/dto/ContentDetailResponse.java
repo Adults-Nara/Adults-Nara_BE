@@ -12,6 +12,7 @@ public record ContentDetailResponse(
         String thumbnailUrl,
         Visibility visibility,
         List<String> tagIds,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        String otherVideoUrl
 ) {
 }

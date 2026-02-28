@@ -9,10 +9,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class BackofficeController {
     @GetMapping("/uploader/contents")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<Page<UploaderContentResponse>> getMyContents(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -32,7 +34,7 @@ public class BackofficeController {
             @RequestParam(defaultValue = "DESC") Sort.Direction direction
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<UploaderContentResponse> result = backofficeService.getUploaderContents(userId, keyword, pageable);
+        Page<UploaderContentResponse> result = backofficeService.getUploaderContents(Long.parseLong(userId), keyword, pageable);
         return ApiResponse.success(result);
     }
 
@@ -53,21 +55,22 @@ public class BackofficeController {
     @GetMapping("/contents/{videoId}")
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentDetailResponse> getContentDetail(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId
     ) {
-        ContentDetailResponse response = backofficeService.getContentDetail(userId, videoId);
+        ContentDetailResponse response = backofficeService.getContentDetail(Long.parseLong(userId), videoId);
         return ApiResponse.success(response);
     }
 
-    @PutMapping("/contents/{videoId}")
+    @PutMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
-            @RequestBody ContentUpdateRequest request
+            @RequestPart("image") MultipartFile image,
+            @RequestPart("data") ContentUpdateRequest request
     ) {
-        ContentUpdateResponse response = backofficeService.updateContent(userId, videoId, request);
+        ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
         return ApiResponse.success(response);
     }
 
@@ -75,13 +78,13 @@ public class BackofficeController {
     @PreAuthorize("hasAnyRole('UPLOADER', 'ADMIN')")
     public ApiResponse<?> deleteContent(
             Authentication authentication,
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal String userId,
             @RequestBody ContentDeleteRequest request
     ) {
         boolean isAdmin = authentication.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
-        backofficeService.deleteContent(userId, isAdmin, request);
+        backofficeService.deleteContent(Long.parseLong(userId), isAdmin, request);
         return ApiResponse.success();
     }
 

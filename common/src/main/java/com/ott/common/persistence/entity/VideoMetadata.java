@@ -12,7 +12,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Table(name = "video_metadata")
+@Table(name = "video_metadata", indexes = {
+        @Index(name = "idx_video_metadata_video_id", columnList = "videoId", unique = true)
+})
 public class VideoMetadata extends BaseEntity {
     @Id
     @Column(name = "video_metadata_id")
@@ -46,6 +48,10 @@ public class VideoMetadata extends BaseEntity {
     @Builder.Default
     private int bookmarkCount = 0;
 
+    //광고 여부
+    @Builder.Default
+    private boolean isAd = false;
+
     private int commentCount;
 
     private Integer duration;
@@ -54,6 +60,7 @@ public class VideoMetadata extends BaseEntity {
 
     private String otherVideoUrl;
 
+    @Enumerated(EnumType.STRING)
     private VideoType videoType;
 
     private boolean deleted;

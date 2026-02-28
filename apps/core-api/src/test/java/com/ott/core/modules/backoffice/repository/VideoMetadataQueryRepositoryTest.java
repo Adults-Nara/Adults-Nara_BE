@@ -22,17 +22,19 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Transactional
 @ActiveProfiles("test")
 class VideoMetadataQueryRepositoryTest {
 
+    @MockitoBean private SignedCookieProcessor signedCookieProcessor;
+    @MockitoBean private software.amazon.awssdk.services.s3.S3Client s3Client;
+    @MockitoBean private software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
+
     @Autowired EntityManager em;
-    @Autowired
-    VideoMetadataQueryRepository videoMetadataQueryRepository;
-    @MockitoBean SignedCookieProcessor signedCookieProcessor;
+    @Autowired VideoMetadataQueryRepository videoMetadataQueryRepository;
 
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
@@ -47,9 +49,13 @@ class VideoMetadataQueryRepositoryTest {
         Video video3 = new Video(3L, null);
         video3.setVisibility(Visibility.PUBLIC);
 
+        Video video4 = new Video(4L, null);
+        video4.setVisibility(Visibility.PUBLIC);
+
         em.persist(video1);
         em.persist(video2);
         em.persist(video3);
+        em.persist(video4);
 
         VideoMetadata videoMetadata1 = VideoMetadata.builder()
                 .id(1L).videoId(1L).userId(USER_ID)
@@ -64,7 +70,7 @@ class VideoMetadataQueryRepositoryTest {
                 .title("삭제된 강의").description("삭제됨").deleted(true).build();
 
         VideoMetadata videoMetadata4 = VideoMetadata.builder()
-                .id(4L).videoId(1L).userId(OTHER_USER_ID)
+                .id(4L).videoId(4L).userId(OTHER_USER_ID)
                 .title("다른 유저 강의").description("다른 유저").deleted(false).build();
         em.persist(videoMetadata1);
         em.persist(videoMetadata2);

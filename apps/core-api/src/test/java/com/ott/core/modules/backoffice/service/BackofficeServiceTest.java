@@ -19,8 +19,7 @@ import static org.mockito.Mockito.when;
 class BackofficeServiceTest {
 
     @Mock VideoMetadataQueryRepository videoMetadataQueryRepository;
-    @InjectMocks
-    BackofficeService backofficeService;
+    @InjectMocks BackofficeService backofficeService;
 
     @Test
     void getUploaderContents_정상호출() {
