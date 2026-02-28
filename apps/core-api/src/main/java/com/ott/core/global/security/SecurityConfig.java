@@ -69,6 +69,9 @@ public class SecurityConfig {
                                                 // --- 비디오 (비로그인 시청 가능) ---
                                                 .requestMatchers("/api/v1/videos/*/play").permitAll()
 
+                                                // --- 광고 ---
+                                                .requestMatchers("/api/v1/ads").permitAll()
+
                                                 // --- 검색/추천 (비로그인 사용 가능) ---
                                                 .requestMatchers("/api/v1/search/**").permitAll()
                                                 .requestMatchers("/api/v1/recommendations/**").permitAll()
