@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.0...v0.7.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* 누락된 환경변수 추가 ([df00657](https://github.com/Adults-Nara/Adults-Nara_BE/commit/df00657282d45d9c9d864244876281621fbe0665))
+
 ## [0.7.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.6.3...v0.7.0) (2026-02-28)
 
 
