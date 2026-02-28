@@ -10,18 +10,22 @@ import com.ott.common.persistence.enums.BanStatus;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.repository.UserQueryRepository;
-import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
+import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.repository.VideoRepository;
+import com.ott.core.modules.video.service.S3ObjectStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -37,6 +41,13 @@ public class BackofficeService {
     private final TagRepository tagRepository;
     private final UserQueryRepository userQueryRepository;
     private final UserRepository userRepository;
+    private final S3ObjectStorage s3ObjectStorage;
+
+    @Value("${aws.s3.source-bucket}")
+    private String bucket;
+
+    @Value("${aws.cloudfront.domain}")
+    private String cloudFrontDomain;
 
     public Page<UploaderContentResponse> getUploaderContents(Long userId, String keyword, Pageable pageable) {
         return videoMetadataQueryRepository.findUploaderContents(userId, keyword, pageable);
@@ -48,7 +59,7 @@ public class BackofficeService {
 
 
     @Transactional
-    public ContentUpdateResponse updateContent(long userId, Long videoId, ContentUpdateRequest request) {
+    public ContentUpdateResponse updateContent(long userId, Long videoId, MultipartFile image, ContentUpdateRequest request) {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
@@ -57,7 +68,6 @@ public class BackofficeService {
 
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
-        if (request.thumbnailUrl() != null) videoMetadata.setThumbnailUrl(request.thumbnailUrl());
         if (request.visibility() != null) {
             Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
             video.setVisibility(request.visibility());
@@ -70,6 +80,17 @@ public class BackofficeService {
                     .map(tag -> new VideoTag(videoMetadata, tag))
                     .toList();
             videoTagRepository.saveAll(videoTags);
+        }
+
+        if (image != null && !image.isEmpty()) {
+            String thumbnailExtension = image.getOriginalFilename().substring(image.getOriginalFilename().lastIndexOf("."));
+            String thumbnailKey = "videos/" + videoId + "/outputs/thumbnail" + thumbnailExtension;
+            try {
+                s3ObjectStorage.save(bucket, thumbnailKey, image.getBytes(), image.getContentType());
+            } catch (IOException e) {
+                throw new BusinessException(ErrorCode.IO_EXCEPTION);
+            }
+            videoMetadata.setThumbnailUrl("https://" + cloudFrontDomain + "/" + thumbnailKey);
         }
 
         return new ContentUpdateResponse(String.valueOf(videoId));
