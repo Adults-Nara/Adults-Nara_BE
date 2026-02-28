@@ -9,10 +9,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,14 +62,15 @@ public class BackofficeController {
         return ApiResponse.success(response);
     }
 
-    @PutMapping("/contents/{videoId}")
+    @PutMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
-            @RequestBody ContentUpdateRequest request
+            @RequestPart("image") MultipartFile image,
+            @RequestPart ContentUpdateRequest request
     ) {
-        ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, request);
+        ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
         return ApiResponse.success(response);
     }
 
