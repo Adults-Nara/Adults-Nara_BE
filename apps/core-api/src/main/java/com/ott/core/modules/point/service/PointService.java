@@ -37,7 +37,7 @@ public class PointService {
     private final PointPolicyService pointPolicyService;
 
     // 광고 시청 시 포인트 지급
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
         // 1. 오늘 이미 적립한 횟수 조회
         OffsetDateTime startOfToday = LocalDate.now(ZoneOffset.UTC)
@@ -57,7 +57,7 @@ public class PointService {
         int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
         int newBalance = currentBalance.getCurrentBalance() + adRewardValue;
 
-        // 3. 고유 키 생성 (비즈니스 파라미터 조합)
+        // 3. 고유 키 생성 (유저 Id + 비디오메타데이터 Id + 횟수) ==> 멱등성 유지
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
 
         try {
@@ -84,7 +84,7 @@ public class PointService {
     }
 
     // 상품 구매 시 포인트 지급
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
         UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
 
