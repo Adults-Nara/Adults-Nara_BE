@@ -15,6 +15,9 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
+    @Query(value = "SELECT * FROM video_metadata WHERE is_ad = true AND deleted = false ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<VideoMetadata> findRandomAd();
+
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
     @Modifying(clearAutomatically = true)
     @Query("UPDATE VideoMetadata v SET v.likeCount = :count WHERE v.videoId = :videoId")
