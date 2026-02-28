@@ -35,7 +35,8 @@
         { "name": "JWT_SECRET",                            "value": "${JWT_SECRET}" },
         { "name": "KAKAO_CLIENT_ID",                       "value": "${KAKAO_CLIENT_ID}" },
         { "name": "KAKAO_CLIENT_SECRET",                   "value": "${KAKAO_CLIENT_SECRET}" },
-        { "name": "OAUTH2_REDIRECT_URI",                   "value": "${OAUTH2_REDIRECT_URI}" }
+        { "name": "OAUTH2_REDIRECT_URI",                   "value": "${OAUTH2_REDIRECT_URI}" },
+        { "name": "OAUTH_STATE_SECRET",                    "value": "${OAUTH_STATE_SECRET}" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
