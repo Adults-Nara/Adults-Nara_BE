@@ -39,7 +39,12 @@ public class PointService {
     // 광고 시청 시 포인트 지급
     @Transactional(propagation = Propagation.REQUIRED)
     public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
-        // 1. 오늘 이미 적립한 횟수 조회
+        // 1. 잔액 조회
+        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
+        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
+        int newBalance = currentBalance.getCurrentBalance() + adRewardValue;
+
+        // 2. 오늘 광고로 적립한 횟수 조회
         OffsetDateTime startOfToday = LocalDate.now(ZoneOffset.UTC)
                 .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime();
@@ -51,11 +56,6 @@ public class PointService {
         if (currentCount >= dailyLimit) {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
         }
-
-        // 2. 잔액 조회
-        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
-        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
-        int newBalance = currentBalance.getCurrentBalance() + adRewardValue;
 
         // 3. 고유 키 생성 (유저 Id + 비디오메타데이터 Id + 횟수) ==> 멱등성 유지
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
