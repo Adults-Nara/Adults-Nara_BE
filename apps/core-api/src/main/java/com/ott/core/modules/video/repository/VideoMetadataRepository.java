@@ -19,7 +19,7 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
-    List<VideoMetadata> findAllByTitleIsNullAndCreatedAtBetweenAndDeletedIsFalse(OffsetDateTime createdAtAfter, OffsetDateTime createdAtBefore);
+    List<VideoMetadata> findAllByTitleIsNullAndCreatedAtBeforeAndDeletedIsFalse(OffsetDateTime createdAtBefore);
 
     @Query(value = "SELECT * FROM video_metadata WHERE is_ad = true AND deleted = false ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<VideoMetadata> findRandomAd();

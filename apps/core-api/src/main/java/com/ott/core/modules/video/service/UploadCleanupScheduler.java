@@ -28,11 +28,10 @@ public class UploadCleanupScheduler {
     @Scheduled(cron = "0 */15 * * * *", zone = "Asia/Seoul") // 15분마다
     @Transactional
     public void cleanup() {
-        // 하루 전 ~ 하루 전 + 1시간
-        OffsetDateTime after = OffsetDateTime.now().minusDays(1);
-        OffsetDateTime before = after.plusHours(1);
+        // 하루 전 이전 데이터 조회
+        OffsetDateTime before = OffsetDateTime.now().minusDays(1);
 
-        List<VideoMetadata> cleanupTargets = videoMetadataRepository.findAllByTitleIsNullAndCreatedAtBetweenAndDeletedIsFalse(after, before);
+        List<VideoMetadata> cleanupTargets = videoMetadataRepository.findAllByTitleIsNullAndCreatedAtBeforeAndDeletedIsFalse(before);
 
         List<Long> videoIds = cleanupTargets.stream()
                 .map(VideoMetadata::getVideoId)
