@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.1...v0.7.2) (2026-02-28)
+
+
+### Bug Fixes
+
+* 스케쥴 15분 마다로 수정 ([bcd4d03](https://github.com/Adults-Nara/Adults-Nara_BE/commit/bcd4d0332d2151048ee197ed939a8622f1500363))
+* 조회 데이터를 특정 시점 이전으로 변경 ([07eb531](https://github.com/Adults-Nara/Adults-Nara_BE/commit/07eb531474520b9ecc5599da14d02b835b632c99))
+
 ## [0.7.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.0...v0.7.1) (2026-02-28)
 
 
