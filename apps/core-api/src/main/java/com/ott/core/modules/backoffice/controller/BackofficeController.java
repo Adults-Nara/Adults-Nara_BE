@@ -68,7 +68,7 @@ public class BackofficeController {
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
             @RequestPart("image") MultipartFile image,
-            @RequestPart ContentUpdateRequest request
+            @RequestPart("data") ContentUpdateRequest request
     ) {
         ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
         return ApiResponse.success(response);
