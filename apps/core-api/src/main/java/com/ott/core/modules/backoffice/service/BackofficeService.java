@@ -105,8 +105,30 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
+            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
+            videoMetadataList.stream()
+                    .forEach(videoMetadata -> {
+                        if (!videoMetadata.getUserId().equals(userId)) {
+                            throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+                        }
+                    });
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
         }
+
+        videoRepository.softDeleteByIds(request.videoIds());
+
+        // 커밋 이후 실행
+        List<Long> ids = List.copyOf(request.videoIds());
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (Long videoId : ids) {
+                            s3ObjectStorage.deleteByPrefix(bucket, "videos/" + videoId + "/");
+                        }
+                    }
+                }
+        );
     }
 
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {

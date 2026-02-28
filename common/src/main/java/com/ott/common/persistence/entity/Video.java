@@ -30,6 +30,8 @@ public class Video {
 
     private OffsetDateTime updatedAt;
 
+    private boolean deleted;
+
     protected Video() {}
 
     public Video(Long id, String sourceKey) {
@@ -90,6 +92,10 @@ public class Video {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
     }
 
     public void setProcessingStatus(ProcessingStatus processingStatus) {
