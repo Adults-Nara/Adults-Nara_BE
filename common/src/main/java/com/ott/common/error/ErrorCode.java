@@ -62,8 +62,10 @@ public enum ErrorCode {
 
     // ===== System / Sync (백그라운드 스케줄러 & Redis 세분화) =====
     REDIS_DATA_PARSING_ERROR("SYSTEM-500-001", 500, "Redis 캐시 데이터 파싱 중 오류가 발생했습니다."),
-    DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다.")
+    DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다."),
 
+    // ===== Tag =====
+    TAG_NOT_FOUND("TAG-404-001", 404, "태그를 찾을 수 없습니다.")
     ;
 
     private final String code;
