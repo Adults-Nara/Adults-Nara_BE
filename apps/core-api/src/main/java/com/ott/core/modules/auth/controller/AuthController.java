@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -51,12 +53,22 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            Environment environment,
             @Value("${oauth2.kakao.client-id}") String kakaoClientId,
             @Value("${oauth2.kakao.redirect-uri}") String kakaoRedirectUri,
             @Value("${oauth2.state.secret}") String stateSecret,
             @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie,
             @Value("${oauth2.state.validate:true}") boolean validateState
     ) {
+        // prod 환경에서 validateState=false면 앱 시작 자체를 막아 CSRF 취약점 방지
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        if (isProd && !validateState) {
+            throw new IllegalStateException(
+                    "[보안 오류] prod 환경에서 oauth2.state.validate=false 설정은 허용되지 않습니다. " +
+                            "CSRF 공격에 노출될 수 있으므로 즉시 설정을 수정하세요."
+            );
+        }
+
         this.authService = authService;
         this.kakaoClientId = kakaoClientId;
         this.kakaoRedirectUri = kakaoRedirectUri;
@@ -181,6 +193,7 @@ public class AuthController {
     /**
      * OAuth state/nonce 검증을 수행합니다.
      * validateState=false(로컬 테스트 모드)인 경우 검증을 우회합니다.
+     * prod 환경에서 validateState=false이면 생성자에서 앱 시작이 차단됩니다.
      */
     private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
         if (!validateState) {
@@ -188,10 +201,12 @@ public class AuthController {
             return;
         }
 
-        if (state == null || !verifySignedState(state)) {
-            log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
+        // state 서명 검증 + nonce 추출을 한 번에 처리 (파싱 중복 제거)
+        String stateNonce = getNonceIfStateIsValid(state)
+                .orElseThrow(() -> {
+                    log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
+                    return new BusinessException(ErrorCode.UNAUTHORIZED);
+                });
 
         String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
         if (cookieNonce == null) {
@@ -199,7 +214,6 @@ public class AuthController {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        String stateNonce = state.split("\\.")[0];
         if (!MessageDigest.isEqual(
                 stateNonce.getBytes(StandardCharsets.UTF_8),
                 cookieNonce.getBytes(StandardCharsets.UTF_8))) {
@@ -210,18 +224,20 @@ public class AuthController {
         clearNonceCookie(response);
     }
 
-    private String generateSignedState(String nonce) {
-        long timestamp = System.currentTimeMillis() / 1000;
-        String payload = nonce + "." + timestamp;
-        String signature = hmacSign(payload);
-        return payload + "." + signature;
-    }
-
-    private boolean verifySignedState(String state) {
+    /**
+     * state 서명 검증 및 만료 시간 확인 후 nonce를 반환합니다.
+     * 검증 실패 시 Optional.empty()를 반환합니다.
+     * 기존 verifySignedState(boolean 반환)에서 Optional<String> 반환으로 변경하여
+     * 파싱 중복을 제거하고 nonce를 한 번만 추출합니다.
+     */
+    private Optional<String> getNonceIfStateIsValid(String state) {
+        if (state == null) {
+            return Optional.empty();
+        }
         try {
             String[] parts = state.split("\\.");
             if (parts.length != 3) {
-                return false;
+                return Optional.empty();
             }
 
             String nonce = parts[0];
@@ -234,21 +250,28 @@ public class AuthController {
                     expectedSignature.getBytes(StandardCharsets.UTF_8),
                     signature.getBytes(StandardCharsets.UTF_8))) {
                 log.warn("[카카오 OAuth] state 서명 불일치");
-                return false;
+                return Optional.empty();
             }
 
             long timestamp = Long.parseLong(timestampStr);
             long now = System.currentTimeMillis() / 1000;
             if (now - timestamp > STATE_EXPIRY_SECONDS) {
                 log.warn("[카카오 OAuth] state 만료 - 생성: {}초 전", now - timestamp);
-                return false;
+                return Optional.empty();
             }
 
-            return true;
+            return Optional.of(nonce);
         } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
             log.warn("[카카오 OAuth] state 파싱 실패: {}", e.getMessage());
-            return false;
+            return Optional.empty();
         }
+    }
+
+    private String generateSignedState(String nonce) {
+        long timestamp = System.currentTimeMillis() / 1000;
+        String payload = nonce + "." + timestamp;
+        String signature = hmacSign(payload);
+        return payload + "." + signature;
     }
 
     private String hmacSign(String data) {
