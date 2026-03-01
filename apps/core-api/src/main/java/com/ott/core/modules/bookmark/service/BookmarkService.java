@@ -52,24 +52,34 @@ public class BookmarkService {
     public void toggleBookmark(Long userId, Long videoId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
         VideoMetadata metadata = videoMetadataRepository.findByVideoId(videoId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         Optional<Bookmark> existingBookmark = bookmarkRepository.findByUserAndVideoMetadata(user, metadata);
+
         try {
             if (existingBookmark.isPresent()) {
-                // 이미 찜했으면 -> 취소
                 bookmarkRepository.delete(existingBookmark.get());
                 bookmarkRepository.flush(); // DB에 쿼리를 즉시 날려 예외가 있는지 먼저 확인
                 updateRedis(videoId, -1);   // 예외가 안 터졌을 때만 Redis 연산 실행 (안전 보장)
             } else {
-                // 없으면 -> 찜하기
                 Bookmark newBookmark = new Bookmark(user, metadata);
                 bookmarkRepository.save(newBookmark);
                 bookmarkRepository.flush(); // DB 유니크 제약조건 위반 검사
                 updateRedis(videoId, 1);    // 정상 처리 시에만 Redis 연산 실행
             }
+
+            // 1. DB 저장이 완료된 후, 실제 북마크 개수를 다시 셉니다. (가장 정확한 팩트 데이터)
+            long realCount = bookmarkRepository.countByVideoId(videoId);
+            String videoIdStr = String.valueOf(videoId);
+
+            // 2. Redis ZSet 실시간 랭킹 차트 갱신
+            stringRedisTemplate.opsForZSet().add(KEY_RANKING, videoIdStr, realCount);
+
+            stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);
+
+            log.info("[Bookmark] 비디오 {} 북마크 변경 완료. 현재 총 카운트: {} (스케줄러 대기열 적재 완료)", videoIdStr, realCount);
+
         } catch (DataIntegrityViolationException e) {
 
             log.warn("[Bookmark] 동시 요청으로 인한 중복 방어 - userId: {}, videoId: {}", userId, videoId);
