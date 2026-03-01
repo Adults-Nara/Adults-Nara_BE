@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.2...v0.7.3) (2026-03-01)
+
+
+### Bug Fixes
+
+* 광고 API SecurityConfig 모두 허용 ([cae843c](https://github.com/Adults-Nara/Adults-Nara_BE/commit/cae843c81f92606ac764beb35a46a04354cae53f))
+* 광고 API SecurityConfig 모두 허용 ([ad60bde](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ad60bde530d0fc06cb760c424c44e9e405c30ada))
+* 로그아웃 로직 추가 및 배포 환경 uri 추가 ([0db766a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/0db766a22e4b0d415ade0fa9c68fe056ba50246f))
+* 리뷰 코드 수정 ([cfe867b](https://github.com/Adults-Nara/Adults-Nara_BE/commit/cfe867b978d672827b6c2a09a7937caad06a6c8a))
+* 중복 경고 로그 제거 ([5f87700](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5f87700f6213c7d0abf618afeea5d15e957bd4b7))
+* 코드 리뷰 ([7acb723](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7acb723759ad3a2acc4bdb32e97b0f3defae7a0a))
+* 코드 리뷰봇 반영 ([5e2acd8](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5e2acd81535757d13db147629c5279a09c48c487))
+
 ## [0.7.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.1...v0.7.2) (2026-02-28)
 
 
