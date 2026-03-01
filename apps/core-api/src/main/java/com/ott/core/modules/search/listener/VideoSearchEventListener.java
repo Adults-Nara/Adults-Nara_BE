@@ -30,7 +30,7 @@ public class VideoSearchEventListener {
     private final VideoSearchRepository videoSearchRepository;
 
     /**
-     * DB 저장이 완료(COMMIT)된 후, ES에 문서를 색인(Upsert)합니다.
+     * DB 저장이 완료된 후, ES에 문서를 색인
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -48,7 +48,7 @@ public class VideoSearchEventListener {
             List<String> tagNames = new ArrayList<>();
 
             for (Tag tag : tags) {
-                tagNames.add(tag.getTagName()); // 수정됨: getName() -> getTagName()
+                tagNames.add(tag.getTagName());
 
                 // 상위 태그가 있다면 ES에 같이 넣어줍니다.
                 if (tag.getParent() != null) {

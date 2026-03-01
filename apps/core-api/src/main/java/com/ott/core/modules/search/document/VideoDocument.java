@@ -16,7 +16,7 @@ import java.util.List;
 public class VideoDocument {
 
     @Id
-    private Long videoId; // 검색 결과 클릭 시 비디오로 바로가기 위해 videoId를 ES의 ID로 사용
+    private Long videoId;
 
     @Field(type = FieldType.Long)
     private Long metadataId;
@@ -24,19 +24,17 @@ public class VideoDocument {
     @Field(type = FieldType.Long)
     private Long userId;
 
-    // Nori 형태소 분석기가 적용된 검색용 필드
     @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
     private String title;
 
     @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
     private String description;
 
-    // 필터링용 필드 (Keyword 타입으로 정확도 일치 시 캐싱 활용)
     @Field(type = FieldType.Keyword)
     private VideoType videoType;
 
     @Field(type = FieldType.Keyword)
-    private List<String> tags; // VideoTag 테이블의 태그 이름들을 합쳐서 저장 (빠른 필터링용)
+    private List<String> tags;
 
     // 정렬(Sorting) 및 가중치 계산용 필드
     @Field(type = FieldType.Integer)
@@ -46,9 +44,8 @@ public class VideoDocument {
     private int likeCount;
 
     @Field(type = FieldType.Boolean)
-    private boolean deleted; // 소프트 딜리트 필터링용
+    private boolean deleted;
 
-    // 검색 조건으로는 안 쓰이지만, 검색 결과 리스트 UI를 그리기 위해 반환해 줄 데이터 (index = false로 메모리 최적화)
     @Field(type = FieldType.Keyword, index = false)
     private String thumbnailUrl;
 
