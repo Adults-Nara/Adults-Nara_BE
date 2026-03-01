@@ -59,7 +59,7 @@ public class RankingService {
 
         for (Long videoId : rankedVideoIds) {
             VideoMetadata metadata = metadataMap.get(videoId);
-            if (metadata != null && !metadata.isDeleted()) {
+            if (metadata != null) {
                 responseList.add(RankingResponse.of(currentRank++, metadata, scoreMap.get(videoId)));
             }
         }

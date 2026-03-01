@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,6 +43,9 @@ public class BackofficeService {
     private final UserQueryRepository userQueryRepository;
     private final UserRepository userRepository;
     private final S3ObjectStorage s3ObjectStorage;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String KEY_RANKING = "video:ranking";
 
     @Value("${aws.s3.source-bucket}")
     private String bucket;
@@ -113,6 +117,12 @@ public class BackofficeService {
                         }
                     });
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
+
+            // Redis 랭킹에서 삭제된 비디오 일괄 삭제
+            Object[] videoIdsToRemove = request.videoIds().stream()
+                    .map(String::valueOf)
+                    .toArray();
+            stringRedisTemplate.opsForZSet().remove(KEY_RANKING, videoIdsToRemove);
         }
 
         videoRepository.softDeleteByIds(request.videoIds());
