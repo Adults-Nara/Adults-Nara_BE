@@ -51,4 +51,17 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
     @Query("SELECT wh FROM WatchHistory wh WHERE wh.user.id = :userId AND wh.videoMetadata.id IN :videoMetadataIds AND wh.deleted = false ")
     List<WatchHistory> findByUserIdAndVideoMetadataIdIn(@Param("userId") Long userId,
                                                         @Param("videoMetadataIds") List<Long> videoMetadataIds);
+
+    @Query(value = """
+             SELECT t.tag_id, t.tag_name, SUM(wh.last_position)
+             FROM watch_history wh
+             JOIN video_tag vt ON wh.video_metadata_id = vt.video_metadata_id
+             JOIN tag t ON vt.tag_id = t.tag_id
+             WHERE wh.user_id = :userId
+               AND wh.deleted = false
+             GROUP BY t.tag_id, t.tag_name
+             ORDER BY SUM(wh.last_position) DESC 
+             LIMIT 8
+            """, nativeQuery = true)
+    List<Object[]> findTop8TagWatchStatsByUserId(@Param("userId") Long userId);
 }

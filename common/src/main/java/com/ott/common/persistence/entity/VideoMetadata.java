@@ -60,6 +60,7 @@ public class VideoMetadata extends BaseEntity {
 
     private String otherVideoUrl;
 
+    @Enumerated(EnumType.STRING)
     private VideoType videoType;
 
     private boolean deleted;

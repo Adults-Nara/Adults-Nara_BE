@@ -2,6 +2,7 @@ package com.ott.core.modules.tag.api;
 
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.tag.dto.response.ChildTagResponse;
+import com.ott.core.modules.tag.dto.response.ParentTagWithChildResponse;
 import com.ott.core.modules.tag.dto.response.TagVideoResponse;
 import com.ott.core.modules.tag.service.TagService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,12 @@ public class TagApiController {
             @PathVariable("tagId") Long tagId
     ) {
         List<TagVideoResponse> response = tagService.getVideosByTag(tagId, Long.parseLong(userId));
+        return ApiResponse.success(response);
+    }
+
+    @GetMapping("/parent-with-child")
+    public ApiResponse<List<ParentTagWithChildResponse>> getParentTagsWithChild() {
+        List<ParentTagWithChildResponse> response = tagService.getParentTagsWithChild();
         return ApiResponse.success(response);
     }
 }

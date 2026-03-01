@@ -5,7 +5,9 @@ import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.core.modules.tag.dto.response.ChildTagResponse;
+import com.ott.core.modules.tag.dto.response.ParentTagWithChildResponse;
 import com.ott.core.modules.tag.dto.response.TagVideoResponse;
+import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.usertag.repository.UserTagRepository;
@@ -28,6 +30,7 @@ public class TagService {
     private final VideoTagRepository videoTagRepository;
     private final UserRepository userRepository;
     private final WatchHistoryRepository watchHistoryRepository;
+    private final TagRepository tagRepository;
 
     public List<ChildTagResponse> getUserChildTags(Long userId) {
         List<Tag> tagList = userTagRepository.findChildTagsByUserId(userId);
@@ -73,6 +76,28 @@ public class TagService {
     private double calculateWatchProgressPercent(Integer lastPosition, Integer duration) {
         if (duration == null || duration <= 0 || lastPosition == null) return 0.0;
         return Math.min(100.0, (double) lastPosition / duration * 100);
+    }
+
+    public List<ParentTagWithChildResponse> getParentTagsWithChild() {
+        List<Tag> parentTags = tagRepository.findAllParentTags();
+        List<Tag> childTags = tagRepository.findAllChildTagsWithParent();
+
+        Map<Long, List<ChildTagResponse>> childrenByParentId = childTags.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getParent().getId(),
+                        Collectors.mapping(
+                                t -> new ChildTagResponse(String.valueOf(t.getId()), t.getTagName()),
+                                Collectors.toList()
+                        )
+                ));
+
+        return parentTags.stream()
+                .map(parent -> new ParentTagWithChildResponse(
+                        String.valueOf(parent.getId()),
+                        parent.getTagName(),
+                        childrenByParentId.getOrDefault(parent.getId(), List.of())
+                ))
+                .toList();
     }
 
 }

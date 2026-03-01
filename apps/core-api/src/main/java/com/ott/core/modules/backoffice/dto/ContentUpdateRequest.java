@@ -8,7 +8,6 @@ public record ContentUpdateRequest(
         String title,
         String description,
         Visibility visibility,
-        String thumbnailUrl,
         List<Long> tagIds
 ) {
 }

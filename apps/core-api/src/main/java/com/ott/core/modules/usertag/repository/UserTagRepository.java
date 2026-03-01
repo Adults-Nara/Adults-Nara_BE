@@ -12,4 +12,9 @@ public interface UserTagRepository extends JpaRepository<UserTag, Long> {
 
     @Query("SELECT ut.tag FROM UserTag ut JOIN ut.tag t WHERE ut.user.id = :userId AND t.parent IS NOT NULL")
     List<Tag> findChildTagsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT ut.tag.id FROM UserTag ut WHERE ut.user.id = :userId")
+    List<Long> findTagIdsByUserId(@Param("userId") Long userId);
+
+    void deleteByUserIdAndTagIdIn(Long userId, List<Long> tagIds);
 }
