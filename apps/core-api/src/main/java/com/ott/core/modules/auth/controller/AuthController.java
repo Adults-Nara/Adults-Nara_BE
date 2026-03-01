@@ -206,10 +206,7 @@ public class AuthController {
         }
 
         String stateNonce = getNonceIfStateIsValid(state)
-                .orElseThrow(() -> {
-                    log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
-                    return new BusinessException(ErrorCode.UNAUTHORIZED);
-                });
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
         String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
         if (cookieNonce == null) {
