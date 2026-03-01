@@ -61,7 +61,21 @@ public class VideoSyncService {
                     // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 ID로 태그를 꺼낸다.
                     List<String> tagNames = tagsByVideoId.getOrDefault(video.getId(), java.util.List.of());
 
-                    return VideoDocument.of(video, tagNames); // 조립
+                    return VideoDocument.builder()
+                            .videoId(video.getVideoId())
+                            .metadataId(video.getId()) // RDB 매핑용
+                            .userId(video.getUserId())
+                            .title(video.getTitle())
+                            .description(video.getDescription())
+                            .videoType(video.getVideoType())
+                            .tags(tagNames) // 계층형 태그 이름들이 모두 담김
+                            .viewCount(video.getViewCount())
+                            .likeCount(video.getLikeCount())
+                            .deleted(video.isDeleted())
+                            .thumbnailUrl(video.getThumbnailUrl())
+                            .duration(video.getDuration())
+                            .createdAt(video.getCreatedAt())
+                            .build();
                 }).toList();
 
                 // Bulk Insert
