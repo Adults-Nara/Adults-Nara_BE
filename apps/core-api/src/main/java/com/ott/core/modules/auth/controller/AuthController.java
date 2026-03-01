@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,8 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -38,9 +41,9 @@ public class AuthController {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final long STATE_EXPIRY_SECONDS = 300;
+    private static final long CLOCK_SKEW_TOLERANCE_SECONDS = 60; // 서버 시간 오차 허용 범위
     private static final String STATE_NONCE_COOKIE = "oauth_state_nonce";
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-    // RefreshToken 쿠키 유효기간: 90일 (초)
     private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = 90 * 24 * 60 * 60;
 
     private final AuthService authService;
@@ -48,24 +51,37 @@ public class AuthController {
     private final String kakaoRedirectUri;
     private final byte[] stateSigningKey;
     private final boolean secureCookie;
+    private final boolean validateState;
 
     public AuthController(
             AuthService authService,
+            Environment environment,
             @Value("${oauth2.kakao.client-id}") String kakaoClientId,
             @Value("${oauth2.kakao.redirect-uri}") String kakaoRedirectUri,
             @Value("${oauth2.state.secret}") String stateSecret,
-            @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie
+            @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie,
+            @Value("${oauth2.state.validate:true}") boolean validateState
     ) {
+        // validateState=false는 오직 'local' 또는 'test' 프로필에서만 허용
+        // 'prod' 체크 대신 허용 환경을 명시하여 프로필명 변경에도 안전하게 대응
+        if (!validateState) {
+            List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
+            if (!activeProfiles.contains("local") && !activeProfiles.contains("test")) {
+                throw new IllegalStateException(
+                        "[보안 오류] 운영 환경에서 oauth2.state.validate=false 설정은 허용되지 않습니다. " +
+                                "CSRF 공격에 노출될 수 있으므로 즉시 설정을 수정하세요."
+                );
+            }
+        }
+
         this.authService = authService;
         this.kakaoClientId = kakaoClientId;
         this.kakaoRedirectUri = kakaoRedirectUri;
         this.stateSigningKey = Base64.getDecoder().decode(stateSecret);
         this.secureCookie = secureCookie;
+        this.validateState = validateState;
     }
 
-    /**
-     * 카카오 로그인 URL 조회
-     */
     @Operation(
             summary = "카카오 로그인 URL 조회",
             description = "프론트엔드에서 카카오 로그인 페이지로 이동할 URL을 반환합니다."
@@ -95,12 +111,6 @@ public class AuthController {
         return ApiResponse.success(loginUrl);
     }
 
-    /**
-     * 카카오 OAuth 콜백 처리
-     * - state 검증 후 로그인 처리
-     * - RefreshToken은 HttpOnly 쿠키로 내려줌 (body에 노출 안 함)
-     * - AccessToken만 body에 포함
-     */
     @Operation(
             summary = "카카오 로그인 (인가코드 → JWT 발급)",
             description = "카카오 인가코드를 받아 사용자 인증 후 JWT 토큰을 발급합니다. " +
@@ -116,51 +126,23 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        // 1. state 서명 + 만료 검증
-        if (state == null || !verifySignedState(state)) {
-            log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // 2. 쿠키에서 nonce 추출
-        String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
-        if (cookieNonce == null) {
-            log.warn("[카카오 OAuth] nonce 쿠키 없음 - CSRF 공격 의심");
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // 3. state 내 nonce와 쿠키 nonce 비교
-        String stateNonce = state.split("\\.")[0];
-        if (!MessageDigest.isEqual(
-                stateNonce.getBytes(StandardCharsets.UTF_8),
-                cookieNonce.getBytes(StandardCharsets.UTF_8))) {
-            log.warn("[카카오 OAuth] nonce 불일치 - CSRF 공격 의심");
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // 4. nonce 쿠키 삭제 (일회성)
-        clearNonceCookie(response);
+        validateOAuthState(state, request, response);
 
         log.info("[카카오 OAuth] 콜백 수신 - 인가코드 길이: {}", code.length());
         LoginResponse loginResponse = authService.kakaoLogin(code, state);
 
-        // 5. RefreshToken → HttpOnly 쿠키로 설정
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
                 .secure(secureCookie)
-                .path("/api/v1/auth/token")   // /token/refresh, /token/logout 등 이 경로에만 전송
+                .path("/api/v1/auth/token")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
                 .sameSite("Lax")
                 .build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
-        // 6. body에는 RefreshToken 제외하고 반환
         return ApiResponse.success(loginResponse.withoutRefreshToken());
     }
 
-    /**
-     * 현재 로그인한 사용자 정보 조회
-     */
     @Operation(
             summary = "현재 로그인 사용자 정보 조회",
             description = "JWT 토큰으로 인증된 현재 사용자의 정보를 반환합니다."
@@ -172,11 +154,6 @@ public class AuthController {
         return ApiResponse.success(userDetail);
     }
 
-    /**
-     * Access Token 재발급
-     * - 요청 쿠키에서 RefreshToken 추출
-     * - body로 받지 않음
-     */
     @Operation(
             summary = "Access Token 재발급",
             description = "쿠키의 RefreshToken으로 새로운 AccessToken을 발급받습니다."
@@ -194,12 +171,6 @@ public class AuthController {
         return ApiResponse.success(tokenResponse);
     }
 
-    /**
-     * 로그아웃
-     * - Redis에서 RefreshToken 삭제
-     * - 쿠키 만료 처리
-     * - 인증된 사용자만 호출 가능 (AccessToken 필요)
-     */
     @Operation(
             summary = "로그아웃",
             description = "서버의 RefreshToken을 무효화하고 쿠키를 삭제합니다. AccessToken이 필요합니다."
@@ -208,10 +179,8 @@ public class AuthController {
     public ApiResponse<?> logout(Authentication authentication, HttpServletResponse response) {
         Long userId = Long.parseLong(authentication.getName());
 
-        // Redis에서 RefreshToken 삭제
         authService.logout(userId);
 
-        // 클라이언트 쿠키 만료
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
                 .secure(secureCookie)
@@ -226,18 +195,47 @@ public class AuthController {
 
     // ====== Private Methods ======
 
-    private String generateSignedState(String nonce) {
-        long timestamp = System.currentTimeMillis() / 1000;
-        String payload = nonce + "." + timestamp;
-        String signature = hmacSign(payload);
-        return payload + "." + signature;
+    /**
+     * OAuth state/nonce 검증을 수행합니다.
+     * validateState=false는 'local' 또는 'test' 프로필에서만 허용됩니다.
+     */
+    private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
+        if (!validateState) {
+            log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
+            return;
+        }
+
+        String stateNonce = getNonceIfStateIsValid(state)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+
+        String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
+        if (cookieNonce == null) {
+            log.warn("[카카오 OAuth] nonce 쿠키 없음 - CSRF 공격 의심");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!MessageDigest.isEqual(
+                stateNonce.getBytes(StandardCharsets.UTF_8),
+                cookieNonce.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("[카카오 OAuth] nonce 불일치 - CSRF 공격 의심");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        clearNonceCookie(response);
     }
 
-    private boolean verifySignedState(String state) {
+    /**
+     * state 서명 검증 및 타임스탬프 확인 후 nonce를 반환합니다.
+     * - 서명 불일치, 만료, 미래 시간(clock skew 초과) 시 Optional.empty() 반환
+     */
+    private Optional<String> getNonceIfStateIsValid(String state) {
+        if (state == null) {
+            return Optional.empty();
+        }
         try {
             String[] parts = state.split("\\.");
             if (parts.length != 3) {
-                return false;
+                return Optional.empty();
             }
 
             String nonce = parts[0];
@@ -250,21 +248,36 @@ public class AuthController {
                     expectedSignature.getBytes(StandardCharsets.UTF_8),
                     signature.getBytes(StandardCharsets.UTF_8))) {
                 log.warn("[카카오 OAuth] state 서명 불일치");
-                return false;
+                return Optional.empty();
             }
 
             long timestamp = Long.parseLong(timestampStr);
             long now = System.currentTimeMillis() / 1000;
-            if (now - timestamp > STATE_EXPIRY_SECONDS) {
-                log.warn("[카카오 OAuth] state 만료 - 생성: {}초 전", now - timestamp);
-                return false;
+
+            // 미래 시간 검증 (clock skew 허용 범위 초과 시 거부)
+            if (timestamp > now + CLOCK_SKEW_TOLERANCE_SECONDS) {
+                log.warn("[카카오 OAuth] state 타임스탬프가 허용 범위를 벗어난 미래 시간 - 생성: {}초 후", timestamp - now);
+                return Optional.empty();
             }
 
-            return true;
+            // 만료 시간 검증
+            if (now - timestamp > STATE_EXPIRY_SECONDS) {
+                log.warn("[카카오 OAuth] state 만료 - 생성: {}초 전", now - timestamp);
+                return Optional.empty();
+            }
+
+            return Optional.of(nonce);
         } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
             log.warn("[카카오 OAuth] state 파싱 실패: {}", e.getMessage());
-            return false;
+            return Optional.empty();
         }
+    }
+
+    private String generateSignedState(String nonce) {
+        long timestamp = System.currentTimeMillis() / 1000;
+        String payload = nonce + "." + timestamp;
+        String signature = hmacSign(payload);
+        return payload + "." + signature;
     }
 
     private String hmacSign(String data) {
@@ -278,9 +291,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * 요청 쿠키에서 특정 이름의 쿠키 값 추출
-     */
     private String extractCookieValue(HttpServletRequest request, String cookieName) {
         if (request.getCookies() == null) {
             return null;

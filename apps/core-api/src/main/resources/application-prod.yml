@@ -49,3 +49,4 @@ oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI}
   state:
     secret: ${OAUTH_STATE_SECRET}
+    cookie-secure: true
