@@ -7,7 +7,9 @@ import com.ott.common.persistence.entity.User;
 import com.ott.common.persistence.entity.UserTag;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
+import com.ott.core.modules.usertag.dto.TagWatchStatsResponse;
 import com.ott.core.modules.usertag.repository.UserTagRepository;
+import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class UserTagService {
     private final UserTagRepository userTagRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
+    private final WatchHistoryRepository watchHistoryRepository;
 
     @Transactional
     public void saveOnboardingTags(Long userId, List<Long> tagIds) {
@@ -74,5 +77,15 @@ public class UserTagService {
                     .toList();
             userTagRepository.saveAll(userTagList);
         }
+    }
+
+    public List<TagWatchStatsResponse> getTagWatchStats(Long userId) {
+        List<Object[]> top8TagList = watchHistoryRepository.findTop8TagWatchStatsByUserId(userId);
+        return top8TagList.stream()
+                .map(row -> new TagWatchStatsResponse(
+                        String.valueOf(((Number) row[0]).longValue()),
+                        (String) row[1],
+                        row[2] != null ? ((Number) row[2]).longValue() : 0L
+                )).toList();
     }
 }
