@@ -29,6 +29,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -40,6 +41,7 @@ public class AuthController {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final long STATE_EXPIRY_SECONDS = 300;
+    private static final long CLOCK_SKEW_TOLERANCE_SECONDS = 60; // 서버 시간 오차 허용 범위
     private static final String STATE_NONCE_COOKIE = "oauth_state_nonce";
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
     private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = 90 * 24 * 60 * 60;
@@ -60,13 +62,16 @@ public class AuthController {
             @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie,
             @Value("${oauth2.state.validate:true}") boolean validateState
     ) {
-        // prod 환경에서 validateState=false면 앱 시작 자체를 막아 CSRF 취약점 방지
-        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
-        if (isProd && !validateState) {
-            throw new IllegalStateException(
-                    "[보안 오류] prod 환경에서 oauth2.state.validate=false 설정은 허용되지 않습니다. " +
-                            "CSRF 공격에 노출될 수 있으므로 즉시 설정을 수정하세요."
-            );
+        // validateState=false는 오직 'local' 또는 'test' 프로필에서만 허용
+        // 'prod' 체크 대신 허용 환경을 명시하여 프로필명 변경에도 안전하게 대응
+        if (!validateState) {
+            List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
+            if (!activeProfiles.contains("local") && !activeProfiles.contains("test")) {
+                throw new IllegalStateException(
+                        "[보안 오류] 운영 환경에서 oauth2.state.validate=false 설정은 허용되지 않습니다. " +
+                                "CSRF 공격에 노출될 수 있으므로 즉시 설정을 수정하세요."
+                );
+            }
         }
 
         this.authService = authService;
@@ -192,8 +197,7 @@ public class AuthController {
 
     /**
      * OAuth state/nonce 검증을 수행합니다.
-     * validateState=false(로컬 테스트 모드)인 경우 검증을 우회합니다.
-     * prod 환경에서 validateState=false이면 생성자에서 앱 시작이 차단됩니다.
+     * validateState=false는 'local' 또는 'test' 프로필에서만 허용됩니다.
      */
     private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
         if (!validateState) {
@@ -201,7 +205,6 @@ public class AuthController {
             return;
         }
 
-        // state 서명 검증 + nonce 추출을 한 번에 처리 (파싱 중복 제거)
         String stateNonce = getNonceIfStateIsValid(state)
                 .orElseThrow(() -> {
                     log.warn("[카카오 OAuth] state 검증 실패 - CSRF 공격 의심");
@@ -225,10 +228,8 @@ public class AuthController {
     }
 
     /**
-     * state 서명 검증 및 만료 시간 확인 후 nonce를 반환합니다.
-     * 검증 실패 시 Optional.empty()를 반환합니다.
-     * 기존 verifySignedState(boolean 반환)에서 Optional<String> 반환으로 변경하여
-     * 파싱 중복을 제거하고 nonce를 한 번만 추출합니다.
+     * state 서명 검증 및 타임스탬프 확인 후 nonce를 반환합니다.
+     * - 서명 불일치, 만료, 미래 시간(clock skew 초과) 시 Optional.empty() 반환
      */
     private Optional<String> getNonceIfStateIsValid(String state) {
         if (state == null) {
@@ -255,6 +256,14 @@ public class AuthController {
 
             long timestamp = Long.parseLong(timestampStr);
             long now = System.currentTimeMillis() / 1000;
+
+            // 미래 시간 검증 (clock skew 허용 범위 초과 시 거부)
+            if (timestamp > now + CLOCK_SKEW_TOLERANCE_SECONDS) {
+                log.warn("[카카오 OAuth] state 타임스탬프가 허용 범위를 벗어난 미래 시간 - 생성: {}초 후", timestamp - now);
+                return Optional.empty();
+            }
+
+            // 만료 시간 검증
             if (now - timestamp > STATE_EXPIRY_SECONDS) {
                 log.warn("[카카오 OAuth] state 만료 - 생성: {}초 전", now - timestamp);
                 return Optional.empty();
