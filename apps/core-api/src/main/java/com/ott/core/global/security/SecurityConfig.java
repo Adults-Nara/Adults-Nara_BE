@@ -86,7 +86,11 @@ public class SecurityConfig {
                                                 // --- Health Check ---
                                                 .requestMatchers("/actuator/health").permitAll()
 
-                                                // ===================================================================
+                                                // --- UPlus ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/uplus/plans").permitAll()
+                                                .requestMatchers("/api/v1/uplus/**").authenticated()
+
+                                        // ===================================================================
                                                 // 2. 인증 필요 (로그인 사용자)
                                                 // ===================================================================
 
