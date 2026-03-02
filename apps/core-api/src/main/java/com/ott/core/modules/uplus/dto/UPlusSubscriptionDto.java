@@ -2,10 +2,14 @@ package com.ott.core.modules.uplus.dto;
 
 import com.ott.common.persistence.entity.UPlusBillDiscount;
 import com.ott.common.persistence.entity.UPlusSubscription;
+import com.ott.common.persistence.enums.UPlusSubscriptionPlan;
+import com.ott.core.modules.uplus.util.PhoneNumberUtils;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 public class UPlusSubscriptionDto {
 
@@ -16,6 +20,8 @@ public class UPlusSubscriptionDto {
      * 전화번호만 입력 → U+ API에서 가입 여부 + 요금제 자동 조회 후 등록
      */
     @Getter
+    @Setter
+    @NoArgsConstructor
     public static class RegisterRequest {
 
         @NotBlank
@@ -68,17 +74,12 @@ public class UPlusSubscriptionDto {
 
         public static SubscriptionResponse from(UPlusSubscription s) {
             return new SubscriptionResponse(
-                    maskPhone(s.getPhoneNumber()),
+                    PhoneNumberUtils.mask(s.getPhoneNumber()), // 유틸로 통일
                     s.getPlan().name(),
                     s.getPlan().getDisplayName(),
                     s.getPlan().getMonthlyFee(),
                     s.isActive()
             );
-        }
-
-        private static String maskPhone(String phone) {
-            if (phone == null || phone.length() < 11) return phone;
-            return phone.substring(0, 3) + "-****-" + phone.substring(7);
         }
     }
 

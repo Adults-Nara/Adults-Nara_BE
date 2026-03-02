@@ -7,6 +7,7 @@ import com.ott.common.persistence.enums.UPlusSubscriptionPlan;
 import com.ott.core.modules.uplus.client.UPlusApiClient;
 import com.ott.core.modules.uplus.dto.UPlusSubscriptionDto;
 import com.ott.core.modules.uplus.repository.UPlusSubscriptionRepository;
+import com.ott.core.modules.uplus.util.PhoneNumberUtils;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,7 +51,7 @@ public class UPlusSubscriptionService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        String phoneNumber = normalizePhone(request.getPhoneNumber());
+        String phoneNumber = PhoneNumberUtils.normalize(request.getPhoneNumber());
 
         // U+ API 조회: 비가입자면 Optional.empty()
         Optional<UPlusSubscriptionPlan> planOpt = uPlusApiClient.findSubscriberPlan(phoneNumber);
@@ -135,7 +136,4 @@ public class UPlusSubscriptionService {
         return subscription;
     }
 
-    private static String normalizePhone(String phone) {
-        return phone == null ? null : phone.replaceAll("[^0-9]", "");
-    }
 }

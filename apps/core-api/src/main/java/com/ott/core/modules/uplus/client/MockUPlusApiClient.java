@@ -1,6 +1,7 @@
 package com.ott.core.modules.uplus.client;
 
 import com.ott.common.persistence.enums.UPlusSubscriptionPlan;
+import com.ott.core.modules.uplus.util.PhoneNumberUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -29,17 +30,12 @@ public class MockUPlusApiClient implements UPlusApiClient {
 
     @Override
     public Optional<UPlusSubscriptionPlan> findSubscriberPlan(String phoneNumber) {
-        log.info("[Mock U+ API] 가입 정보 조회 - phoneNumber: {}", maskPhone(phoneNumber));
+        log.info("[Mock U+ API] 가입 정보 조회 - phoneNumber: {}", PhoneNumberUtils.mask(phoneNumber));
 
         Optional<UPlusSubscriptionPlan> result = Optional.ofNullable(MOCK_DATA.get(phoneNumber));
         log.info("[Mock U+ API] 조회 결과: {}",
                 result.map(p -> "가입자 (" + p.getDisplayName() + ")").orElse("비가입자"));
 
         return result;
-    }
-
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 11) return phone;
-        return phone.substring(0, 3) + "****" + phone.substring(7);
     }
 }

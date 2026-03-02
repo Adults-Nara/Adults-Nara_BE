@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 /**
  * U+ 할인 처리 실행기
@@ -45,10 +46,13 @@ public class UPlusDiscountProcessor {
             return false;
         }
 
-        // 2. 가입 정보 조회
-        UPlusSubscription subscription = subscriptionRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "UPlusSubscription not found for userId=" + userId));
+        // 2. 가입 정보 조회 — findActiveUserIds와 이 메서드 사이 경쟁 조건으로 없을 수 있음
+        Optional<UPlusSubscription> subscriptionOpt = subscriptionRepository.findByUserId(userId);
+        if (subscriptionOpt.isEmpty()) {
+            log.warn("[UPlus 할인] 유저 {} 가입 정보 없음 (조회 후 삭제된 경우), 건너뜀", userId);
+            return false;
+        }
+        UPlusSubscription subscription = subscriptionOpt.get();
 
         // 3. 포인트 잔액 조회 (비관적 락 — 동시성 보호)
         var balance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
