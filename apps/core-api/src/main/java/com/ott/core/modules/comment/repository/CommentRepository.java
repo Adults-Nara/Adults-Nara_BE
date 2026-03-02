@@ -23,8 +23,4 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT COUNT(c) > 0 FROM Comment c WHERE c.user.id = :userId AND c.videoMetadata.videoId = :videoId AND c.deleted = false")
     boolean existsByUserIdAndVideoId(@Param("userId") Long userId, @Param("videoId") Long videoId);
 
-    // 댓글 수 카운트 (VideoMetadata 업데이트용)
-    @Query("SELECT COUNT(c) FROM Comment c WHERE c.videoMetadata.videoId = :videoId AND c.deleted = false")
-    int countByVideoId(@Param("videoId") Long videoId);
-
 }

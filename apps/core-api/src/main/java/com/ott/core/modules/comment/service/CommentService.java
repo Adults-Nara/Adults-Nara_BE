@@ -65,7 +65,7 @@ public class CommentService {
         Comment comment = new Comment(videoMetadata, user, request.getText());
         commentRepository.save(comment);
 
-        syncCommentCount(videoId);
+        videoMetadataRepository.incrementCommentCount(videoId);
 
         return MyCommentResponse.from(comment);
     }
@@ -94,12 +94,7 @@ public class CommentService {
         Long videoId = comment.getVideoMetadata().getVideoId();
         comment.softDelete();
 
-        syncCommentCount(videoId);
-    }
-
-    private void syncCommentCount(Long videoId) {
-        int count = commentRepository.countByVideoId(videoId);
-        videoMetadataRepository.updateCommentCount(videoId, count);
+        videoMetadataRepository.decrementCommentCount(videoId);
     }
 
     private Comment findComment(Long commentId) {
