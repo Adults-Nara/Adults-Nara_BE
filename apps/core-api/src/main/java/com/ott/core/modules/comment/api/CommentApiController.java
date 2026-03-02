@@ -26,7 +26,8 @@ public class CommentApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        CommentPageResponse response = commentService.getComments(Long.parseLong(userId), videoId, page, size);
+        Long parsedUserId = userId != null ? Long.parseLong(userId) : null;
+        CommentPageResponse response = commentService.getComments(parsedUserId, videoId, page, size);
         return ApiResponse.success(response);
     }
 

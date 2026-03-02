@@ -81,6 +81,10 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
 
+                                                // --- 댓글 목록 조회 --- (순서 변경 금지)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/*/me").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/**").permitAll()
+
                                                 // --- Swagger ---
                                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 

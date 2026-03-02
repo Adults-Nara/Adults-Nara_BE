@@ -26,12 +26,14 @@ public class CommentService {
     private final UserRepository userRepository;
     private final VideoMetadataRepository videoMetadataRepository;
 
-    public CommentPageResponse getComments(long userId, Long videoId, int page, int size) {
+    public CommentPageResponse getComments(Long userId, Long videoId, int page, int size) {
         Slice<Comment> slice = commentRepository.findByVideoId(videoId, PageRequest.of(page, size));
 
-        CommentItemResponse myComment = commentRepository.findByUserIdAndVideoId(userId, videoId)
-                .map(CommentItemResponse::from)
-                .orElse(null);
+        CommentItemResponse myComment = (userId != null)
+                ? commentRepository.findByUserIdAndVideoId(userId, videoId)
+                    .map(CommentItemResponse::from)
+                    .orElse(null)
+                : null;
 
         List<CommentItemResponse> comments = slice.getContent().stream()
                 .map(CommentItemResponse::from)
