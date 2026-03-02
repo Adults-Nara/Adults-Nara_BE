@@ -1,14 +1,13 @@
-package com.ott.core.modules.search.controller;
+package com.ott.core.modules.recommendation.controller;
 
 import com.ott.common.response.ApiResponse;
 import com.ott.core.docs.RecommendationApiDocs;
 
 import com.ott.core.modules.search.document.VideoDocument;
-import com.ott.core.modules.search.dto.SliceResponse;
-import com.ott.core.modules.search.dto.VideoFeedResponseDto;
-import com.ott.core.modules.search.service.RecommendationService;
+import com.ott.core.modules.recommendation.dto.SliceResponse;
+import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
+import com.ott.core.modules.recommendation.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;

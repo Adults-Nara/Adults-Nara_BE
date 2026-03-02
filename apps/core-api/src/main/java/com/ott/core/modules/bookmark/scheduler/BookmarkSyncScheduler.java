@@ -17,7 +17,7 @@ public class BookmarkSyncScheduler {
      * [Step 2] Redis에 저장된 각 비디오의 북마크 카운트가 VideoMetadata DB에 동기화됨
      * - 10분(600,000ms)마다 실행됩니다.
      */
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 600000)
     public void runBookmarkSync() {
         log.info("========== [Scheduler] 북마크 카운트 DB 동기화 시작 ==========");
 

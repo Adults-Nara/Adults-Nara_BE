@@ -1,9 +1,9 @@
-package com.ott.core.modules.search.service;
+package com.ott.core.modules.recommendation.service;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.service.UserPreferenceService;
-import com.ott.core.modules.search.component.RecommendationQueryBuilder;
+import com.ott.core.modules.recommendation.component.RecommendationQueryBuilder;
 import com.ott.core.modules.search.document.VideoDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -104,7 +104,7 @@ public class RecommendationService {
                 .toList();
 
         // 2. 연관 검색 수행 (현재 비디오 제외)
-        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getId(), size);
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getVideoId(), size);
         return executeSearch(searchQuery);
     }
 

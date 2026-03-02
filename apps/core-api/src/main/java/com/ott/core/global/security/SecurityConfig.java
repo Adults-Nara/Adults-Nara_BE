@@ -76,9 +76,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/search/**").permitAll()
                                                 .requestMatchers("/api/v1/recommendations/**").permitAll()
 
-                                                // --- 좋아요/북마크 (비로그인도 조회 가능하도록) ---
+                                                // --- 좋아요/북마크/랭킹 (비로그인도 조회 가능하도록) ---
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
 
                                                 // --- Swagger ---
                                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -96,9 +97,7 @@ public class SecurityConfig {
                                                 // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**")
                                                 .authenticated()
-                                                // .requestMatchers(HttpMethod.POST,
-                                                // "/api/v1/bookmarks/**").authenticated()
-                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").permitAll()
+                                                 .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
 
                                                 // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}")
