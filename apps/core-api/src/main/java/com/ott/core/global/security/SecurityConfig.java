@@ -76,9 +76,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/search/**").permitAll()
                                                 .requestMatchers("/api/v1/recommendations/**").permitAll()
 
-                                                // --- 좋아요/북마크 (비로그인도 조회 가능하도록) ---
+                                                // --- 좋아요/북마크/랭킹 (비로그인도 조회 가능하도록) ---
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
 
                                                 // --- Swagger ---
                                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
