@@ -4,7 +4,6 @@ import com.ott.common.persistence.entity.Comment;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -28,8 +27,4 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT COUNT(c) FROM Comment c WHERE c.videoMetadata.videoId = :videoId AND c.deleted = false")
     int countByVideoId(@Param("videoId") Long videoId);
 
-    // videoMetadata의 commentCount 업데이트
-    @Modifying(clearAutomatically = true)
-    @Query("UPDATE VideoMetadata v SET v.commentCount = :count WHERE v.videoId = :videoId")
-    void updateCommentCount(@Param("videoId") Long videoId, @Param("count") int count);
 }

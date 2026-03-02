@@ -66,4 +66,9 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.videoId IN :ids AND vm.userId = :userId")
     void softDeleteByUploader(@Param("ids") List<Long> ids, @Param("userId") Long userId);
+
+    // videoMetadata의 commentCount 업데이트
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE VideoMetadata v SET v.commentCount = :count WHERE v.videoId = :videoId")
+    void updateCommentCount(@Param("videoId") Long videoId, @Param("count") int count);
 }

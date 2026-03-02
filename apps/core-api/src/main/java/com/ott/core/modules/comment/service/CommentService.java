@@ -29,13 +29,14 @@ public class CommentService {
     public CommentPageResponse getComments(long userId, Long videoId, int page, int size) {
         Slice<Comment> slice = commentRepository.findByVideoId(videoId, PageRequest.of(page, size));
 
-        List<CommentItemResponse> comments = slice.getContent().stream()
-                .map(CommentItemResponse::from)
-                .toList();
-
         CommentItemResponse myComment = commentRepository.findByUserIdAndVideoId(userId, videoId)
                 .map(CommentItemResponse::from)
                 .orElse(null);
+
+        List<CommentItemResponse> comments = slice.getContent().stream()
+                .map(CommentItemResponse::from)
+                .filter(c -> myComment == null || !c.getCommentId().equals(myComment.getCommentId()))
+                .toList();
 
         return CommentPageResponse.builder()
                 .comments(comments)
@@ -96,7 +97,7 @@ public class CommentService {
 
     private void syncCommentCount(Long videoId) {
         int count = commentRepository.countByVideoId(videoId);
-        commentRepository.updateCommentCount(videoId, count);
+        videoMetadataRepository.updateCommentCount(videoId, count);
     }
 
     private Comment findComment(Long commentId) {
