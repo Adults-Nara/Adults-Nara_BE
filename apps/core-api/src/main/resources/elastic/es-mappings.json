@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "videoId": { "type": "long" },
+    "metadataId": { "type": "long" },
+    "userId": { "type": "long" },
+    "title": {
+      "type": "text",
+      "analyzer": "korean_nori_analyzer",
+      "fields": {
+        "ngram": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    },
+    "titleChosung": { "type": "keyword" },
+    "description": { "type": "text", "analyzer": "korean_nori_analyzer" },
+    "videoType": { "type": "keyword" },
+    "tags": { "type": "keyword" },
+    "viewCount": { "type": "integer" },
+    "likeCount": { "type": "integer" },
+    "deleted": { "type": "boolean" },
+    "thumbnailUrl": { "type": "keyword", "index": false },
+    "duration": { "type": "integer", "index": false },
+    "createdAt": { "type": "date" }
+  }
+}
