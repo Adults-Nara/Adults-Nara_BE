@@ -55,8 +55,9 @@ public class UPlusDiscountProcessor {
         UPlusSubscription subscription = subscriptionOpt.get();
 
         // 3. 포인트 잔액 조회 (비관적 락 — 동시성 보호)
+        // 포인트를 한 번도 적립한 적 없는 유저는 null 반환 가능
         var balance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
-        int currentPoints = balance.getCurrentBalance();
+        int currentPoints = (balance != null) ? balance.getCurrentBalance() : 0;
 
         if (currentPoints <= 0) {
             // 포인트 없음 → 0원 이력만 기록
