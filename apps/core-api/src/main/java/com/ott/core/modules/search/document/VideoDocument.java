@@ -54,4 +54,22 @@ public class VideoDocument {
 
     @Field(type = FieldType.Date, format = DateFormat.date_time)
     private OffsetDateTime createdAt;
+
+    public static VideoDocument from(com.ott.common.persistence.entity.VideoMetadata metadata, List<String> tagNames) {
+        return VideoDocument.builder()
+                .videoId(metadata.getVideoId())
+                .metadataId(metadata.getId())
+                .userId(metadata.getUserId())
+                .title(metadata.getTitle())
+                .description(metadata.getDescription())
+                .videoType(metadata.getVideoType())
+                .tags(tagNames)
+                .viewCount(metadata.getViewCount())
+                .likeCount(metadata.getLikeCount())
+                .deleted(metadata.isDeleted())
+                .thumbnailUrl(metadata.getThumbnailUrl())
+                .duration(metadata.getDuration())
+                .createdAt(metadata.getCreatedAt())
+                .build();
+    }
 }

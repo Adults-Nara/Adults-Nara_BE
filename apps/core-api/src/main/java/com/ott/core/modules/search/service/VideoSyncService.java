@@ -44,15 +44,24 @@ public class VideoSyncService {
 
                 List<Long> videoIds = videoSlice.stream().map(VideoMetadata::getId).toList();
 
-                // IN 절을 써서  "단 한 번의 쿼리"로 가져옴
-                List<VideoTag> allTagsForChunk = videoTagRepository.findWithTagByVideoMetadataIdIn(videoIds);
+                // 부모 태그까지 FETCH JOIN 하는 쿼리 사용 (N+1 해결)
+                List<VideoTag> allTagsForChunk = videoTagRepository.findWithTagAndParentByVideoMetadataIdIn(videoIds);
 
-                // DB에서 가져온 태그 목록을 비디오 ID별로 정리
-                // 결과: { 7777: ["SF", "로맨스"], 9999: ["액션", "SF"] }
+                // 부모 태그를 포함하도록 Grouping 로직 완벽 수정
                 java.util.Map<Long, List<String>> tagsByVideoId = allTagsForChunk.stream()
                         .collect(java.util.stream.Collectors.groupingBy(
                                 vt -> vt.getVideoMetadata().getId(),
-                                java.util.stream.Collectors.mapping(vt -> vt.getTag().getTagName(), java.util.stream.Collectors.toList())
+                                java.util.stream.Collectors.mapping(VideoTag::getTag, java.util.stream.Collectors.toList())
+                        ))
+                        .entrySet().stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                java.util.Map.Entry::getKey,
+                                e -> e.getValue().stream()
+                                        .flatMap(tag -> tag.getParent() != null
+                                                ? java.util.stream.Stream.of(tag.getTagName(), tag.getParent().getTagName())
+                                                : java.util.stream.Stream.of(tag.getTagName()))
+                                        .distinct()
+                                        .toList()
                         ));
 
                 // 비디오 엔티티를 ES용 문서로 변환
@@ -61,21 +70,8 @@ public class VideoSyncService {
                     // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 ID로 태그를 꺼낸다.
                     List<String> tagNames = tagsByVideoId.getOrDefault(video.getId(), java.util.List.of());
 
-                    return VideoDocument.builder()
-                            .videoId(video.getVideoId())
-                            .metadataId(video.getId()) // RDB 매핑용
-                            .userId(video.getUserId())
-                            .title(video.getTitle())
-                            .description(video.getDescription())
-                            .videoType(video.getVideoType())
-                            .tags(tagNames) // 계층형 태그 이름들이 모두 담김
-                            .viewCount(video.getViewCount())
-                            .likeCount(video.getLikeCount())
-                            .deleted(video.isDeleted())
-                            .thumbnailUrl(video.getThumbnailUrl())
-                            .duration(video.getDuration())
-                            .createdAt(video.getCreatedAt())
-                            .build();
+                    return VideoDocument.from(video, tagNames);
+
                 }).toList();
 
                 // Bulk Insert
