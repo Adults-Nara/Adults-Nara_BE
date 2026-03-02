@@ -74,7 +74,8 @@ public class UPlusSubscription extends BaseEntity {
         this.active = false;
     }
 
-    public void reactivate(UPlusSubscriptionPlan newPlan) {
+    public void reactivate(String newPhoneNumber, UPlusSubscriptionPlan newPlan) {
+        this.phoneNumber = newPhoneNumber;
         this.plan = newPlan;
         this.active = true;
     }

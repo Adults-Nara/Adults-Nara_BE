@@ -60,14 +60,15 @@ public class UPlusSubscriptionService {
 
         UPlusSubscriptionPlan plan = planOpt.get();
 
-        // 이미 등록된 경우
-        if (subscriptionRepository.existsByUserId(userId)) {
-            UPlusSubscription existing = subscriptionRepository.findByUserId(userId).get();
+        // 이미 등록된 경우 — existsByUserId 없이 findByUserId 단일 쿼리로 처리
+        Optional<UPlusSubscription> existingOpt = subscriptionRepository.findByUserId(userId);
+        if (existingOpt.isPresent()) {
+            UPlusSubscription existing = existingOpt.get();
             if (existing.isActive()) {
                 throw new BusinessException(ErrorCode.UPLUS_ALREADY_REGISTERED);
             }
-            // 해지 상태면 재가입 (API에서 받아온 최신 요금제로 갱신)
-            existing.reactivate(plan);
+            // 해지 상태면 재가입 — 전화번호 + 요금제 모두 최신 값으로 갱신
+            existing.reactivate(phoneNumber, plan);
             return UPlusSubscriptionDto.RegisterResponse.success(existing);
         }
 
@@ -89,7 +90,7 @@ public class UPlusSubscriptionService {
         UPlusSubscription subscription = subscriptionRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UPLUS_NOT_REGISTERED));
         if (!subscription.isActive()) {
-            throw new BusinessException(ErrorCode.UPLUS_NOT_REGISTERED);
+            throw new BusinessException(ErrorCode.UPLUS_SUBSCRIPTION_INACTIVE);
         }
         return UPlusSubscriptionDto.SubscriptionResponse.from(subscription);
     }
@@ -108,7 +109,7 @@ public class UPlusSubscriptionService {
 
         if (planOpt.isEmpty()) {
             subscription.deactivate();
-            throw new BusinessException(ErrorCode.UPLUS_NOT_REGISTERED);
+            throw new BusinessException(ErrorCode.UPLUS_SUBSCRIPTION_INACTIVE);
         }
 
         subscription.changePlan(planOpt.get());
