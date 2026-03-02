@@ -65,7 +65,12 @@ public enum ErrorCode {
     DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다."),
 
     // ===== Tag =====
-    TAG_NOT_FOUND("TAG-404-001", 404, "태그를 찾을 수 없습니다.")
+    TAG_NOT_FOUND("TAG-404-001", 404, "태그를 찾을 수 없습니다."),
+
+    // ===== Comment =====
+    COMMENT_NOT_FOUND("COMMENT-404-001", 404, "댓글을 찾을 수 없습니다."),
+    COMMENT_FORBIDDEN("COMMENT-403-001", 403, "본인 댓글만 수정/삭제할 수 있습니다."),
+    COMMENT_ALREADY_EXISTS("COMMENT-409-001", 409, "이미 해당 영상에 댓글을 작성했습니다.")
     ;
 
     private final String code;
