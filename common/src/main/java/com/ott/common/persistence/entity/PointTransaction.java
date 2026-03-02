@@ -44,6 +44,7 @@ public class PointTransaction extends BaseEntity {
         AD_REWARD, //광고 시청 보상
         PURCHASE_BONUS, //구매 보상
         GIFTICON_PURCHASE, //기프티콘 교환
+        UPLUS_DISCOUNT, // U+ 요금제 자동 할인 차감
     }
 
     @PrePersist
