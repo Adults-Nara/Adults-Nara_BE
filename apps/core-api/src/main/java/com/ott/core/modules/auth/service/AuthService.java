@@ -191,6 +191,24 @@ public class AuthService {
         }
     }
 
+
+    /**
+     * 온보딩 완료 처리
+     */
+    @Transactional
+    public void completeOnboarding(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isOnboardingCompleted()) {
+            log.info("[온보딩] 이미 완료된 사용자 - userId: {}", userId);
+            return;
+        }
+
+        user.completeOnboarding();
+        log.info("[온보딩] 온보딩 완료 처리 - userId: {}", userId);
+    }
+
     // ====== Private Methods ======
 
     private void validateLoginStatus(User user) {
