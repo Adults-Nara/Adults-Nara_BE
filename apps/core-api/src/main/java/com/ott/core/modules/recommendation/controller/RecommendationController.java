@@ -21,8 +21,14 @@ import java.util.List;
 public class RecommendationController implements RecommendationApiDocs {
     private final RecommendationService recommendationService;
 
+    private Long parseUserIdSafely(String userId) {
+        if (userId == null || "anonymousUser".equals(userId)) {
+            return null;
+        }
+        return Long.parseLong(userId);
+    }
     // ==========================================
-    // 메인 홈 피드 (/api/v1/recommendations/feed)
+    // 메인 홈 피드
     // ==========================================
     @Override
     @GetMapping("/feed")
@@ -31,7 +37,8 @@ public class RecommendationController implements RecommendationApiDocs {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed((userId != null) ? Long.parseLong(userId) : null, page, size);
+        Long parsedUserId = parseUserIdSafely(userId);
+        List<VideoDocument> rawDocuments = recommendationService.getPersonalizedFeed(parsedUserId, page, size);
 
         // Document -> DTO 로 변환
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
@@ -53,7 +60,8 @@ public class RecommendationController implements RecommendationApiDocs {
             @AuthenticationPrincipal String userId,
             @RequestParam(defaultValue = "10") int size
     ) {
-        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed((userId != null) ? Long.parseLong(userId) : null, size);
+        Long parsedUserId = parseUserIdSafely(userId);
+        List<VideoDocument> rawDocuments = recommendationService.getVerticalMixedFeed(parsedUserId, size);
 
         List<VideoFeedResponseDto> dtoList = rawDocuments.stream()
                 .map(VideoFeedResponseDto::from)
