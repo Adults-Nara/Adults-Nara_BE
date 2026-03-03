@@ -1,15 +1,14 @@
 package com.ott.core.docs;
 
 import com.ott.common.response.ApiResponse; // 우리가 만든 커스텀 응답 객체
-import com.ott.core.modules.search.dto.SliceResponse;
-import com.ott.core.modules.search.dto.VideoFeedResponseDto;
+import com.ott.core.modules.recommendation.dto.SliceResponse;
+import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 

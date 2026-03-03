@@ -68,6 +68,7 @@ public class SecurityConfig {
 
                                                 // --- 비디오 (비로그인 시청 가능) ---
                                                 .requestMatchers("/api/v1/videos/*/play").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/videos/*").permitAll()
 
                                                 // --- 광고 ---
                                                 .requestMatchers("/api/v1/ads").permitAll()
@@ -76,9 +77,14 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/search/**").permitAll()
                                                 .requestMatchers("/api/v1/recommendations/**").permitAll()
 
-                                                // --- 좋아요/북마크 (비로그인도 조회 가능하도록) ---
+                                                // --- 좋아요/북마크/랭킹 (비로그인도 조회 가능하도록) ---
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
+
+                                                // --- 댓글 목록 조회 --- (순서 변경 금지)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/*/me").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/**").permitAll()
 
                                                 // --- Swagger ---
                                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -86,7 +92,11 @@ public class SecurityConfig {
                                                 // --- Health Check ---
                                                 .requestMatchers("/actuator/health").permitAll()
 
-                                                // ===================================================================
+                                                // --- UPlus ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/uplus/plans").permitAll()
+                                                .requestMatchers("/api/v1/uplus/**").authenticated()
+
+                                        // ===================================================================
                                                 // 2. 인증 필요 (로그인 사용자)
                                                 // ===================================================================
 
@@ -96,9 +106,7 @@ public class SecurityConfig {
                                                 // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
                                                 .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**")
                                                 .authenticated()
-                                                // .requestMatchers(HttpMethod.POST,
-                                                // "/api/v1/bookmarks/**").authenticated()
-                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").permitAll()
+                                                 .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
 
                                                 // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
                                                 .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}")

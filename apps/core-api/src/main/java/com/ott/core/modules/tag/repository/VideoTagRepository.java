@@ -30,4 +30,12 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
 
     @Query("SELECT vt.videoMetadata FROM VideoTag vt WHERE vt.tag.id = :tagId AND vt.videoMetadata.deleted = false ORDER BY vt.videoMetadata.viewCount DESC")
     List<VideoMetadata> findTop10VideosByTagId(@Param("tagId") Long tagId, Pageable pageable);
+
+    // 1. 단건 비디오에 대한 태그 + 부모 태그 페치 조인 (EventListener용)
+    @Query("SELECT t FROM VideoTag vt JOIN vt.tag t LEFT JOIN FETCH t.parent WHERE vt.videoMetadata.id = :metadataId")
+    List<Tag> findTagsWithParentByVideoMetadataId(@Param("metadataId") Long metadataId);
+
+    // 2. 다건 비디오에 대한 태그 + 부모 태그 페치 조인 (SyncService 벌크용)
+    @Query("SELECT vt FROM VideoTag vt JOIN FETCH vt.tag t LEFT JOIN FETCH t.parent WHERE vt.videoMetadata.id IN :metadataIds")
+    List<VideoTag> findWithTagAndParentByVideoMetadataIdIn(@Param("metadataIds") List<Long> metadataIds);
 }

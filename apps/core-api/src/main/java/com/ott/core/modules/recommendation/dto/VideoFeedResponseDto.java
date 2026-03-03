@@ -1,4 +1,4 @@
-package com.ott.core.modules.search.dto;
+package com.ott.core.modules.recommendation.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ott.core.modules.search.document.VideoDocument;

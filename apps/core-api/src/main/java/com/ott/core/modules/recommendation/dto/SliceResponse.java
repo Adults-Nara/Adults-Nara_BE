@@ -1,4 +1,4 @@
-package com.ott.core.modules.search.dto;
+package com.ott.core.modules.recommendation.dto;
 
 import java.util.List;
 
