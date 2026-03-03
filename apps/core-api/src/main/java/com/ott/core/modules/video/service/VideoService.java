@@ -153,8 +153,6 @@ public class VideoService {
                 .videoId(v.getId())
                 .build();
         videoMetadataRepository.save(metadata);
-
-        eventPublisher.publishEvent(new VideoTranscodeRequestedEvent(videoId));
     }
 
     @Transactional
@@ -218,6 +216,8 @@ public class VideoService {
             }
             videoMetadata.setThumbnailUrl("https://" + CLOUD_FRONT_DOMAIN + "/" + thumbnailKey);
         }
+
+        eventPublisher.publishEvent(new VideoTranscodeRequestedEvent(videoId));
     }
 
     public PlayResult play(Long videoId) {
