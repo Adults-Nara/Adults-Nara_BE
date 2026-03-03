@@ -64,7 +64,7 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
     @Column(name = "banned_at")
     private OffsetDateTime bannedAt;
 
-    @Column(name = "onboarding_completed", nullable = false)
+    @Column(name = "onboarding_completed", nullable = false, columnDefinition = "boolean default false")
     private boolean onboardingCompleted = false;
 
     // ===== 생성자 =====

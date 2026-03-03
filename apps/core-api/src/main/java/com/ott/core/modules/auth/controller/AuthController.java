@@ -6,6 +6,7 @@ import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.auth.dto.LoginResponse;
 import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.auth.service.AuthService;
+import com.ott.core.modules.auth.service.OnboardingService;
 import com.ott.core.modules.user.dto.response.UserDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +48,7 @@ public class AuthController {
     private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = 90 * 24 * 60 * 60;
 
     private final AuthService authService;
+    private final OnboardingService onboardingService;
     private final String kakaoClientId;
     private final String kakaoRedirectUri;
     private final byte[] stateSigningKey;
@@ -55,6 +57,7 @@ public class AuthController {
 
     public AuthController(
             AuthService authService,
+            OnboardingService onboardingService,
             Environment environment,
             @Value("${oauth2.kakao.client-id}") String kakaoClientId,
             @Value("${oauth2.kakao.redirect-uri}") String kakaoRedirectUri,
@@ -71,6 +74,7 @@ public class AuthController {
         }
 
         this.authService = authService;
+        this.onboardingService = onboardingService;
         this.kakaoClientId = kakaoClientId;
         this.kakaoRedirectUri = kakaoRedirectUri;
         this.stateSigningKey = Base64.getDecoder().decode(stateSecret);
@@ -113,7 +117,7 @@ public class AuthController {
                     "AccessToken은 body에, RefreshToken은 HttpOnly 쿠키로 전달됩니다. " +
                     "onboardingCompleted=false면 온보딩 화면으로, true면 메인으로 이동하세요."
     )
-    @PostMapping("/kakao/login")   // GET /kakao/callback → POST /kakao/login 변경
+    @PostMapping("/kakao/login")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<LoginResponse> kakaoLogin(
             @Parameter(description = "카카오 인가코드", required = true)
@@ -145,12 +149,13 @@ public class AuthController {
 
     @Operation(
             summary = "온보딩 완료 처리",
-            description = "사용자가 온보딩을 완료했을 때 호출합니다. 이후 로그인 시 onboardingCompleted=true가 반환됩니다."
+            description = "사용자가 온보딩을 완료했을 때 호출합니다. 태그를 1개 이상 선택해야 합니다. " +
+                    "이후 로그인 시 onboardingCompleted=true가 반환됩니다."
     )
     @PostMapping("/onboarding/complete")
     public ApiResponse<?> completeOnboarding(Authentication authentication) {
         Long userId = Long.parseLong(authentication.getName());
-        authService.completeOnboarding(userId);
+        onboardingService.complete(userId);
         return ApiResponse.success();
     }
 
@@ -288,6 +293,9 @@ public class AuthController {
         return payload + "." + signature;
     }
 
+    /**
+     * HMAC-SHA256으로 데이터를 서명합니다.
+     */
     private String hmacSign(String data) {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
@@ -300,7 +308,9 @@ public class AuthController {
     }
 
     private String extractCookieValue(HttpServletRequest request, String cookieName) {
-        if (request.getCookies() == null) return null;
+        if (request.getCookies() == null) {
+            return null;
+        }
         return Arrays.stream(request.getCookies())
                 .filter(c -> cookieName.equals(c.getName()))
                 .map(Cookie::getValue)

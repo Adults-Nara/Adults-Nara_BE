@@ -53,14 +53,15 @@ public enum ErrorCode {
     POLICY_NOT_FOUND("POINT-404-001", 404, "지원하지 않는 정책입니다."),
 
     IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다."),
-    // ===== Bookmark (찜하기 관련 세분화) =====
+
+    // ===== Bookmark =====
     BOOKMARK_CONFLICT("BOOKMARK-409-001", 409, "이미 처리 중이거나 완료된 찜하기 요청입니다. 잠시 후 다시 시도해주세요."),
     BOOKMARK_NOT_FOUND("BOOKMARK-404-001", 404, "해당 찜하기 내역을 찾을 수 없습니다."),
 
-    // ===== Interaction (좋아요/싫어요 관련 세분화) =====
+    // ===== Interaction =====
     INTERACTION_CONFLICT("INTERACTION-409-001", 409, "이미 처리 중이거나 완료된 반응 요청입니다. 잠시 후 다시 시도해주세요."),
 
-    // ===== System / Sync (백그라운드 스케줄러 & Redis 세분화) =====
+    // ===== System / Sync =====
     REDIS_DATA_PARSING_ERROR("SYSTEM-500-001", 500, "Redis 캐시 데이터 파싱 중 오류가 발생했습니다."),
     DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다."),
 
@@ -81,8 +82,10 @@ public enum ErrorCode {
     UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
 
     // ===== Sync =====
-    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."); // 👈 새롭게 추가!
+    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."),
 
+    // ===== Onboarding =====
+    INVALID_ONBOARDING_STATE("ONBOARDING-400-001", 400, "온보딩 필수 단계가 완료되지 않았습니다. 태그를 1개 이상 선택해주세요.");
 
     private final String code;
     private final int httpStatus;
