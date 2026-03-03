@@ -68,6 +68,7 @@ public class SecurityConfig {
 
                                                 // --- 비디오 (비로그인 시청 가능) ---
                                                 .requestMatchers("/api/v1/videos/*/play").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/videos/*").permitAll()
 
                                                 // --- 광고 ---
                                                 .requestMatchers("/api/v1/ads").permitAll()
@@ -80,6 +81,10 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
+
+                                                // --- 댓글 목록 조회 --- (순서 변경 금지)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/*/me").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/**").permitAll()
 
                                                 // --- Swagger ---
                                                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()

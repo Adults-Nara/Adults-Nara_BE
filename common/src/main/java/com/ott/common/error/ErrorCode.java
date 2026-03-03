@@ -67,11 +67,22 @@ public enum ErrorCode {
     // ===== Tag =====
     TAG_NOT_FOUND("TAG-404-001", 404, "태그를 찾을 수 없습니다."),
 
+    // ===== Comment =====
+    COMMENT_NOT_FOUND("COMMENT-404-001", 404, "댓글을 찾을 수 없습니다."),
+    COMMENT_FORBIDDEN("COMMENT-403-001", 403, "본인 댓글만 수정/삭제할 수 있습니다."),
+    COMMENT_ALREADY_EXISTS("COMMENT-409-001", 409, "이미 해당 영상에 댓글을 작성했습니다."),
+
+    // ===== VideoMetadata =====
+    VIDEO_METADATA_NOT_FOUND("VIDEO-METADATA-404-001", 404, "비디오 메타데이터를 찾을 수 없습니다."),
+
     // ===== U+ =====
     UPLUS_NOT_REGISTERED("UPLUS-404-001", 404, "U+ 가입 정보가 없습니다."),
     UPLUS_ALREADY_REGISTERED("UPLUS-409-001", 409, "이미 U+ 가입 정보가 등록되어 있습니다."),
-    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요.");
-    ;
+    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
+
+    // ===== Sync =====
+    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."); // 👈 새롭게 추가!
+
 
     private final String code;
     private final int httpStatus;

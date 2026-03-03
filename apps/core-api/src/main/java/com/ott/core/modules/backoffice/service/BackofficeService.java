@@ -64,7 +64,7 @@ public class BackofficeService {
 
     @Transactional
     public ContentUpdateResponse updateContent(long userId, Long videoId, MultipartFile image, ContentUpdateRequest request) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -73,7 +73,7 @@ public class BackofficeService {
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -173,13 +173,13 @@ public class BackofficeService {
     }
 
     public ContentDetailResponse getContentDetail(long userId, Long videoId) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
         List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
         List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
 

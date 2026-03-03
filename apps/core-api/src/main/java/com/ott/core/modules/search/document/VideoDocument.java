@@ -1,6 +1,7 @@
 package com.ott.core.modules.search.document;
 
 import com.ott.common.persistence.enums.VideoType;
+import com.ott.core.modules.search.util.ChosungUtils;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
@@ -29,6 +30,9 @@ public class VideoDocument {
 
     @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
     private String description;
+
+    @Field(type = FieldType.Keyword)
+    private String titleChosung;
 
     @Field(type = FieldType.Keyword)
     private VideoType videoType;
@@ -61,6 +65,7 @@ public class VideoDocument {
                 .metadataId(metadata.getId())
                 .userId(metadata.getUserId())
                 .title(metadata.getTitle())
+                .titleChosung(ChosungUtils.extract(metadata.getTitle()))
                 .description(metadata.getDescription())
                 .videoType(metadata.getVideoType())
                 .tags(tagNames)
