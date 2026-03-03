@@ -9,7 +9,8 @@
       "fields": {
         "ngram": {
           "type": "text",
-          "analyzer": "standard"
+          "analyzer": "edge_ngram_analyzer",
+          "search_analyzer": "standard"
         }
       }
     },
