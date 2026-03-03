@@ -80,7 +80,7 @@ public class RecommendationQueryBuilder {
     public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int limit) {
         Query relatedQuery = Query.of(q -> q.bool(b -> b
                 .must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
-                .mustNot(mn -> mn.term(t -> t.field("videoId").value(currentVideoId))) // 자기 자신만 제외
+                .mustNot(mn -> mn.term(t -> t.field("_id").value(currentVideoId.toString()))) // 자기 자신만 제외
                 .filter(f -> f.term(t -> t.field("deleted").value(false)))
         ));
 

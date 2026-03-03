@@ -28,7 +28,10 @@ public class RecommendationService {
     // [메인 홈 피드]
     // =========================================================================
     public List<VideoDocument> getPersonalizedFeed(Long userId, int page, int size) {
-        List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, 5);
+        List<TagScoreDto> userPreferences = (userId != null)
+                ? userPreferenceService.getTopPreferences(userId, 5)
+                : List.of();
+
         NativeQuery searchQuery = userPreferences.isEmpty()
                 ? queryBuilder.buildFallbackQuery(page, size)
                 : queryBuilder.buildMainPersonalizedQuery(userPreferences, page, size);
@@ -44,7 +47,9 @@ public class RecommendationService {
         int popularSize = (int) Math.round(size * 0.2);
         int randomSize = size - personalSize - popularSize;
 
-        List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, 5);
+        List<TagScoreDto> userPreferences = (userId != null)
+                ? userPreferenceService.getTopPreferences(userId, 5)
+                : List.of();
 
         // 비동기 병렬 처리
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
