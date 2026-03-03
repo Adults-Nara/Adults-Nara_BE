@@ -37,3 +37,15 @@ oauth2:
     secret: dGVzdC1zdGF0ZS1zZWNyZXQta2V5LWZvci10ZXN0LW9ubHk=
     cookie-secure: false
 
+aws:
+  region: ap-northeast-2
+  s3:
+    source-bucket: test-bucket
+  presign:
+    put-ttl-seconds: 1200
+  cloudfront:
+    domain: d123456789.cloudfront.net
+    keypair-id: TESTKEYPAIRID
+    private-key-pem-b64: dGVzdHByaXZhdGVrZXk=
+    ttl: 7200
+
