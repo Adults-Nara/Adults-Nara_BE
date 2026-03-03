@@ -84,25 +84,28 @@ public class VideoSearchService {
             return List.of();
         }
 
-        Query query;
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+        boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)));
         // 초성 검사
-        boolean isOnlyChosung = keyword.matches("^[ㄱ-ㅎ\\s]+$");
+        boolean isOnlyChosung = keyword.matches("^[ㄱ-ㅎㄲㄸㅃㅆㅉ\\s]+$");
 
         if (isOnlyChosung) {
-            query = Query.of(q -> q
+            boolQueryBuilder.must(m -> m
                     .prefix(p -> p
                             .field("titleChosung")
-                            .value(keyword.replaceAll("\\s+", ""))
+                            .value(keyword)
                     )
             );
         } else {
-            query = Query.of(q -> q
-                    .match(m -> m
+            boolQueryBuilder.must(m -> m
+                    .match(m2 -> m2
                             .field("title.ngram")
                             .query(keyword)
                     )
             );
         }
+
+        Query query = Query.of(q -> q.bool(boolQueryBuilder.build()));
 
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(query)
