@@ -11,6 +11,7 @@ import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.video.dto.PlayResult;
+import com.ott.core.modules.video.dto.VideoInfoResult;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.event.VideoTranscodeRequestedEvent;
@@ -255,5 +256,31 @@ public class VideoService {
         headers.add(HttpHeaders.SET_COOKIE, cookies.get("CloudFront-Key-Pair-Id").toString());
 
         return new PlayResult(headers, cdnMasterUrl, exp);
+    }
+
+    public VideoInfoResult getVideoInfo(Long userId, Long videoId) {
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        if (!videoMetadata.getUserId().equals(userId) && video.getVisibility().equals(Visibility.PRIVATE)) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_PUBLIC);
+        }
+
+        List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
+        List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
+
+        return new VideoInfoResult(
+                String.valueOf(videoId),
+                videoMetadata.getTitle(),
+                videoMetadata.getDescription(),
+                videoMetadata.getThumbnailUrl(),
+                video.getVisibility(),
+                tagIds,
+                videoMetadata.getCreatedAt(),
+                videoMetadata.getOtherVideoUrl()
+        );
     }
 }
