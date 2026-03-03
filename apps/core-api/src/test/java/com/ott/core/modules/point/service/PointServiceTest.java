@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -56,24 +57,7 @@ class PointServiceTest {
         UserPointBalance userPointBalance = mock(UserPointBalance.class);
         given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
 
-<<<<<<< Updated upstream
-                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                                .willReturn(0);
-                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
-                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
-                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
-                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
-                                .willReturn(PointPolicy.AD_REWARD.getValue());
-                given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
-                        PointTransaction tx = invocation.getArgument(0);
-                        org.springframework.test.util.ReflectionTestUtils.setField(tx, "createdAt",
-                                        OffsetDateTime.now(java.time.ZoneOffset.UTC));
-                        return tx;
-                });
-=======
         given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
->>>>>>> Stashed changes
 
         given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(
                 eq(userId),
@@ -81,45 +65,19 @@ class PointServiceTest {
                 any(OffsetDateTime.class)
         )).willReturn(0);
 
-<<<<<<< Updated upstream
-                // then
-                int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
-                verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(userPointBalance).setCurrentBalance(expectedNewBalance);
-                verify(userPointBalance).setLastUpdatedAt(any(OffsetDateTime.class));
-        }
-=======
         given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
                 .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
         given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
                 .willReturn(PointPolicy.AD_REWARD.getValue());
->>>>>>> Stashed changes
 
-        doAnswer(invocation -> {
+        given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
             PointTransaction tx = invocation.getArgument(0, PointTransaction.class);
-            // 엔티티에 setCreatedAt이 있다고 가정 (없으면 아래 "대안" 참고)
-            tx.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+            ReflectionTestUtils.setField(tx, "createdAt", OffsetDateTime.now(ZoneOffset.UTC));
             return tx;
-        }).when(pointTransactionRepository).save(any(PointTransaction.class));
+        });
 
-<<<<<<< Updated upstream
-                int currentBalance = 1000;
-
-                UserPointBalance userPointBalance = mock(UserPointBalance.class);
-                given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
-
-                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
-                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
-                                .willReturn(PointPolicy.AD_REWARD.getValue());
-                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
-                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
-                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
-=======
         // when
         pointService.rewardAdPoint(userId, video);
->>>>>>> Stashed changes
 
         // then
         int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
@@ -131,25 +89,12 @@ class PointServiceTest {
         verifyNoMoreInteractions(userPointBalance);
     }
 
-<<<<<<< Updated upstream
-                given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
-                                eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
-                                .willReturn(0);
-                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
-                given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
-                                .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
-                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
-                                .willReturn(PointPolicy.AD_REWARD.getValue());
-                given(pointTransactionRepository.save(any(PointTransaction.class)))
-                                .willThrow(new DataIntegrityViolationException("Unique index violation"));
-=======
     @Test
     @DisplayName("일일 광고 시청 제한 초과 시 예외 발생")
     void rewardAdPoint_dailyLimitExceeded() {
         // given
         Long userId = 1L;
         VideoMetadata video = VideoMetadata.builder().id(100L).build();
->>>>>>> Stashed changes
 
         UserPointBalance userPointBalance = mock(UserPointBalance.class);
         given(userPointBalance.getCurrentBalance()).willReturn(0);
@@ -164,20 +109,8 @@ class PointServiceTest {
                 any(OffsetDateTime.class)
         )).willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
 
-<<<<<<< Updated upstream
-                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
-                given(pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE))
-                                .willReturn(PointPolicy.PURCHASE_RATE.getValue());
-                given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
-                        PointTransaction tx = invocation.getArgument(0);
-                        org.springframework.test.util.ReflectionTestUtils.setField(tx, "createdAt",
-                                        OffsetDateTime.now(java.time.ZoneOffset.UTC));
-                        return tx;
-                });
-=======
         given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
                 .willReturn(PointPolicy.AD_REWARD.getValue());
->>>>>>> Stashed changes
 
         // when & then
         assertThatThrownBy(() -> pointService.rewardAdPoint(userId, video))
@@ -188,12 +121,6 @@ class PointServiceTest {
         verify(userPointBalance, never()).setCurrentBalance(anyInt());
     }
 
-<<<<<<< Updated upstream
-                verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(userPointBalance).setCurrentBalance(expectedNewBalance);
-                verify(userPointBalance).setLastUpdatedAt(any(OffsetDateTime.class));
-        }
-=======
     @Test
     @DisplayName("중복 광고 시청 보상 시 예외 발생 (DB 키 제약 조건)")
     void rewardAdPoint_duplicateKey() {
@@ -201,7 +128,6 @@ class PointServiceTest {
         Long userId = 1L;
         VideoMetadata video = VideoMetadata.builder().id(100L).build();
         int currentBalance = 1000;
->>>>>>> Stashed changes
 
         UserPointBalance userPointBalance = mock(UserPointBalance.class);
         given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
@@ -236,7 +162,7 @@ class PointServiceTest {
     void rewardPurchaseBonus_success() {
         // given
         Long userId = 1L;
-        ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L);
+        ProductPurchaseRequest request = new ProductPurchaseRequest(200L, 101L, 10000L); // orderId, productId, price
         int currentBalance = 1000;
 
         UserPointBalance userPointBalance = mock(UserPointBalance.class);
@@ -247,11 +173,11 @@ class PointServiceTest {
         given(pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE))
                 .willReturn(PointPolicy.PURCHASE_RATE.getValue());
 
-        doAnswer(invocation -> {
+        given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
             PointTransaction tx = invocation.getArgument(0, PointTransaction.class);
-            tx.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+            ReflectionTestUtils.setField(tx, "createdAt", OffsetDateTime.now(ZoneOffset.UTC));
             return tx;
-        }).when(pointTransactionRepository).save(any(PointTransaction.class));
+        });
 
         // when
         pointService.rewardPurchaseBonus(userId, request);
@@ -265,7 +191,6 @@ class PointServiceTest {
         verify(userPointBalance).setCurrentBalance(eq(expectedNewBalance));
         verify(userPointBalance).setLastUpdatedAt(any(OffsetDateTime.class));
 
-        // (선택) 깨지기 쉬우면 지워도 됨
         verifyNoMoreInteractions(userPointBalance);
     }
 

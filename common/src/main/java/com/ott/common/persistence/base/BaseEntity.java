@@ -10,7 +10,7 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
-@Getter @Setter
+@Getter
 @MappedSuperclass
 public class BaseEntity {
     @Column(name = "created_at")
