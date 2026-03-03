@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.3...v0.8.0) (2026-03-03)
+
+
+### Features
+
+* 영상 단일 조회 API 구현 ([44e7e5d](https://github.com/Adults-Nara/Adults-Nara_BE/commit/44e7e5d6c8382f2fefe88823feaf8c240549cc48))
+* 유플러스 가입 정보 로직 ([f4ea650](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f4ea650d42eb300f4a07fa1d2c01c96033088f36))
+
+
+### Bug Fixes
+
+* critical 수정 ([32aaa15](https://github.com/Adults-Nara/Adults-Nara_BE/commit/32aaa15a5406363052ca866396869263bc119724))
+* 코드 리뷰 반영 ([25f8fdd](https://github.com/Adults-Nara/Adults-Nara_BE/commit/25f8fddb4abaf9416929f1672e0fb4f3fc00d12d))
+* 코드 리뷰 봇 반영 ([2924c7f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/2924c7f0aeb324ea95df6783aaab3d30f924950f))
+
 ## [0.7.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.2...v0.7.3) (2026-03-01)
 
 
