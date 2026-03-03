@@ -70,8 +70,11 @@ public enum ErrorCode {
     // ===== U+ =====
     UPLUS_NOT_REGISTERED("UPLUS-404-001", 404, "U+ 가입 정보가 없습니다."),
     UPLUS_ALREADY_REGISTERED("UPLUS-409-001", 409, "이미 U+ 가입 정보가 등록되어 있습니다."),
-    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요.");
-    ;
+    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
+
+    // ===== Sync =====
+    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."); // 👈 새롭게 추가!
+
 
     private final String code;
     private final int httpStatus;
