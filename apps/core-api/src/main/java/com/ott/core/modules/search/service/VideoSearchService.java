@@ -25,7 +25,7 @@ public class VideoSearchService {
     private final ElasticsearchOperations elasticsearchOperations;
 
     /**
-     * 1. 메인 검색 API (형태소 분석 + 필터링 + 가중치)
+     * 1. 메인 검색 API (형태소 분석 + 필터링 + 오타 보정)
      */
     public Page<VideoSearchResponse> searchVideos(String keyword, VideoType videoType, String tag, Pageable pageable) {
 
@@ -40,6 +40,7 @@ public class VideoSearchService {
                     .multiMatch(match -> match
                             .query(keyword)
                             .fields("title^3.0", "description") // Nori 분석기가 작동하는 필드
+                            .fuzziness("AUTO")
                     )
             );
         }
@@ -83,13 +84,25 @@ public class VideoSearchService {
             return List.of();
         }
 
-        // title.ngram 필드를 대상으로 Match 쿼리 실행
-        Query query = Query.of(q -> q
-                .match(m -> m
-                        .field("title.ngram") // 인덱스 매핑 때 만든 N-gram 서브 필드
-                        .query(keyword)
-                )
-        );
+        Query query;
+        // 초성 검사
+        boolean isOnlyChosung = keyword.matches("^[ㄱ-ㅎ\\s]+$");
+
+        if (isOnlyChosung) {
+            query = Query.of(q -> q
+                    .prefix(p -> p
+                            .field("titleChosung")
+                            .value(keyword.replaceAll("\\s+", ""))
+                    )
+            );
+        } else {
+            query = Query.of(q -> q
+                    .match(m -> m
+                            .field("title.ngram")
+                            .query(keyword)
+                    )
+            );
+        }
 
         NativeQuery nativeQuery = NativeQuery.builder()
                 .withQuery(query)
