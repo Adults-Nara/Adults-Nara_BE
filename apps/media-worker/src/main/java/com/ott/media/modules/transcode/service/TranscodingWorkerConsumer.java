@@ -2,12 +2,13 @@ package com.ott.media.modules.transcode.service;
 
 import com.ott.common.persistence.entity.Video;
 import com.ott.common.persistence.enums.ProcessingStatus;
+import com.ott.media.modules.transcode.dto.VideoTranscodeCompletedEvent;
 import com.ott.media.modules.transcode.dto.VideoTranscodeRequestedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
@@ -22,6 +23,9 @@ public class TranscodingWorkerConsumer {
     private final FfprobeMediaProbe ffprobeMediaProbe;
     private final HlsUploader uploader;
     private final VideoUpdater videoUpdater;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    private static final String TRANSCODE_COMPLETED_TOPIC = "video-transcode-completed";
 
     private final String bucket;
     private final String outputBasePrefix = "videos/";
@@ -36,12 +40,14 @@ public class TranscodingWorkerConsumer {
                                      FfprobeMediaProbe ffprobeMediaProbe,
                                      HlsUploader uploader,
                                      VideoUpdater videoUpdater,
+                                     KafkaTemplate<String, Object> kafkaTemplate,
                                      @Value("${aws.s3.source-bucket}") String bucket) {
         this.storage = storage;
         this.ffmpegTranscoder = ffmpegTranscoder;
         this.ffprobeMediaProbe = ffprobeMediaProbe;
         this.uploader = uploader;
         this.videoUpdater = videoUpdater;
+        this.kafkaTemplate = kafkaTemplate;
         this.bucket = bucket;
     }
 
@@ -86,6 +92,9 @@ public class TranscodingWorkerConsumer {
 
             // 성공 기록
             videoUpdater.updateReady(evt.videoId(), ENCODE_VERSION);
+
+            kafkaTemplate.send(TRANSCODE_COMPLETED_TOPIC, new VideoTranscodeCompletedEvent(evt.videoId()));
+            logger.info("[transcode] 완료 이벤트 발행 videoId={}", evt.videoId());
         } catch (Exception ex) {
             // 실패 처리
             logger.error("[ffmpeg] 실패 videoId = {} ", evt.videoId(), ex);
