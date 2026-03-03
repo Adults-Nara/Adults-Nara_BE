@@ -206,9 +206,13 @@ public class AuthController {
 
     // ====== Private Methods ======
 
+    /**
+     * OAuth state/nonce 검증을 수행합니다.
+     * validateState=false는 'local' 또는 'test' 프로필에서만 허용됩니다.
+     */
     private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
         if (!validateState) {
-            log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드)");
+            log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
             return;
         }
 
@@ -231,11 +235,19 @@ public class AuthController {
         clearNonceCookie(response);
     }
 
+    /**
+     * state 서명 검증 및 타임스탬프 확인 후 nonce를 반환합니다.
+     * - 서명 불일치, 만료, 미래 시간(clock skew 초과) 시 Optional.empty() 반환
+     */
     private Optional<String> getNonceIfStateIsValid(String state) {
-        if (state == null) return Optional.empty();
+        if (state == null) {
+            return Optional.empty();
+        }
         try {
             String[] parts = state.split("\\.");
-            if (parts.length != 3) return Optional.empty();
+            if (parts.length != 3) {
+                return Optional.empty();
+            }
 
             String nonce = parts[0];
             String timestampStr = parts[1];
@@ -254,11 +266,11 @@ public class AuthController {
             long now = System.currentTimeMillis() / 1000;
 
             if (timestamp > now + CLOCK_SKEW_TOLERANCE_SECONDS) {
-                log.warn("[카카오 OAuth] state 타임스탬프 미래 시간");
+                log.warn("[카카오 OAuth] state 타임스탬프가 허용 범위를 벗어난 미래 시간 - 생성: {}초 후", timestamp - now);
                 return Optional.empty();
             }
             if (now - timestamp > STATE_EXPIRY_SECONDS) {
-                log.warn("[카카오 OAuth] state 만료");
+                log.warn("[카카오 OAuth] state 만료 - 생성: {}초 전", now - timestamp);
                 return Optional.empty();
             }
 
@@ -283,7 +295,7 @@ public class AuthController {
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (java.security.NoSuchAlgorithmException | java.security.InvalidKeyException e) {
-            throw new IllegalStateException("HMAC 서명 생성 실패", e);
+            throw new IllegalStateException("HMAC 서명 생성 실패 - 애플리케이션 설정을 확인하세요", e);
         }
     }
 
