@@ -5,6 +5,8 @@ import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.OffsetDateTime;
+
 @Entity
 @Getter
 @Builder
