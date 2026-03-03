@@ -1,5 +1,7 @@
 package com.ott.core.modules.search.config;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.core.modules.search.document.VideoDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +48,10 @@ public class ElasticsearchIndexInitializer {
 
             log.info("🎉 Elasticsearch 인덱스 [video_search]가 커스텀 분석기와 함께 성공적으로 생성되었습니다!");
         } catch (Exception e) {
-            log.error("❌ Elasticsearch 인덱스 생성 중 오류 발생", e);
+            log.error("❌ Elasticsearch 인덱스 생성 중 오류 발생. 애플리케이션을 시작할 수 없습니다.", e);
+
+            // 전역 예외 처리 규격인 BusinessException으로 던져서 Fail-Fast 처리
+            throw new BusinessException(ErrorCode.ELASTICSEARCH_INIT_ERROR);
         }
     }
 
