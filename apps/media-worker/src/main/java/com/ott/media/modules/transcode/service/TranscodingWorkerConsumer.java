@@ -93,8 +93,17 @@ public class TranscodingWorkerConsumer {
             // 성공 기록
             videoUpdater.updateReady(evt.videoId(), ENCODE_VERSION);
 
-            kafkaTemplate.send(TRANSCODE_COMPLETED_TOPIC, new VideoTranscodeCompletedEvent(evt.videoId()));
-            logger.info("[transcode] 완료 이벤트 발행 videoId={}", evt.videoId());
+            kafkaTemplate.send(TRANSCODE_COMPLETED_TOPIC, new VideoTranscodeCompletedEvent(evt.videoId()))
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            logger.error("[transcode] 완료 이벤트 발행 실패 videoId={}", evt.videoId(), ex);
+                        } else {
+                            logger.info("[transcode] 완료 이벤트 발행 성공 videoId={} partition={} offset={}",
+                                    evt.videoId(),
+                                    result.getRecordMetadata().partition(),
+                                    result.getRecordMetadata().offset());
+                        }
+                    });
         } catch (Exception ex) {
             // 실패 처리
             logger.error("[ffmpeg] 실패 videoId = {} ", evt.videoId(), ex);
