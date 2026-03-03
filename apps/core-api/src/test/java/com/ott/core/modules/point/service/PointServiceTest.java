@@ -59,11 +59,17 @@ class PointServiceTest {
                 given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                                 .willReturn(0);
-                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
                 given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
                                 .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
                 given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
                                 .willReturn(PointPolicy.AD_REWARD.getValue());
+                given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
+                        PointTransaction tx = invocation.getArgument(0);
+                        org.springframework.test.util.ReflectionTestUtils.setField(tx, "createdAt",
+                                        OffsetDateTime.now(java.time.ZoneOffset.UTC));
+                        return tx;
+                });
 
                 // when
                 pointService.rewardAdPoint(userId, video);
@@ -71,8 +77,8 @@ class PointServiceTest {
                 // then
                 int expectedNewBalance = currentBalance + PointPolicy.AD_REWARD.getValue();
                 verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(pointTransactionRepository).updateUserPoint(eq(userId), eq(expectedNewBalance),
-                                any(OffsetDateTime.class));
+                verify(userPointBalance).setCurrentBalance(expectedNewBalance);
+                verify(userPointBalance).setLastUpdatedAt(any(OffsetDateTime.class));
         }
 
         @Test
@@ -82,6 +88,14 @@ class PointServiceTest {
                 Long userId = 1L;
                 VideoMetadata video = VideoMetadata.builder().id(100L).build();
 
+                int currentBalance = 1000;
+
+                UserPointBalance userPointBalance = mock(UserPointBalance.class);
+                given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
+
+                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
+                given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
+                                .willReturn(PointPolicy.AD_REWARD.getValue());
                 given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
                                 .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
                 given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
@@ -108,7 +122,7 @@ class PointServiceTest {
                 given(pointTransactionRepository.countByUserIdAndTypeAndCreatedAtAfter(eq(userId),
                                 eq(PointTransaction.TransactionType.AD_REWARD), any(OffsetDateTime.class)))
                                 .willReturn(0);
-                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
                 given(pointPolicyService.getPolicyValue(PointPolicy.DAILY_AD_LIMIT))
                                 .willReturn(PointPolicy.DAILY_AD_LIMIT.getValue());
                 given(pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD))
@@ -134,9 +148,15 @@ class PointServiceTest {
                 UserPointBalance userPointBalance = mock(UserPointBalance.class);
                 given(userPointBalance.getCurrentBalance()).willReturn(currentBalance);
 
-                given(pointRepository.findUserPointBalanceByUserId(userId)).willReturn(userPointBalance);
+                given(pointRepository.findUserPointBalanceByUserIdUpdateLock(userId)).willReturn(userPointBalance);
                 given(pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE))
                                 .willReturn(PointPolicy.PURCHASE_RATE.getValue());
+                given(pointTransactionRepository.save(any(PointTransaction.class))).willAnswer(invocation -> {
+                        PointTransaction tx = invocation.getArgument(0);
+                        org.springframework.test.util.ReflectionTestUtils.setField(tx, "createdAt",
+                                        OffsetDateTime.now(java.time.ZoneOffset.UTC));
+                        return tx;
+                });
 
                 // when
                 pointService.rewardPurchaseBonus(userId, request);
@@ -147,8 +167,8 @@ class PointServiceTest {
                 int expectedNewBalance = currentBalance + expectedRewardAmount;
 
                 verify(pointTransactionRepository).save(any(PointTransaction.class));
-                verify(pointTransactionRepository).updateUserPoint(eq(userId), eq(expectedNewBalance),
-                                any(OffsetDateTime.class));
+                verify(userPointBalance).setCurrentBalance(expectedNewBalance);
+                verify(userPointBalance).setLastUpdatedAt(any(OffsetDateTime.class));
         }
 
         @Test

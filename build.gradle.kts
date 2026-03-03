@@ -49,11 +49,11 @@ subprojects {
                     minimum = "0.70".toBigDecimal()
                 }
                 excludes = listOf(
-                    "*.Q*",
-                    "*.dto.*",
-                    "*.config.*",
-                    "*.exception.*",
-                    "*Entity*"
+                    "**.Q*",
+                    "**.dto.**",
+                    "**.config.**",
+                    "**.exception.**",
+                    "**.*Entity*"
                 )
             }
         }
@@ -62,6 +62,10 @@ subprojects {
     tasks.withType<Test> {
         useJUnitPlatform()
         finalizedBy(tasks.withType<JacocoReport>())
+    }
+
+    tasks.matching { it.name == "check" }.configureEach {
+        dependsOn(tasks.withType<JacocoCoverageVerification>())
     }
 }
 
