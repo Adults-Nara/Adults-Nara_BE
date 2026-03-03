@@ -5,7 +5,6 @@ memory_config:
 
 code_review:
   disable: false
-  # 리뷰 언어를 한국어로 고정 (지원하는 봇/액션에 따라 language, locale 또는 prompt 속성 사용)
   language: ko-KR
   system_prompt: "코드 리뷰 코멘트와 PR 요약은 항상 한국어(Korean)로만 작성해 주세요."
   comment_severity_threshold: MEDIUM
