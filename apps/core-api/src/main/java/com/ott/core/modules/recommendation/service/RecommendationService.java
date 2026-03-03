@@ -109,7 +109,7 @@ public class RecommendationService {
                 .toList();
 
         // 2. 연관 검색 수행 (현재 비디오 제외)
-        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getId(), size);
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getVideoId(), size);
         return executeSearch(searchQuery);
     }
 

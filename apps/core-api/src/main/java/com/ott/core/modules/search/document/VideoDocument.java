@@ -72,8 +72,4 @@ public class VideoDocument {
                 .createdAt(metadata.getCreatedAt())
                 .build();
     }
-
-    public Long getId() {
-        return this.videoId;
-    }
 }
