@@ -69,7 +69,7 @@ public class RecommendationService {
         int randomSize = size - personalSize - popularSize;
 
         List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, USER_PREFERENCE_TAG_LIMIT);
-        // 인기 영상
+        // 취향 영상 (개인화)
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
                                 ? queryBuilder.buildPopularQuery(personalSize)
