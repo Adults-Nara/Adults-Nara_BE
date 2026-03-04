@@ -6,6 +6,7 @@ import com.ott.core.modules.search.document.VideoDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
@@ -18,6 +19,7 @@ import java.util.Scanner;
 
 @Slf4j
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class ElasticsearchIndexInitializer {
 
@@ -58,7 +60,7 @@ public class ElasticsearchIndexInitializer {
     // 리소스 폴더의 파일을 String으로 읽어오는 유틸
     private String loadJsonFile(String path) {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(path);
-             Scanner scanner = new Scanner(is, StandardCharsets.UTF_8.name())) {
+                Scanner scanner = new Scanner(is, StandardCharsets.UTF_8.name())) {
             return scanner.useDelimiter("\\A").next();
         } catch (Exception e) {
             throw new RuntimeException("JSON 설정 파일을 읽을 수 없습니다: " + path, e);
