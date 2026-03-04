@@ -94,7 +94,7 @@ public class VideoSearchEventListenerTest {
     }
 
     @Test
-    @DisplayName("DB에 해당 videoId의 메타데이터가 없으면, ES 저장을 수행하지 않고 예외 로그를 남기며 종료된다.")
+    @DisplayName("DB에 해당 videoId의 메타데이터가 없으면 BusinessException(VIDEO_METADATA_NOT_FOUND)을 발생시킨다.")
     void handleVideoIndexRequest_Fail_NotFound() {
         // given
         Long invalidVideoId = 999L;
@@ -103,11 +103,16 @@ public class VideoSearchEventListenerTest {
 
         VideoIndexRequestedEvent event = new VideoIndexRequestedEvent(invalidVideoId);
 
-        // when
-        videoSearchEventListener.handleVideoIndexRequest(event);
+        // when & then: BusinessException이 발생하는지 검증하고, 에러 코드가 정확한지 확인!
+        com.ott.common.error.BusinessException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                com.ott.common.error.BusinessException.class,
+                () -> videoSearchEventListener.handleVideoIndexRequest(event)
+        );
 
-        // then
-        // ES 저장이 절대 호출되지 않아야 함 (예외를 catch해서 먹어버리므로 throw 되진 않음)
+        // 에러 코드 정확성 검증
+        org.assertj.core.api.Assertions.assertThat(exception.getErrorCode()).isEqualTo(com.ott.common.error.ErrorCode.VIDEO_METADATA_NOT_FOUND);
+
+        // ES 저장이 절대 호출되지 않았어야 함을 검증
         verify(videoSearchRepository, never()).save(any(VideoDocument.class));
     }
 
