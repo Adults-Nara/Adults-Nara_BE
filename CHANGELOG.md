@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.2...v0.8.3) (2026-03-04)
+
+
+### Bug Fixes
+
+* 프론트 리다이렉트 수정 ([62984b2](https://github.com/Adults-Nara/Adults-Nara_BE/commit/62984b245ace2d9916b77f35d228ba5d0639ae66))
+* 프론트 리다이렉트 수정 ([704ee5d](https://github.com/Adults-Nara/Adults-Nara_BE/commit/704ee5d6b8b009da2b5fb3e5a83ac2b958411335))
+
 ## [0.8.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.1...v0.8.2) (2026-03-04)
 
 
