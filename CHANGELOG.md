@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.0...v0.8.1) (2026-03-04)
+
+
+### Bug Fixes
+
+* 영상 업로드시 트랜스코딩 시점 변경(메타데이터 업로드) ([f0b859a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f0b859aad00512e3832eb15fb98772243f98bd79))
+* 영상 업로드시 트랜스코딩 시점 변경(메타데이터 업로드) ([7e3230f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7e3230f06dfff40c381e93c7324476c95076c643))
+* 영상 조회시 업로더 프로필, 닉네임 반환하도록 수정 ([b5b95ce](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b5b95ce612ee4e2e62a59c97a04124e5bdd36d05))
+
 ## [0.8.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.7.3...v0.8.0) (2026-03-03)
 
 
