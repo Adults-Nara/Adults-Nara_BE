@@ -24,12 +24,15 @@ public class InteractionSyncService {
 
     // OCP(개방-폐쇄 원칙) 준수: 좋아요, 싫어요 등 타입별 DB 업데이트 메서드 매핑
     private final Map<String, BiConsumer<Long, Integer>> syncActionMap;
-    private final VideoMetadataQueryRepository videoMetadataQueryRepository;
+
+    private static final String KEY_COUNT_LIKE = "video:count:like";
+    private static final String KEY_COUNT_DISLIKE = "video:count:dislike";
+    private static final String KEY_COUNT_SUPERLIKE = "video:count:superlike";
 
     public InteractionSyncService(
             StringRedisTemplate stringRedisTemplate,
             VideoMetadataRepository videoMetadataRepository,
-            InteractionRepository interactionRepository, VideoMetadataQueryRepository videoMetadataQueryRepository) {
+            InteractionRepository interactionRepository) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.interactionRepository = interactionRepository;
 
@@ -38,7 +41,6 @@ public class InteractionSyncService {
                 "dislike", videoMetadataRepository::updateDislikeCount,
                 "superlike", videoMetadataRepository::updateSuperLikeCount
         );
-        this.videoMetadataQueryRepository = videoMetadataQueryRepository;
     }
 
     public void syncAllStats() {
@@ -109,8 +111,10 @@ public class InteractionSyncService {
     @Transactional(readOnly = true)
     public void warmUpInteractionFromDB() {
         log.info("[Sync] DB 데이터를 기반으로 Redis 인터랙션 카운트 초기화를 시작합니다...");
-        stringRedisTemplate.delete("video:count:like");
-        stringRedisTemplate.delete("video:count:dislike");
+
+        stringRedisTemplate.delete(KEY_COUNT_LIKE);
+        stringRedisTemplate.delete(KEY_COUNT_DISLIKE);
+        stringRedisTemplate.delete(KEY_COUNT_SUPERLIKE);
 
         // DB 딱 1번 찌름!
         List<Object[]> results = interactionRepository.countTotalInteractionsGroupedByVideoAndType();
@@ -121,9 +125,22 @@ public class InteractionSyncService {
             InteractionType type = (InteractionType) row[1];
             Long interactionCount = (Long) row[2];
 
-            String hashKey = type == InteractionType.LIKE ? "video:count:like" : "video:count:dislike";
-
             if (interactionCount > 0) {
+                String hashKey;
+                switch (type) {
+                    case LIKE:
+                        hashKey = KEY_COUNT_LIKE;
+                        break;
+                    case DISLIKE:
+                        hashKey = KEY_COUNT_DISLIKE;
+                        break;
+                    case SUPERLIKE:
+                        hashKey = KEY_COUNT_SUPERLIKE;
+                        break;
+                    default:
+                        continue;
+                }
+
                 stringRedisTemplate.opsForHash().put(hashKey, String.valueOf(videoId), String.valueOf(interactionCount));
                 count++;
             }

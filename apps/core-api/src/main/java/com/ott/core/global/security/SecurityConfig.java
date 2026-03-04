@@ -54,6 +54,24 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
 
                                                 // ===================================================================
+                                                // ADMIN 전용
+                                                // ===================================================================
+
+                                                // --- 사용자 관리 ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**")
+                                                .hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
+
+                                                // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
+                                                .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/sync").hasRole("ADMIN")
+
+                                                // ===================================================================
                                                 // 1. 완전 공개 (Public) - 비로그인 사용자도 접근 가능
                                                 // ===================================================================
 
@@ -126,23 +144,7 @@ public class SecurityConfig {
                                                 // --- 업로더 컨텐츠 관리 ---
                                                 .requestMatchers("/api/v1/backoffice/uploader/**").hasRole("UPLOADER")
 
-                                                // ===================================================================
-                                                // 4. ADMIN 전용
-                                                // ===================================================================
 
-                                                // --- 사용자 관리 ---
-                                                .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**")
-                                                .hasRole("ADMIN")
-                                                .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
-                                                .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
-
-                                                // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
-                                                .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
-                                                .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/admin/warmup").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/admin/warmup").hasRole("ADMIN")
-                                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/sync").hasRole("ADMIN")
 
                                                 // ===================================================================
                                                 // 5. UPLOADER 또는 ADMIN

@@ -19,17 +19,18 @@ public class BookmarkSyncService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoMetadataRepository videoMetadataRepository;
+    private final BookmarkRepository bookmarkRepository;
 
     private static final String KEY_RANKING = "video:ranking"; // ZSet
     private static final String KEY_DIRTY = "video:dirty:bookmark"; // Set
     private static final String KEY_PROCESSING = "video:processing:bookmark"; // Set (안전 큐)
-    private final BookmarkRepository bookmarkRepository;
 
     /**
      * Redis에 저장된 북마크 카운트를 DB(VideoMetadata)에 동기화하는 비즈니스 로직
      */
     public void syncBookmarkCounts() {
         // 1. [장애 복구] 이전 작업 중 서버가 뻗었다면 다시 합침
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PROCESSING))) {
             stringRedisTemplate.opsForSet().unionAndStore(KEY_DIRTY, KEY_PROCESSING, KEY_DIRTY);
             stringRedisTemplate.delete(KEY_PROCESSING);
         }
@@ -90,7 +91,7 @@ public class BookmarkSyncService {
     @Transactional(readOnly = true)
     public void warmUpRankingFromDB() {
         log.info("[Sync] DB 데이터를 기반으로 Redis 랭킹(ZSet) 초기화를 시작합니다...");
-        stringRedisTemplate.delete("video:ranking"); // 기존 캐시 날림
+        stringRedisTemplate.delete(KEY_RANKING);
 
         // DB 딱 1번 찌름! (N+1 완벽 해결)
         List<Object[]> results = bookmarkRepository.countTotalBookmarksGroupedByVideo();
@@ -101,7 +102,7 @@ public class BookmarkSyncService {
             Long bookmarkCount = (Long) row[1];
 
             if (bookmarkCount > 0) {
-                stringRedisTemplate.opsForZSet().add("video:ranking", String.valueOf(videoId), bookmarkCount.doubleValue());
+                stringRedisTemplate.opsForZSet().add(KEY_RANKING, String.valueOf(videoId), bookmarkCount.doubleValue());
                 count++;
             }
         }
