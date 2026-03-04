@@ -29,7 +29,7 @@ public class BackofficeController {
     @Operation(summary = "업로더 콘텐츠 목록 조회", description = "로그인한 업로더 본인의 콘텐츠 목록을 페이지네이션으로 조회합니다.")
     @GetMapping("/uploader/contents")
     @PreAuthorize("hasRole('UPLOADER')")
-    public ApiResponse<Page<UploaderContentResponse>> getMyContents(
+    public ApiResponse<PageResponse<UploaderContentResponse>> getMyContents(
             @AuthenticationPrincipal String userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -39,13 +39,13 @@ public class BackofficeController {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<UploaderContentResponse> result = backofficeService.getUploaderContents(Long.parseLong(userId), keyword, pageable);
-        return ApiResponse.success(result);
+        return ApiResponse.success(PageResponse.from(result));
     }
 
     @Operation(summary = "어드민 콘텐츠 목록 조회", description = "어드민이 전체 콘텐츠 목록을 키워드 검색 및 페이지네이션으로 조회합니다.")
     @GetMapping("/admin/contents")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Page<AdminContentResponse>> getContents(
+    public ApiResponse<PageResponse<AdminContentResponse>> getContents(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -54,7 +54,7 @@ public class BackofficeController {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<AdminContentResponse> result = backofficeService.getAdminContents(keyword, pageable);
-        return ApiResponse.success(result);
+        return ApiResponse.success(PageResponse.from(result));
     }
 
     @Operation(summary = "콘텐츠 상세 조회", description = "업로더가 특정 콘텐츠의 상세 정보를 조회합니다.")
@@ -99,7 +99,7 @@ public class BackofficeController {
     @Operation(summary = "유저 목록 조회", description = "어드민이 역할(userRole) 및 키워드로 유저 목록을 페이지네이션으로 조회합니다.")
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Page<AdminUserResponse>> getUsers(
+    public ApiResponse<PageResponse<AdminUserResponse>> getUsers(
             @RequestParam UserRole userRole,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -109,7 +109,7 @@ public class BackofficeController {
     ) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         Page<AdminUserResponse> result = backofficeService.getAllUsers(userRole, keyword, pageable);
-        return ApiResponse.success(result);
+        return ApiResponse.success(PageResponse.from(result));
     }
 
     @Operation(summary = "유저 상태 변경", description = "어드민이 특정 유저의 활성/정지 상태를 변경합니다.")
