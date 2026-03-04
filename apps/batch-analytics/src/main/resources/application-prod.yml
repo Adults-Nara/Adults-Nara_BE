@@ -7,3 +7,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+  batch:
+    jdbc:
+      initialize-schema: never  # prod에서는 migration으로 직접 관리
+    job:
+      enabled: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}

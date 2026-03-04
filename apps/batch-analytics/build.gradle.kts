@@ -24,13 +24,15 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok")
 
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+
     // Spring Batch
     implementation("org.springframework.boot:spring-boot-starter-batch")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-
-
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-}
 
+    // Test
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.batch:spring-batch-test")
+    testRuntimeOnly("com.h2database:h2")
+}
