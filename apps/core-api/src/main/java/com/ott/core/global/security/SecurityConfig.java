@@ -140,6 +140,9 @@ public class SecurityConfig {
                                                 // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
                                                 .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
                                                 .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/sync").hasRole("ADMIN")
 
                                                 // ===================================================================
                                                 // 5. UPLOADER 또는 ADMIN
