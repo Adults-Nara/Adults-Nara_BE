@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.3...v0.8.4) (2026-03-04)
+
+
+### Bug Fixes
+
+* trigger release please ([345a882](https://github.com/Adults-Nara/Adults-Nara_BE/commit/345a882d10a8906e62239f64c7d0b736f9144654))
+
 ## [0.8.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.2...v0.8.3) (2026-03-04)
 
 
