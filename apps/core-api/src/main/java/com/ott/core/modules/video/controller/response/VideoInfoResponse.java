@@ -16,6 +16,8 @@ public record VideoInfoResponse(
         List<String> tagIds,
         OffsetDateTime createdAt,
         String otherVideoUrl,
+        String userProfile,
+        String userNickname,
         WatchHistoryResponse watchHistory
 ) {
     public static VideoInfoResponse of(VideoInfoResult result, WatchHistoryResponse watchHistory) {
@@ -28,6 +30,8 @@ public record VideoInfoResponse(
                 result.tagIds(),
                 result.createdAt(),
                 result.otherVideoUrl(),
+                result.userProfile(),
+                result.userNickname(),
                 watchHistory
         );
     }

@@ -53,8 +53,12 @@ public interface RecommendationApiDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     })
 
-    ApiResponse<List<VideoFeedResponseDto>> getRelatedFeed(
+    ApiResponse<SliceResponse<VideoFeedResponseDto>> getRelatedFeed(
+            @Parameter(description = "조회할 사용자의 고유 ID", example = "9999", required = true)
+            String userId,
             @Parameter(description = "현재 영상의 물리적 ID") Long videoId,
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
+            @Min(0) int page,
             @Parameter(description = "가져올 개수 (기본 10)") @Min(1) @Max(20) int size
     );
 }

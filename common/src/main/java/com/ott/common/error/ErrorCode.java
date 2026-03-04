@@ -86,6 +86,7 @@ public enum ErrorCode {
 
     // ===== Onboarding =====
     INVALID_ONBOARDING_STATE("ONBOARDING-400-001", 400, "온보딩 필수 단계가 완료되지 않았습니다. 태그를 1개 이상 선택해주세요.");
+    ELASTICSEARCH_SYNC_ERROR("SYSTEM-500-004", 500, "Elasticsearch 문서 동기화 중 오류가 발생했습니다.");
 
     private final String code;
     private final int httpStatus;

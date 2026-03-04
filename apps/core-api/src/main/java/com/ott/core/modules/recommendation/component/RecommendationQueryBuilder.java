@@ -77,7 +77,7 @@ public class RecommendationQueryBuilder {
     }
 
     // [가로 피드] 연관 영상 (More Like This / Terms) - 필터링 제거됨
-    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int limit) {
+    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int page, int limit) {
         Query relatedQuery = Query.of(q -> q.bool(b -> b
                 .must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
                 .mustNot(mn -> mn.term(t -> t.field("_id").value(currentVideoId.toString()))) // 자기 자신만 제외
@@ -87,7 +87,7 @@ public class RecommendationQueryBuilder {
         return NativeQuery.builder()
                 .withQuery(relatedQuery)
                 .withSort(Sort.by(Sort.Direction.DESC, "viewCount"))
-                .withPageable(PageRequest.of(0, limit))
+                .withPageable(PageRequest.of(page, limit))
                 .build();
     }
 

@@ -71,8 +71,9 @@ subprojects {
 
 sonar {
     properties {
-        property("sonar.projectKey", "ASN_BE")
-        property("sonar.projectName", "ASN_BE")
+        property("sonar.organization", "adults-nara")
+        property("sonar.projectKey", "Adults-Nara_Adults-Nara_BE")
+        property("sonar.projectName", "Adults-Nara_BE")
         property("sonar.java.coveragePlugin", "jacoco")
         property("sonar.coverage.jacoco.xmlReportPaths", "${project.rootDir}/**/build/reports/jacoco/test/jacocoTestReport.xml")
     }
