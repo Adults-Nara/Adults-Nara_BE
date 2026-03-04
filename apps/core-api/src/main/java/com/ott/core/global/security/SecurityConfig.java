@@ -61,6 +61,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/auth/kakao/**").permitAll()
                                                 .requestMatchers("/api/v1/auth/token/refresh").permitAll()
 
+                                                .requestMatchers("/api/v1/auth/onboarding/complete").authenticated()
+
                                                 // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
                                                 .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
                                                 .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
