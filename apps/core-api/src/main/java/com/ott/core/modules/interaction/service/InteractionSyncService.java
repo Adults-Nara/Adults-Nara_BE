@@ -1,11 +1,17 @@
 package com.ott.core.modules.interaction.service;
 
+import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.enums.InteractionType;
+import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
 import com.ott.core.modules.interaction.repository.InteractionRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -18,11 +24,12 @@ public class InteractionSyncService {
 
     // OCP(개방-폐쇄 원칙) 준수: 좋아요, 싫어요 등 타입별 DB 업데이트 메서드 매핑
     private final Map<String, BiConsumer<Long, Integer>> syncActionMap;
+    private final VideoMetadataQueryRepository videoMetadataQueryRepository;
 
     public InteractionSyncService(
             StringRedisTemplate stringRedisTemplate,
             VideoMetadataRepository videoMetadataRepository,
-            InteractionRepository interactionRepository) {
+            InteractionRepository interactionRepository, VideoMetadataQueryRepository videoMetadataQueryRepository) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.interactionRepository = interactionRepository;
 
@@ -31,6 +38,7 @@ public class InteractionSyncService {
                 "dislike", videoMetadataRepository::updateDislikeCount,
                 "superlike", videoMetadataRepository::updateSuperLikeCount
         );
+        this.videoMetadataQueryRepository = videoMetadataQueryRepository;
     }
 
     public void syncAllStats() {
@@ -97,5 +105,29 @@ public class InteractionSyncService {
         if (successCount > 0) {
             log.info("[SyncService] {} 카운트 {}건 DB 완벽 동기화 완료!", targetType, successCount);
         }
+    }
+    @Transactional(readOnly = true)
+    public void warmUpInteractionFromDB() {
+        log.info("[Sync] DB 데이터를 기반으로 Redis 인터랙션 카운트 초기화를 시작합니다...");
+        stringRedisTemplate.delete("video:count:like");
+        stringRedisTemplate.delete("video:count:dislike");
+
+        // DB 딱 1번 찌름!
+        List<Object[]> results = interactionRepository.countTotalInteractionsGroupedByVideoAndType();
+
+        int count = 0;
+        for (Object[] row : results) {
+            Long videoId = (Long) row[0];
+            InteractionType type = (InteractionType) row[1];
+            Long interactionCount = (Long) row[2];
+
+            String hashKey = type == InteractionType.LIKE ? "video:count:like" : "video:count:dislike";
+
+            if (interactionCount > 0) {
+                stringRedisTemplate.opsForHash().put(hashKey, String.valueOf(videoId), String.valueOf(interactionCount));
+                count++;
+            }
+        }
+        log.info("[Sync] 총 {}건의 인터랙션 그룹 데이터가 복구되었습니다!", count);
     }
 }
