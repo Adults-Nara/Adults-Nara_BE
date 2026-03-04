@@ -172,7 +172,7 @@ public class AuthController {
 
     @Operation(
             summary = "Access Token 재발급",
-            description = "쿠키의 RefreshToken으로 새로운 AccessToken을 발급받습니다."
+            description = "쿠키의 RefreshToken으로 새로운 AccessToken을 발급합니다."
     )
     @PostMapping("/token/refresh")
     public ApiResponse<TokenRefreshResponse> refreshToken(HttpServletRequest request) {
@@ -211,10 +211,6 @@ public class AuthController {
 
     // ====== Private Methods ======
 
-    /**
-     * OAuth state/nonce 검증을 수행합니다.
-     * validateState=false는 'local' 또는 'test' 프로필에서만 허용됩니다.
-     */
     private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
         if (!validateState) {
             log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
@@ -240,10 +236,6 @@ public class AuthController {
         clearNonceCookie(response);
     }
 
-    /**
-     * state 서명 검증 및 타임스탬프 확인 후 nonce를 반환합니다.
-     * - 서명 불일치, 만료, 미래 시간(clock skew 초과) 시 Optional.empty() 반환
-     */
     private Optional<String> getNonceIfStateIsValid(String state) {
         if (state == null) {
             return Optional.empty();
@@ -293,9 +285,6 @@ public class AuthController {
         return payload + "." + signature;
     }
 
-    /**
-     * HMAC-SHA256으로 데이터를 서명합니다.
-     */
     private String hmacSign(String data) {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
