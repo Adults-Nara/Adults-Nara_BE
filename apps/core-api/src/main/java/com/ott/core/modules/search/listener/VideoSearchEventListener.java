@@ -10,6 +10,8 @@ import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -32,8 +34,13 @@ public class VideoSearchEventListener {
      * DB 저장이 완료된 후, ES에 문서를 색인
      */
     @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Retryable(
+            value = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 2000)
+    )
     public void handleVideoIndexRequest(VideoIndexRequestedEvent event) {
         log.info("ES 검색 문서 동기화 시작: videoId={}", event.videoId());
 
