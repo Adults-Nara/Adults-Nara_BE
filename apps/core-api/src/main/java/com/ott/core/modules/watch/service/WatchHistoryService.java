@@ -127,9 +127,9 @@ public class WatchHistoryService {
 
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition,
                 isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
-        userPreferenceService.reflectWatchScore(userId, videoMetadataId, lastPosition, isCompleted);
+        userPreferenceService.reflectWatchScore(userId, videoId, lastPosition, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
-        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoMetadataId, lastPosition, isCompleted));
+        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, lastPosition, isCompleted));
 
         // 포인트 적립
         if (isCompleted && videoMetadata.isAd()) {

@@ -81,8 +81,8 @@ public enum ErrorCode {
     UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
 
     // ===== Sync =====
-    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."); // 👈 새롭게 추가!
-
+    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."),
+    ELASTICSEARCH_SYNC_ERROR("SYSTEM-500-004", 500, "Elasticsearch 문서 동기화 중 오류가 발생했습니다.");
 
     private final String code;
     private final int httpStatus;
