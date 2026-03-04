@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.1...v0.8.2) (2026-03-04)
+
+
+### Bug Fixes
+
+* Readme video.png 교체 ([9d2afb9](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9d2afb94429da71bf431472909ac27c31ecfddf9))
+
 ## [0.8.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.0...v0.8.1) (2026-03-04)
 
 
