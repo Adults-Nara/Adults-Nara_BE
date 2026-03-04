@@ -13,6 +13,8 @@ public record VideoInfoResult(
         Visibility visibility,
         List<String> tagIds,
         OffsetDateTime createdAt,
-        String otherVideoUrl
+        String otherVideoUrl,
+        String userProfile,
+        String userNickname
 ) {
 }

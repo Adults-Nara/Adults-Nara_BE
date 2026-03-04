@@ -10,6 +10,7 @@ import com.ott.common.persistence.enums.Visibility;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
+import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.dto.PlayResult;
 import com.ott.core.modules.video.dto.VideoInfoResult;
 import com.ott.core.modules.video.dto.multipart.CompletedPartDto;
@@ -41,6 +42,7 @@ public class VideoService {
     private final VideoUploadSessionRepository sessionRepository;
     private final VideoTagRepository videoTagRepository;
     private final TagRepository tagRepository;
+    private final UserRepository userRepository;
 
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
@@ -60,6 +62,7 @@ public class VideoService {
                         VideoUploadSessionRepository sessionRepository,
                         VideoTagRepository videoTagRepository,
                         TagRepository tagRepository,
+                        UserRepository userRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
                         S3ObjectStorage s3ObjectStorage,
                         ObjectStorageVerifier objectStorageVerifier,
@@ -73,6 +76,7 @@ public class VideoService {
         this.sessionRepository = sessionRepository;
         this.videoTagRepository = videoTagRepository;
         this.tagRepository = tagRepository;
+        this.userRepository = userRepository;
 
         this.presignedMultipartProcessor = presignedMultipartProcessor;
         this.s3ObjectStorage = s3ObjectStorage;
@@ -272,6 +276,9 @@ public class VideoService {
         List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
         List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
 
+        User uploader = userRepository.findById(videoMetadata.getUserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
         return new VideoInfoResult(
                 String.valueOf(videoId),
                 videoMetadata.getTitle(),
@@ -280,7 +287,9 @@ public class VideoService {
                 video.getVisibility(),
                 tagIds,
                 videoMetadata.getCreatedAt(),
-                videoMetadata.getOtherVideoUrl()
+                videoMetadata.getOtherVideoUrl(),
+                uploader.getProfileImageUrl(),
+                uploader.getNickname()
         );
     }
 }
