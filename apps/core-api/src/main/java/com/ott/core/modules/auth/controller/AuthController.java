@@ -96,10 +96,10 @@ public class AuthController {
 
         Cookie nonceCookie = new Cookie(STATE_NONCE_COOKIE, nonce);
         nonceCookie.setHttpOnly(true);
-        nonceCookie.setSecure(secureCookie);
+        nonceCookie.setSecure(true);                    // None이면 Secure 필수
         nonceCookie.setPath("/api/v1/auth/kakao");
         nonceCookie.setMaxAge((int) STATE_EXPIRY_SECONDS);
-        nonceCookie.setAttribute("SameSite", "Lax");
+        nonceCookie.setAttribute("SameSite", "None");   // Lax → None
         response.addCookie(nonceCookie);
 
         String loginUrl = "https://kauth.kakao.com/oauth/authorize"
@@ -134,10 +134,10 @@ public class AuthController {
 
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
-                .secure(secureCookie)
+                .secure(true)                           // None이면 Secure 필수
                 .path("/api/v1/auth/token")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("Lax")
+                .sameSite("None")                       // none → None (대소문자 통일)
                 .build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
@@ -199,15 +199,16 @@ public class AuthController {
 
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
-                .secure(secureCookie)
+                .secure(true)                           // None이면 Secure 필수
                 .path("/api/v1/auth/token")
                 .maxAge(0)
-                .sameSite("Lax")
+                .sameSite("None")                       // Lax → None
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
 
         return ApiResponse.success();
     }
+
 
     // ====== Private Methods ======
 
@@ -310,10 +311,10 @@ public class AuthController {
     private void clearNonceCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie(STATE_NONCE_COOKIE, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie);
+        cookie.setSecure(true);                         // None이면 Secure 필수
         cookie.setPath("/api/v1/auth/kakao");
         cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", "Lax");
+        cookie.setAttribute("SameSite", "None");        // Lax → None
         response.addCookie(cookie);
     }
 }
