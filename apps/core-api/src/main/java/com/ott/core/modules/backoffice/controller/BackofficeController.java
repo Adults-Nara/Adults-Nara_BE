@@ -83,12 +83,12 @@ public class BackofficeController {
                     }
             )
     )
-    @PutMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PatchMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
-            @RequestPart("image") MultipartFile image,
+            @RequestPart(value = "image", required = false) MultipartFile image,
             @RequestPart("data") ContentUpdateRequest request
     ) {
         ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
