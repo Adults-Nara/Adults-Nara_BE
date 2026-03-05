@@ -12,6 +12,12 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class FfprobeMediaProbe {
+    private final ProcessRunner processRunner;
+
+    public FfprobeMediaProbe(ProcessRunner processRunner) {
+        this.processRunner = processRunner;
+    }
+
     public double readFps(Path inputFile) {
         // avg_frame_rate를 한 줄로 출력: 예) "30000/1001"
         List<String> cmd = List.of(
@@ -70,6 +76,20 @@ public class FfprobeMediaProbe {
             Thread.currentThread().interrupt();
             throw new RuntimeException("ffprobe execution error", e);
         }
+    }
+
+    public boolean hasAudioStream(Path inputFile) {
+        // ffprobe -v error -select_streams a:0 -show_entries stream=index -of csv=p=0 input.mp4
+        // 출력이 비어있으면 오디오 없음
+        List<String> cmd = List.of(
+                "ffprobe", "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=index",
+                "-of", "csv=p=0",
+                inputFile.toString()
+        );
+        String out = processRunner.runAndCollect(cmd, inputFile.getParent()); // stdout 문자열 받는 메서드 필요
+        return out != null && !out.trim().isEmpty();
     }
 
     private String runAndCapture(List<String> cmd, Path workingDir) {
