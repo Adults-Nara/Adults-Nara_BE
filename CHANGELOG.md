@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.5](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.4...v0.8.5) (2026-03-05)
+
+
+### Bug Fixes
+
+* swagger 토픽 관리 ([1e31384](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1e3138434cad645c1498a758759dcc1c7050af4f))
+* 프론트 테스트를 위한 samesite=None으로 수정 ([d00e4f0](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d00e4f0436d59d34f9642c56d286cd6ce707d97d))
+
 ## [0.8.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.3...v0.8.4) (2026-03-04)
 
 
