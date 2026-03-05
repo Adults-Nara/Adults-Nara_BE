@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.6](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.5...v0.8.6) (2026-03-05)
+
+
+### Bug Fixes
+
+* refreshToken path 수정 ([61116bf](https://github.com/Adults-Nara/Adults-Nara_BE/commit/61116bf57eec4f01f7d6cdce1efa1d72a9cfed9d))
+
 ## [0.8.5](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.4...v0.8.5) (2026-03-05)
 
 
