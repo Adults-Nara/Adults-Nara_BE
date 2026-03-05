@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.7](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.6...v0.8.7) (2026-03-05)
+
+
+### Bug Fixes
+
+* 소리 없는 영상 트랜스코딩 지원 ([12cdc82](https://github.com/Adults-Nara/Adults-Nara_BE/commit/12cdc8282a383f094b149f57df4c2a08566fa339))
+
 ## [0.8.6](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.5...v0.8.6) (2026-03-05)
 
 
