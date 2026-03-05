@@ -135,7 +135,7 @@ public class AuthController {
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
                 .secure(true)                           // None이면 Secure 필수
-                .path("/api/v1/auth/token")
+                .path("/")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
                 .sameSite("None")                       // none → None (대소문자 통일)
                 .build();
