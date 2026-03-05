@@ -63,4 +63,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     // 3. 특정 비디오의 북마크 총개수 계산 (명시적 JOIN)
     @Query("SELECT COUNT(b) FROM Bookmark b JOIN b.videoMetadata vm WHERE vm.videoId = :videoId")
     long countByVideoId(@Param("videoId") Long videoId);
+
+    @Query("SELECT b.videoMetadata.videoId, COUNT(b) FROM Bookmark b GROUP BY b.videoMetadata.videoId")
+    List<Object[]> countTotalBookmarksGroupedByVideo();
 }
