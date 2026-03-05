@@ -1,77 +1,76 @@
 package com.ott.batch.monthly.step1;
 
-import com.ott.batch.monthly.dto.UserTagWatchRaw;
-import com.ott.batch.monthly.support.BatchDateRange;
-import lombok.RequiredArgsConstructor;
+import com.ott.batch.monthly.dto.TagStatDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.YearMonth;
 
 /**
- * Step1 Reader: watch_history + video_tag + tag 조인으로
- * 전월 시청 기록을 사용자별·태그별로 집계하여 읽어온다.
- *
- * JDBC Cursor 방식으로 대용량 처리에 안전하다.
+ * Step 1: 태그별 일별 통계 Reader
+ * 기간 내 각 태그별 시청 기록을 집계
  */
 @Slf4j
-@Configuration
-@RequiredArgsConstructor
+@Component
 public class TagStatReader {
 
     private final DataSource dataSource;
 
-    private static final String SQL = """
+    public TagStatReader(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    public JdbcCursorItemReader<TagStatDto> reader(OffsetDateTime rangeFrom, OffsetDateTime rangeTo) {
+        // WatchHistory에는 watched_at 컬럼이 없으므로 created_at 사용
+        String sql = """
             SELECT
+                vt.tag_id,
                 wh.user_id,
-                t.tag_id,
-                t.tag_name,
-                CAST(SUM(wh.last_position) AS INTEGER)  AS total_view_time,
-                CAST(COUNT(*)              AS INTEGER)  AS view_count
+                DATE(wh.created_at) AS stats_date,
+                SUM(wh.last_position) AS total_view_time,
+                COUNT(wh.watch_history_id) AS view_count,
+                SUM(CASE WHEN wh.completed THEN 1 ELSE 0 END) AS completed_count
             FROM watch_history wh
-            JOIN video_tag vt ON wh.video_metadata_id = vt.video_metadata_id
-            JOIN tag t        ON vt.tag_id = t.tag_id
-            WHERE wh.updated_at >= ?
-              AND wh.updated_at <= ?
-              AND wh.deleted = false
-            GROUP BY wh.user_id, t.tag_id, t.tag_name
-            ORDER BY wh.user_id, t.tag_id
-            """;
+            INNER JOIN video_tag vt ON wh.video_metadata_id = vt.video_metadata_id
+            WHERE wh.deleted = false
+              AND wh.created_at >= ?
+              AND wh.created_at < ?
+            GROUP BY vt.tag_id, wh.user_id, DATE(wh.created_at)
+            ORDER BY wh.user_id, DATE(wh.created_at), vt.tag_id
+        """;
 
-    @Bean("tagStatItemReader")
-    @StepScope
-    public JdbcCursorItemReader<UserTagWatchRaw> tagStatItemReader(
-            @Value("#{jobParameters['rangeFrom']}") String rangeFromStr,
-            @Value("#{jobParameters['rangeTo']}")   String rangeToStr
-    ) {
-        OffsetDateTime rangeFrom = OffsetDateTime.parse(rangeFromStr);
-        OffsetDateTime rangeTo   = OffsetDateTime.parse(rangeToStr);
+        log.debug("[TagStatReader] SQL 준비 완료. 기간: {} ~ {}", rangeFrom, rangeTo);
 
-        log.info("[TagStatReader] 집계 범위: {} ~ {}", rangeFrom, rangeTo);
-
-        return new JdbcCursorItemReaderBuilder<UserTagWatchRaw>()
-                .name("tagStatItemReader")
+        return new JdbcCursorItemReaderBuilder<TagStatDto>()
+                .name("tagStatReader")
                 .dataSource(dataSource)
-                .sql(SQL)
+                .sql(sql)
                 .preparedStatementSetter(ps -> {
                     ps.setObject(1, rangeFrom);
                     ps.setObject(2, rangeTo);
                 })
-                .rowMapper((rs, rowNum) -> new UserTagWatchRaw(
-                        rs.getLong("user_id"),
-                        rs.getLong("tag_id"),
-                        rs.getString("tag_name"),
-                        rs.getInt("total_view_time"),
-                        rs.getInt("view_count")
-                ))
-                .fetchSize(500)
+                .rowMapper(new TagStatRowMapper())
                 .build();
+    }
+
+    private static class TagStatRowMapper implements RowMapper<TagStatDto> {
+        @Override
+        public TagStatDto mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return new TagStatDto(
+                    rs.getLong("tag_id"),
+                    rs.getLong("user_id"),
+                    rs.getObject("stats_date", LocalDate.class),
+                    rs.getLong("total_view_time"),
+                    rs.getInt("view_count"),
+                    rs.getInt("completed_count")
+            );
+        }
     }
 }

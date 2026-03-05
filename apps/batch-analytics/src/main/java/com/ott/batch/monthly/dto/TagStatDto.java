@@ -1,28 +1,24 @@
 package com.ott.batch.monthly.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 /**
- * tag_stats 테이블에 저장될 집계 데이터.
- * stats_date는 전월 1일 (배치의 집계 기준월 대표값)
+ * Step 1: 태그별 통계 DTO
  */
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TagStatDto {
-
-    private Long userId;
     private Long tagId;
-    private String tagName;
-
-    /** 집계 기준 날짜 (전월 1일. 예: 2025-02-01) */
+    private Long userId;
     private LocalDate statsDate;
-
-    /** 해당 태그 총 시청 시간(초) */
-    private int totalViewTime;
-
-    /** 해당 태그 시청 횟수 */
-    private int viewCount;
+    private Long totalViewTime;      // 총 시청 시간 (초)
+    private Integer viewCount;        // 시청 횟수
+    private Integer completedCount;   // 완주 횟수
 }

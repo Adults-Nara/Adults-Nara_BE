@@ -1,43 +1,26 @@
 package com.ott.batch.monthly.step1;
 
 import com.ott.batch.monthly.dto.TagStatDto;
-import com.ott.batch.monthly.dto.UserTagWatchRaw;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
-
 /**
- * Step1 Processor: UserTagWatchRaw → TagStatDto 변환.
- *
- * stats_date는 전월 1일로 고정 (월 단위 집계를 하나의 날짜로 표현).
+ * Step 1: 태그별 통계 Processor
+ * (현재는 pass-through만 수행)
  */
 @Slf4j
-@StepScope
-@Component("tagStatItemProcessor")
-public class TagStatProcessor implements ItemProcessor<UserTagWatchRaw, TagStatDto> {
-
-    private final LocalDate statsDate;
-
-    public TagStatProcessor(@Value("#{jobParameters['yearMonth']}") String yearMonthStr) {
-        YearMonth ym = YearMonth.parse(yearMonthStr, DateTimeFormatter.ofPattern("yyyy-MM"));
-        this.statsDate = ym.atDay(1);
-    }
+@Component
+public class TagStatProcessor implements ItemProcessor<TagStatDto, TagStatDto> {
 
     @Override
-    public TagStatDto process(UserTagWatchRaw raw) {
-        return TagStatDto.builder()
-                .userId(raw.getUserId())
-                .tagId(raw.getTagId())
-                .tagName(raw.getTagName())
-                .statsDate(statsDate)
-                .totalViewTime(raw.getTotalViewTime())
-                .viewCount(raw.getViewCount())
-                .build();
+    public TagStatDto process(TagStatDto item) {
+        // 필요시 검증 로직 추가
+        if (item.getViewCount() == null || item.getViewCount() <= 0) {
+            log.warn("[TagStatProcessor] 유효하지 않은 데이터 스킵: {}", item);
+            return null;  // null 반환 시 해당 아이템 skip
+        }
+
+        return item;  // pass-through
     }
 }

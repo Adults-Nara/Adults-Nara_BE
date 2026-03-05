@@ -2,94 +2,128 @@ package com.ott.batch.monthly;
 
 import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.monthly.dto.TagStatDto;
-import com.ott.batch.monthly.dto.UserTagWatchRaw;
-import com.ott.batch.monthly.dto.UserWatchDetailRaw;
 import com.ott.batch.monthly.step1.TagStatProcessor;
+import com.ott.batch.monthly.step1.TagStatReader;
 import com.ott.batch.monthly.step1.TagStatWriter;
 import com.ott.batch.monthly.step2.MonthlyReportProcessor;
+import com.ott.batch.monthly.step2.MonthlyReportReader;
 import com.ott.batch.monthly.step2.MonthlyReportWriter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.transaction.PlatformTransactionManager;
 
-/**
- * 월별 시청 통계 배치 Job 설정.
- *
- * Job: monthlyStatsJob
- * ├── Step1: tagStatisticsStep   (태그별 시청 시간/횟수 → tag_stats)
- * └── Step2: monthlyReportStep   (개인 리포트 지표 → monthly_watch_report)
- *
- * Job Parameters:
- *   - yearMonth  : "yyyy-MM"  (집계 대상 전월, 예: "2025-02")
- *   - rangeFrom  : ISO OffsetDateTime 문자열 (전월 1일 00:00:00 KST)
- *   - rangeTo    : ISO OffsetDateTime 문자열 (전월 말일 23:59:59 KST)
- *   - runAt      : 실행 시각 (재실행 구분용 고유값, ISO OffsetDateTime)
- */
+import java.time.OffsetDateTime;
+
 @Slf4j
 @Configuration
-@RequiredArgsConstructor
 public class MonthlyStatsBatchConfig {
-
-    private static final int CHUNK_SIZE = 100;
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
+    private final TagStatReader tagStatReader;
+    private final TagStatProcessor tagStatProcessor;
+    private final TagStatWriter tagStatWriter;
+    private final MonthlyReportReader monthlyReportReader;
+    private final MonthlyReportProcessor monthlyReportProcessor;
+    private final MonthlyReportWriter monthlyReportWriter;
 
-    // Step1
-    private final JdbcCursorItemReader<UserTagWatchRaw> tagStatItemReader;
-    private final TagStatProcessor tagStatItemProcessor;
-    private final TagStatWriter tagStatItemWriter;
+    public MonthlyStatsBatchConfig(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            TagStatReader tagStatReader,
+            TagStatProcessor tagStatProcessor,
+            TagStatWriter tagStatWriter,
+            MonthlyReportReader monthlyReportReader,
+            MonthlyReportProcessor monthlyReportProcessor,
+            MonthlyReportWriter monthlyReportWriter) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+        this.tagStatReader = tagStatReader;
+        this.tagStatProcessor = tagStatProcessor;
+        this.tagStatWriter = tagStatWriter;
+        this.monthlyReportReader = monthlyReportReader;
+        this.monthlyReportProcessor = monthlyReportProcessor;
+        this.monthlyReportWriter = monthlyReportWriter;
+    }
 
-    // Step2
-    private final JdbcCursorItemReader<UserWatchDetailRaw> monthlyReportItemReader;
-    private final MonthlyReportProcessor monthlyReportItemProcessor;
-    private final MonthlyReportWriter monthlyReportItemWriter;
+    /**
+     * 월간 통계 Job
+     */
+    @Bean
+    public Job monthlyStatsJob(Step monthlyTagStatsStep, Step monthlyReportStep) {
+        log.info("[monthlyStatsJob] Job 빌드");
 
-    @Bean("monthlyStatsJob")
-    public Job monthlyStatsJob() {
         return new JobBuilder("monthlyStatsJob", jobRepository)
-                .start(tagStatisticsStep())
-                .next(monthlyReportStep())
+                .start(monthlyTagStatsStep)
+                .next(monthlyReportStep)
                 .build();
     }
 
     /**
-     * Step1: 태그별 시청 통계 집계 → tag_stats upsert
+     * Step 1: 태그별 통계 집계
      */
-    @Bean("tagStatisticsStep")
-    public Step tagStatisticsStep() {
-        return new StepBuilder("tagStatisticsStep", jobRepository)
-                .<UserTagWatchRaw, TagStatDto>chunk(CHUNK_SIZE, transactionManager)
+    @Bean
+    @StepScope
+    public JdbcCursorItemReader<TagStatDto> tagStatItemReader(
+            @Value("#{jobParameters['rangeFrom']}") String rangeFromStr,
+            @Value("#{jobParameters['rangeTo']}") String rangeToStr) {
+
+        OffsetDateTime rangeFrom = OffsetDateTime.parse(rangeFromStr);
+        OffsetDateTime rangeTo = OffsetDateTime.parse(rangeToStr);
+
+        log.info("[tagStatItemReader] Reader 생성: {} ~ {}", rangeFrom, rangeTo);
+        return tagStatReader.reader(rangeFrom, rangeTo);
+    }
+
+    @Bean
+    public Step monthlyTagStatsStep(JdbcCursorItemReader<TagStatDto> tagStatItemReader) {
+        return new StepBuilder("monthlyTagStatsStep", jobRepository)
+                .<TagStatDto, TagStatDto>chunk(100, transactionManager)
                 .reader(tagStatItemReader)
-                .processor(tagStatItemProcessor)
-                .writer(tagStatItemWriter)
+                .processor(tagStatProcessor)
+                .writer(tagStatWriter)
                 .faultTolerant()
-                .skip(Exception.class)
-                .skipLimit(10)  // 10건까지 skip 허용 (데이터 이상 방어)
+                .skip(DataIntegrityViolationException.class)  // DB 제약조건 위반만 skip
+                .skip(EmptyResultDataAccessException.class)   // 데이터 없음만 skip
+                .skipLimit(10)
                 .build();
     }
 
     /**
-     * Step2: 개인 시청 리포트 집계 → monthly_watch_report upsert
+     * Step 2: 월간 리포트 생성
      */
-    @Bean("monthlyReportStep")
-    public Step monthlyReportStep() {
+    @Bean
+    @StepScope
+    public JdbcCursorItemReader<Long> monthlyReportItemReader(
+            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
+
+        log.info("[monthlyReportItemReader] Reader 생성: yearMonth={}", yearMonth);
+        return monthlyReportReader.reader(yearMonth);
+    }
+
+    @Bean
+    public Step monthlyReportStep(JdbcCursorItemReader<Long> monthlyReportItemReader) {
         return new StepBuilder("monthlyReportStep", jobRepository)
-                .<UserWatchDetailRaw, MonthlyReportDto>chunk(CHUNK_SIZE, transactionManager)
+                .<Long, MonthlyReportDto>chunk(50, transactionManager)
                 .reader(monthlyReportItemReader)
-                .processor(monthlyReportItemProcessor)
-                .writer(monthlyReportItemWriter)
-                .listener(monthlyReportItemWriter)   // StepExecutionListener: flush
+                .processor(monthlyReportProcessor)  // ItemProcessor<Long, MonthlyReportDto>
+                .writer(monthlyReportWriter)
+                .listener(monthlyReportWriter)
+                .listener(monthlyReportProcessor)  // StepExecutionListener 추가
                 .faultTolerant()
-                .skip(Exception.class)
+                .skip(DataIntegrityViolationException.class)
+                .skip(EmptyResultDataAccessException.class)
                 .skipLimit(10)
                 .build();
     }

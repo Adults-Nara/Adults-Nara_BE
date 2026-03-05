@@ -1,135 +1,97 @@
 package com.ott.batch.monthly.step2;
 
 import com.ott.batch.monthly.dto.MonthlyReportDto;
-import com.ott.batch.monthly.dto.UserWatchDetailRaw;
+import com.ott.batch.repository.TagStatsRepository;
+import com.ott.common.persistence.entity.Tag;
+import com.ott.common.persistence.entity.TagStats;
+import com.ott.common.persistence.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class MonthlyReportProcessorTest {
+
+    @Mock
+    private TagStatsRepository tagStatsRepository;
 
     private MonthlyReportProcessor processor;
 
     @BeforeEach
     void setUp() {
-        processor = new MonthlyReportProcessor("2025-02");
+        processor = new MonthlyReportProcessor(tagStatsRepository);
+
+        // StepExecution 모의 설정
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addString("yearMonth", "2026-03")
+                .toJobParameters();
+
+        StepExecution stepExecution = mock(StepExecution.class);
+        when(stepExecution.getJobParameters()).thenReturn(jobParameters);
+
+        processor.beforeStep(stepExecution);
     }
 
     @Test
-    @DisplayName("단일 사용자의 시청 기록을 정상적으로 집계한다")
+    @DisplayName("단일 사용자의 태그 통계를 정상적으로 집계한다")
     void aggregateSingleUser() throws Exception {
-        // Given: 사용자 1의 시청 기록 3건
-        Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 10, "드라마", "엔터테인먼트"),
-                new UserWatchDetailRaw(userId, 3600, false, 14, "드라마", "엔터테인먼트"),
-                new UserWatchDetailRaw(userId, 900, true, 20, "예능", "엔터테인먼트")
-        );
-
-        // When: Processor 실행
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-
-        // 마지막 버퍼 flush
-        if (result == null) {
-            result = processor.flush();
-        }
-
-        // Then: 집계 결과 검증
-        assertThat(result).isNotNull();
-        assertThat(result.getUserId()).isEqualTo(userId);
-        assertThat(result.getTotalWatchCount()).isEqualTo(3);
-        assertThat(result.getTotalWatchSeconds()).isEqualTo(6300L);
-        assertThat(result.getCompletedCount()).isEqualTo(2);
-        assertThat(result.getCompletionRate()).isEqualByComparingTo(BigDecimal.valueOf(66.67));
-    }
-
-    @Test
-    @DisplayName("동일한 시청 기록(중복)은 한 번만 카운트한다")
-    void deduplicateSameWatchRecords() throws Exception {
-        // Given: 같은 영상의 태그가 여러 개인 경우
-        Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 10, "드라마", "엔터테인먼트"),
-                new UserWatchDetailRaw(userId, 1800, true, 10, "로맨스", "엔터테인먼트"),
-                new UserWatchDetailRaw(userId, 1800, true, 10, "한국드라마", "드라마")
-        );
-
-        // When
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-        if (result == null) result = processor.flush();
-
-        // Then: 시청 횟수는 1회로 집계
-        assertThat(result.getTotalWatchCount()).isEqualTo(1);
-        assertThat(result.getTotalWatchSeconds()).isEqualTo(1800L);
-        assertThat(result.getCompletedCount()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("시간대별 시청 횟수를 정확하게 분류한다")
-    void classifyWatchTimeSlots() throws Exception {
-        // Given: 다양한 시간대의 시청 기록
-        Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 3,  "드라마", null),  // DAWN
-                new UserWatchDetailRaw(userId, 1800, true, 9,  "예능", null),    // MORNING
-                new UserWatchDetailRaw(userId, 1800, true, 14, "영화", null),    // AFTERNOON
-                new UserWatchDetailRaw(userId, 1800, true, 19, "뉴스", null),    // EVENING
-                new UserWatchDetailRaw(userId, 1800, true, 20, "스포츠", null),  // EVENING
-                new UserWatchDetailRaw(userId, 1800, true, 22, "다큐", null)     // NIGHT
-        );
-
-        // When
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-        if (result == null) result = processor.flush();
-
-        // Then
-        assertThat(result.getDawnCount()).isEqualTo(1);
-        assertThat(result.getMorningCount()).isEqualTo(1);
-        assertThat(result.getAfternoonCount()).isEqualTo(1);
-        assertThat(result.getEveningCount()).isEqualTo(2);
-        assertThat(result.getNightCount()).isEqualTo(1);
-        assertThat(result.getPeakTimeSlot()).isEqualTo("EVENING");
-    }
-
-    @Test
-    @DisplayName("최장 시청 시간을 정확하게 계산한다")
-    void calculateLongestSession() throws Exception {
         // Given
         Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 10, "드라마", null),
-                new UserWatchDetailRaw(userId, 5400, false, 14, "영화", null),
-                new UserWatchDetailRaw(userId, 900, true, 20, "예능", null)
+        User user = createUser(userId);
+        Tag tag1 = createTag(10L, "드라마");
+        Tag tag2 = createTag(11L, "예능");
+
+        List<TagStats> tagStatsList = Arrays.asList(
+                createTagStats(user, tag1, LocalDate.of(2026, 3, 1), 1800, 1, 1),
+                createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 900, 1, 0)
         );
 
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(tagStatsList);
+
         // When
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-        if (result == null) result = processor.flush();
+        MonthlyReportDto result = processor.process(userId);
 
         // Then
-        assertThat(result.getLongestSessionSeconds()).isEqualTo(5400);
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo(userId);
+        assertThat(result.getTotalWatchSeconds()).isEqualTo(2700L);  // 1800 + 900
+        assertThat(result.getTotalWatchCount()).isEqualTo(2);
+        assertThat(result.getCompletedCount()).isEqualTo(1);
+        assertThat(result.getCompletionRate()).isEqualTo(50.0);  // 1/2 * 100
+    }
+
+    @Test
+    @DisplayName("태그 통계가 없으면 null을 반환한다")
+    void returnNullForNoTagStats() throws Exception {
+        // Given
+        Long userId = 1L;
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
+
+        // When
+        MonthlyReportDto result = processor.process(userId);
+
+        // Then
+        assertThat(result).isNull();
     }
 
     @Test
@@ -137,91 +99,154 @@ class MonthlyReportProcessorTest {
     void selectMostWatchedTag() throws Exception {
         // Given
         Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 10, "드라마", null),
-                new UserWatchDetailRaw(userId, 3600, true, 14, "영화", null),
-                new UserWatchDetailRaw(userId, 900, true, 20, "예능", null)
+        User user = createUser(userId);
+        Tag tag1 = createTag(10L, "드라마");
+        Tag tag2 = createTag(11L, "영화");
+        Tag tag3 = createTag(12L, "예능");
+
+        List<TagStats> tagStatsList = Arrays.asList(
+                createTagStats(user, tag1, LocalDate.of(2026, 3, 1), 1800, 1, 1),
+                createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 3600, 1, 1),  // 최대
+                createTagStats(user, tag3, LocalDate.of(2026, 3, 3), 900, 1, 0)
         );
 
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(tagStatsList);
+
         // When
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-        if (result == null) result = processor.flush();
+        MonthlyReportDto result = processor.process(userId);
 
         // Then
         assertThat(result.getMostWatchedTagName()).isEqualTo("영화");
     }
 
     @Test
-    @DisplayName("다양성 점수를 고유 부모태그 수 기반으로 계산한다")
+    @DisplayName("다양성 점수를 고유 태그 수 기반으로 계산한다")
     void calculateDiversityScore() throws Exception {
-        // Given: 5가지 다른 부모태그
-        Long userId = 1L;
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(userId, 1800, true, 10, "한국드라마", "드라마"),
-                new UserWatchDetailRaw(userId, 1800, true, 11, "미국드라마", "드라마"),
-                new UserWatchDetailRaw(userId, 1800, true, 12, "액션영화", "영화"),
-                new UserWatchDetailRaw(userId, 1800, true, 13, "코미디", "예능"),
-                new UserWatchDetailRaw(userId, 1800, true, 14, "뉴스", "시사"),
-                new UserWatchDetailRaw(userId, 1800, true, 15, "다큐멘터리", "교양")
-        );
-
-        // When
-        MonthlyReportDto result = null;
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) result = temp;
-        }
-        if (result == null) result = processor.flush();
-
-        // Then: 5개 부모태그 × 20 = 100점
-        assertThat(result.getDiversityScore()).isEqualTo(100);
-    }
-
-    @Test
-    @DisplayName("시청 기록이 없으면 null을 반환한다")
-    void returnNullForNoRecords() throws Exception {
-        // Given: 빈 상태
-
-        // When
-        MonthlyReportDto result = processor.flush();
-
-        // Then
-        assertThat(result).isNull();
-    }
-
-    @Test
-    @DisplayName("여러 사용자의 기록을 순차적으로 처리한다")
-    void processMultipleUsersSequentially() throws Exception {
         // Given
-        List<UserWatchDetailRaw> records = List.of(
-                new UserWatchDetailRaw(1L, 1800, true, 10, "드라마", null),
-                new UserWatchDetailRaw(1L, 900, true, 14, "예능", null),
-                new UserWatchDetailRaw(2L, 3600, true, 20, "영화", null),
-                new UserWatchDetailRaw(2L, 1800, false, 22, "뉴스", null)
+        Long userId = 1L;
+        User user = createUser(userId);
+
+        // 3개의 서로 다른 태그
+        Tag tag1 = createTag(10L, "드라마");
+        Tag tag2 = createTag(11L, "영화");
+        Tag tag3 = createTag(12L, "예능");
+
+        List<TagStats> tagStatsList = Arrays.asList(
+                createTagStats(user, tag1, LocalDate.of(2026, 3, 1), 1800, 1, 1),
+                createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 1800, 1, 1),
+                createTagStats(user, tag3, LocalDate.of(2026, 3, 3), 1800, 1, 1)
         );
 
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(tagStatsList);
+
         // When
-        List<MonthlyReportDto> results = new ArrayList<>();
-        for (UserWatchDetailRaw record : records) {
-            MonthlyReportDto temp = processor.process(record);
-            if (temp != null) results.add(temp);
-        }
-        MonthlyReportDto last = processor.flush();
-        if (last != null) results.add(last);
+        MonthlyReportDto result = processor.process(userId);
+
+        // Then: 3개 태그 × 20 = 60점
+        assertThat(result.getDiversityScore()).isEqualTo(60);
+    }
+
+    @Test
+    @DisplayName("최장 시청 시간을 정확하게 계산한다")
+    void calculateLongestSession() throws Exception {
+        // Given
+        Long userId = 1L;
+        User user = createUser(userId);
+        Tag tag1 = createTag(10L, "드라마");
+        Tag tag2 = createTag(11L, "영화");
+
+        List<TagStats> tagStatsList = Arrays.asList(
+                createTagStats(user, tag1, LocalDate.of(2026, 3, 1), 1800, 1, 1),
+                createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 5400, 1, 1)  // 최대
+        );
+
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(tagStatsList);
+
+        // When
+        MonthlyReportDto result = processor.process(userId);
 
         // Then
-        assertThat(results).hasSize(2);
+        assertThat(result.getLongestSessionSeconds()).isEqualTo(5400);
+    }
 
-        MonthlyReportDto user1 = results.get(0);
-        assertThat(user1.getUserId()).isEqualTo(1L);
-        assertThat(user1.getTotalWatchCount()).isEqualTo(2);
+    @Test
+    @DisplayName("완주율을 정확하게 계산한다")
+    void calculateCompletionRate() throws Exception {
+        // Given: 5번 시청, 3번 완주 = 60%
+        Long userId = 1L;
+        User user = createUser(userId);
+        Tag tag = createTag(10L, "드라마");
 
-        MonthlyReportDto user2 = results.get(1);
-        assertThat(user2.getUserId()).isEqualTo(2L);
-        assertThat(user2.getTotalWatchCount()).isEqualTo(2);
+        List<TagStats> tagStatsList = Arrays.asList(
+                createTagStats(user, tag, LocalDate.of(2026, 3, 1), 1800, 2, 1),  // 2회 중 1회 완주
+                createTagStats(user, tag, LocalDate.of(2026, 3, 2), 1800, 3, 2)   // 3회 중 2회 완주
+        );
+
+        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+                eq(userId), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(tagStatsList);
+
+        // When
+        MonthlyReportDto result = processor.process(userId);
+
+        // Then: 3/5 * 100 = 60.0
+        assertThat(result.getCompletionRate()).isEqualTo(60.0);
+    }
+
+    // === Helper Methods ===
+
+    private User createUser(Long userId) {
+        User user = new User("test@test.com", "테스터", "kakao", "123");
+        // Reflection으로 ID 설정 (실제로는 더 나은 방법 사용 가능)
+        try {
+            var idField = user.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(user, userId);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return user;
+    }
+
+    private Tag createTag(Long tagId, String tagName) {
+        Tag tag = new Tag(tagName);
+        try {
+            var idField = tag.getClass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(tag, tagId);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return tag;
+    }
+
+    private TagStats createTagStats(User user, Tag tag, LocalDate statsDate,
+                                    Integer totalViewTime, Integer viewCount, Integer completedCount) {
+        TagStats tagStats = new TagStats(tag, user, statsDate);
+        try {
+            // totalViewTime 설정
+            var totalViewTimeField = tagStats.getClass().getDeclaredField("totalViewTime");
+            totalViewTimeField.setAccessible(true);
+            totalViewTimeField.set(tagStats, totalViewTime);
+
+            // viewCount 설정
+            var viewCountField = tagStats.getClass().getDeclaredField("viewCount");
+            viewCountField.setAccessible(true);
+            viewCountField.set(tagStats, viewCount);
+
+            // completedCount 설정
+            var completedCountField = tagStats.getClass().getDeclaredField("completedCount");
+            completedCountField.setAccessible(true);
+            completedCountField.set(tagStats, completedCount);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return tagStats;
     }
 }

@@ -2,7 +2,7 @@ package com.ott.batch.monthly;
 
 import com.ott.batch.repository.*;
 import com.ott.common.persistence.entity.*;
-import com.ott.common.util.IdGenerator;
+import com.ott.common.persistence.enums.VideoType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +14,13 @@ import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import javax.sql.DataSource;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -56,16 +59,22 @@ class MonthlyStatsBatchIntegrationTest {
     @Autowired
     private MonthlyWatchReportRepository monthlyWatchReportRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
         log.info("=== 테스트 데이터 정리 시작 ===");
-        watchHistoryRepository.deleteAll();
-        videoTagRepository.deleteAll();
-        tagStatsRepository.deleteAll();
-        monthlyWatchReportRepository.deleteAll();
-        videoMetadataRepository.deleteAll();
-        tagRepository.deleteAll();
-        userRepository.deleteAll();
+
+        jdbcTemplate.execute("DELETE FROM watch_history");
+        jdbcTemplate.execute("DELETE FROM video_tag");
+        jdbcTemplate.execute("DELETE FROM tag_stats");
+        jdbcTemplate.execute("DELETE FROM monthly_watch_report");
+        jdbcTemplate.execute("DELETE FROM user_tag");
+        jdbcTemplate.execute("DELETE FROM video_metadata");
+        jdbcTemplate.execute("DELETE FROM tag");
+        jdbcTemplate.execute("DELETE FROM users");
+
         log.info("=== 테스트 데이터 정리 완료 ===");
     }
 
@@ -87,11 +96,11 @@ class MonthlyStatsBatchIntegrationTest {
 
         log.info("VideoMetadata 생성 중...");
         VideoMetadata video = VideoMetadata.builder()
-                .id(IdGenerator.generate())
-                .videoId(IdGenerator.generate())
                 .userId(user.getId())
                 .title("테스트 드라마")
                 .duration(3600)
+                .videoType(VideoType.LONG)  // VOD → LONG
+                .isAd(false)
                 .build();
         video = videoMetadataRepository.saveAndFlush(video);
         log.info("VideoMetadata 생성 완료: videoMetadataId={}", video.getId());
@@ -101,7 +110,6 @@ class MonthlyStatsBatchIntegrationTest {
         videoTagRepository.saveAndFlush(videoTag);
         log.info("VideoTag 생성 완료");
 
-        // 2025년 2월 시청 기록
         log.info("WatchHistory 생성 중...");
         WatchHistory watchHistory = new WatchHistory(user, video, 1800);
         watchHistoryRepository.saveAndFlush(watchHistory);
@@ -231,11 +239,11 @@ class MonthlyStatsBatchIntegrationTest {
         log.info("Tag 생성: tagId={}", tag.getId());
 
         VideoMetadata video = VideoMetadata.builder()
-                .id(IdGenerator.generate())
-                .videoId(IdGenerator.generate())
                 .userId(user.getId())
                 .title("테스트 예능")
                 .duration(3600)
+                .videoType(VideoType.LONG)  // VOD → LONG
+                .isAd(false)
                 .build();
         video = videoMetadataRepository.saveAndFlush(video);
         log.info("VideoMetadata 생성: videoMetadataId={}", video.getId());
