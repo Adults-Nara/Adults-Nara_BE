@@ -133,6 +133,10 @@ public class SecurityConfig {
                                                 .authenticated()
                                                 .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
 
+
+                                                // --- 통계 API ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/stats/monthly").authenticated()
+
                                                 // ===================================================================
                                                 // 3. UPLOADER 전용
                                                 // ===================================================================
