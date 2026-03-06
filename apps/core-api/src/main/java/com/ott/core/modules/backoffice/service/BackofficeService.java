@@ -109,7 +109,7 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            if (videoMetadataRepository.existsByVideoIdInAndUserIdNot(request.videoIds(), userId)) {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
                 throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
             }
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
@@ -148,7 +148,7 @@ public class BackofficeService {
         }
 
         if (!isAdmin) {
-            if (videoMetadataRepository.existsByVideoIdInAndUserIdNot(request.videoIds(), userId)) {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
                 throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
             }
         }

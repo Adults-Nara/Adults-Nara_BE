@@ -74,6 +74,5 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Query("UPDATE VideoMetadata v SET v.commentCount = CASE WHEN v.commentCount > 0 THEN v.commentCount - 1 ELSE 0 END WHERE v.videoId = :videoId")
     void decrementCommentCount(@Param("videoId") Long videoId);
 
-    boolean existsByVideoIdInAndUserIdNot(List<Long> videoIds, Long userId);
-
+    long countByVideoIdInAndUserIdAndDeletedFalse(List<Long> videoIds, Long userId);
 }
