@@ -141,6 +141,30 @@ public class BackofficeService {
         );
     }
 
+    @Transactional
+    public ContentStatusUpdateResponse updateContentStatus(Long userId, boolean isAdmin, ContentStatusUpdateRequest request) {
+        if (request.videoIds() == null || request.videoIds().isEmpty()) {
+            return new ContentStatusUpdateResponse(List.of());
+        }
+
+        if (request.visibility() == null) {
+            throw new BusinessException(ErrorCode.VIDEO_STATUS_INVALID_VISIBILITY);
+        }
+
+        if (!isAdmin) {
+            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
+            for (VideoMetadata vm : videoMetadataList) {
+                if (!vm.getUserId().equals(userId)) {
+                    throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
+                }
+            }
+        }
+
+        videoRepository.updateVisibilityByIds(request.visibility(), OffsetDateTime.now(), request.videoIds());
+
+        return new ContentStatusUpdateResponse(request.videoIds().stream().map(String::valueOf).toList());
+    }
+
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
         return userQueryRepository.findAllUsers(userRole, keyword, pageable);
     }
