@@ -37,7 +37,7 @@ public class WatchHistoryApiController {
             @PathVariable("videoId") Long videoId,
             @RequestBody WatchPositionRequest request
     ) {
-        watchHistoryService.updateWatchPosition(Long.parseLong(userId), videoId, request.getLastPosition());
+        watchHistoryService.updateWatchPosition(Long.parseLong(userId), videoId, request.getLastPosition(), request.getDuration());
         return ApiResponse.success();
     }
 
@@ -49,7 +49,7 @@ public class WatchHistoryApiController {
             @PathVariable("videoId") Long videoId,
             @RequestBody WatchPositionRequest request
     ) {
-        watchHistoryService.stopWatching(Long.parseLong(userId), videoId, request.getLastPosition());
+        watchHistoryService.stopWatching(Long.parseLong(userId), videoId, request.getLastPosition(), request.getDuration());
         return ApiResponse.success();
     }
 
