@@ -1,30 +1,35 @@
 package com.ott.batch.monthly.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 
 /**
- * Step 2: 월간 리포트 DTO
+ * 월간 리포트 DTO (배치 내부용)
  */
 @Getter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class MonthlyReportDto {
+
     private Long userId;
     private String reportYearMonth;
+
+    // 기본 통계
     private Long totalWatchSeconds;
     private Integer totalWatchCount;
     private Integer completedCount;
-    private Double completionRate;        // getter 있음
+    private BigDecimal completionRate;  // BigDecimal로 변경
+
+    // 시간대별 통계
     private Integer dawnCount;
     private Integer morningCount;
     private Integer afternoonCount;
     private Integer eveningCount;
     private Integer nightCount;
     private String peakTimeSlot;
+
+    // 부가 정보
     private Integer longestSessionSeconds;
     private String mostWatchedTagName;
     private Integer diversityScore;

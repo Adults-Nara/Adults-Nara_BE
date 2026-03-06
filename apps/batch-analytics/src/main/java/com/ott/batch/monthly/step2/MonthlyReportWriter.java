@@ -11,6 +11,7 @@ import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemStreamWriter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import java.math.BigDecimal;
 
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
@@ -108,8 +109,7 @@ public class MonthlyReportWriter implements ItemStreamWriter<MonthlyReportDto>, 
             ps.setLong(4, dto.getTotalWatchSeconds() != null ? dto.getTotalWatchSeconds() : 0L);
             ps.setInt(5, dto.getTotalWatchCount() != null ? dto.getTotalWatchCount() : 0);
             ps.setInt(6, dto.getCompletedCount() != null ? dto.getCompletedCount() : 0);
-            ps.setDouble(7, dto.getCompletionRate() != null ? dto.getCompletionRate() : 0.0);
-            ps.setInt(8, dto.getDawnCount() != null ? dto.getDawnCount() : 0);
+            ps.setBigDecimal(7, dto.getCompletionRate() != null ? dto.getCompletionRate() : BigDecimal.ZERO);ps.setInt(8, dto.getDawnCount() != null ? dto.getDawnCount() : 0);
             ps.setInt(9, dto.getMorningCount() != null ? dto.getMorningCount() : 0);
             ps.setInt(10, dto.getAfternoonCount() != null ? dto.getAfternoonCount() : 0);
             ps.setInt(11, dto.getEveningCount() != null ? dto.getEveningCount() : 0);

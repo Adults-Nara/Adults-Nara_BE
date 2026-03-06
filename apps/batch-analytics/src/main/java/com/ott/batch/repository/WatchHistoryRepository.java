@@ -9,9 +9,19 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Repository
 public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long> {
+
+    /**
+     * 사용자 ID와 생성 시간 범위로 시청 기록 조회 (시간대별 집계용)
+     */
+    List<WatchHistory> findByUserIdAndCreatedAtBetween(
+            Long userId,
+            OffsetDateTime startDateTime,
+            OffsetDateTime endDateTime
+    );
 
     @Transactional
     @Modifying

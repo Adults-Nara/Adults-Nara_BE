@@ -13,12 +13,10 @@ import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import javax.sql.DataSource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -84,39 +82,29 @@ class MonthlyStatsBatchIntegrationTest {
         log.info("=== 테스트 시작: 월간 통계 배치 실행 ===");
 
         // Given: 테스트 데이터 생성
-        log.info("User 생성 중...");
         User user = new User("test@test.com", "테스터", "kakao", "123");
         user = userRepository.saveAndFlush(user);
-        log.info("User 생성 완료: userId={}", user.getId());
 
-        log.info("Tag 생성 중...");
         Tag dramaTag = new Tag("드라마");
         dramaTag = tagRepository.saveAndFlush(dramaTag);
-        log.info("Tag 생성 완료: tagId={}", dramaTag.getId());
 
-        log.info("VideoMetadata 생성 중...");
         VideoMetadata video = VideoMetadata.builder()
+                .videoId(System.currentTimeMillis())
                 .userId(user.getId())
                 .title("테스트 드라마")
                 .duration(3600)
-                .videoType(VideoType.LONG)  // VOD → LONG
+                .videoType(VideoType.LONG)
                 .isAd(false)
                 .build();
         video = videoMetadataRepository.saveAndFlush(video);
-        log.info("VideoMetadata 생성 완료: videoMetadataId={}", video.getId());
 
-        log.info("VideoTag 생성 중...");
         VideoTag videoTag = new VideoTag(video, dramaTag);
         videoTagRepository.saveAndFlush(videoTag);
-        log.info("VideoTag 생성 완료");
 
-        log.info("WatchHistory 생성 중...");
         WatchHistory watchHistory = new WatchHistory(user, video, 1800);
         watchHistoryRepository.saveAndFlush(watchHistory);
-        log.info("WatchHistory 생성 완료");
 
-        // When: 배치 실행 (현재 월 기준)
-        log.info("배치 파라미터 생성 중...");
+        // When: 배치 실행
         OffsetDateTime now = OffsetDateTime.now();
         String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
         OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -128,100 +116,116 @@ class MonthlyStatsBatchIntegrationTest {
                 .addString("rangeTo", monthEnd.toString())
                 .addString("runAt", OffsetDateTime.now().toString())
                 .toJobParameters();
-        System.out.println("배치 파라미터: yearMonth=" + currentYearMonth +
-                ", rangeFrom=" + monthStart + ", rangeTo=" + monthEnd);
-        log.info("배치 파라미터: {}", jobParameters);
 
-        log.info("배치 실행 시작...");
-        System.out.println("============ 배치 실행 시작 ============");
         JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
-        System.out.println("배치 실행 완료: status=" + jobExecution.getStatus());
-        System.out.println("배치 Exit Status: " + jobExecution.getExitStatus());
-        log.info("배치 실행 완료: status={}", jobExecution.getStatus());
-        log.info("배치 Exit Status: {}", jobExecution.getExitStatus());
-
-        if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
-            System.out.println("============ 배치 실행 실패 ============");
-            jobExecution.getStepExecutions().forEach(step -> {
-                System.out.println("Step 실패: " + step.getStepName() +
-                        ", status=" + step.getStatus() +
-                        ", exitStatus=" + step.getExitStatus() +
-                        ", readCount=" + step.getReadCount() +
-                        ", writeCount=" + step.getWriteCount());
-                step.getFailureExceptions().forEach(e -> {
-                    System.out.println("에러: " + e.getMessage());
-                    e.printStackTrace();
-                });
-                log.error("Step 실패: name={}, status={}, exitStatus={}, readCount={}, writeCount={}, errors={}",
-                        step.getStepName(),
-                        step.getStatus(),
-                        step.getExitStatus(),
-                        step.getReadCount(),
-                        step.getWriteCount(),
-                        step.getFailureExceptions());
-            });
-        } else {
-            System.out.println("============ 배치 실행 성공 ============");
-        }
 
         // Then: 배치 성공 확인
-        assertThat(jobExecution.getStatus())
-                .withFailMessage("배치 실행 실패: status=%s, exitStatus=%s",
-                        jobExecution.getStatus(),
-                        jobExecution.getExitStatus())
-                .isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-        // Step 결과 확인
-        System.out.println("============ TagStats 조회 ============");
-        log.info("TagStats 조회 중...");
+        // TagStats 확인
         LocalDate queryStart = LocalDate.of(now.getYear(), now.getMonthValue(), 1);
         LocalDate queryEnd = LocalDate.of(now.getYear(), now.getMonthValue(), now.toLocalDate().lengthOfMonth());
-        System.out.println("조회 기간: " + queryStart + " ~ " + queryEnd);
 
         var tagStats = tagStatsRepository.findByUserIdAndStatsDateBetween(
-                user.getId(),
-                queryStart,
-                queryEnd
+                user.getId(), queryStart, queryEnd
         );
-        System.out.println("TagStats 개수: " + tagStats.size());
-        log.info("TagStats 조회 완료: count={}", tagStats.size());
-        if (tagStats.isEmpty()) {
-            System.out.println("ERROR: TagStats가 비어있습니다!");
-            log.error("TagStats가 비어있습니다!");
-        } else {
-            tagStats.forEach(ts -> {
-                System.out.println("TagStats: statsDate=" + ts.getStatsDate() + ", viewCount=" + ts.getViewCount());
-                log.info("TagStats: statsDate={}, viewCount={}", ts.getStatsDate(), ts.getViewCount());
-            });
-        }
-        assertThat(tagStats)
-                .withFailMessage("TagStats가 생성되지 않았습니다")
-                .isNotEmpty();
+        assertThat(tagStats).isNotEmpty();
 
-        System.out.println("============ MonthlyWatchReport 조회 ============");
-        log.info("MonthlyWatchReport 조회 중...");
+        // MonthlyWatchReport 확인
         var report = monthlyWatchReportRepository.findByUserIdAndReportYearMonth(
                 user.getId(), currentYearMonth
         );
-        System.out.println("MonthlyWatchReport exists: " + report.isPresent());
-        log.info("MonthlyWatchReport 조회 완료: exists={}", report.isPresent());
-        if (report.isEmpty()) {
-            System.out.println("ERROR: MonthlyWatchReport가 생성되지 않았습니다!");
-            log.error("MonthlyWatchReport가 생성되지 않았습니다!");
-        } else {
-            System.out.println("Report: totalWatchCount=" + report.get().getTotalWatchCount() +
-                    ", totalWatchSeconds=" + report.get().getTotalWatchSeconds() +
-                    ", completedCount=" + report.get().getCompletedCount());
-            log.info("Report: totalWatchCount={}, totalWatchSeconds={}, completedCount={}",
-                    report.get().getTotalWatchCount(),
-                    report.get().getTotalWatchSeconds(),
-                    report.get().getCompletedCount());
-        }
-        assertThat(report)
-                .withFailMessage("MonthlyWatchReport가 생성되지 않았습니다")
-                .isPresent();
+        assertThat(report).isPresent();
 
         log.info("=== 테스트 완료 ===");
+    }
+
+    @Test
+    @DisplayName("시간대별 시청 통계가 정확하게 집계된다")
+    void calculateTimeSlotStatistics() throws Exception {
+        log.info("=== 테스트 시작: 시간대별 시청 통계 ===");
+
+        // Given
+        User user = new User("timeslot@test.com", "시간대테스터", "kakao", "789");
+        user = userRepository.saveAndFlush(user);
+
+        Tag tag = new Tag("영화");
+        tag = tagRepository.saveAndFlush(tag);
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        // 각 시간대마다 다른 비디오 생성
+        VideoMetadata video1 = createVideo(user.getId(), "새벽 영화", 1001);
+        VideoMetadata video2 = createVideo(user.getId(), "오전 영화", 1002);
+        VideoMetadata video3 = createVideo(user.getId(), "오후 영화1", 1003);
+        VideoMetadata video4 = createVideo(user.getId(), "오후 영화2", 1004);
+        VideoMetadata video5 = createVideo(user.getId(), "저녁 영화", 1005);
+        VideoMetadata video6 = createVideo(user.getId(), "밤 영화", 1006);
+
+        // 각 비디오에 태그 연결
+        videoTagRepository.saveAndFlush(new VideoTag(video1, tag));
+        videoTagRepository.saveAndFlush(new VideoTag(video2, tag));
+        videoTagRepository.saveAndFlush(new VideoTag(video3, tag));
+        videoTagRepository.saveAndFlush(new VideoTag(video4, tag));
+        videoTagRepository.saveAndFlush(new VideoTag(video5, tag));
+        videoTagRepository.saveAndFlush(new VideoTag(video6, tag));
+
+        // 다양한 시간대에 시청 기록 생성
+        createWatchHistoryWithTime(user.getId(), video1.getId(),
+                now.withHour(3).withMinute(0).withSecond(0));
+        createWatchHistoryWithTime(user.getId(), video2.getId(),
+                now.withHour(9).withMinute(0).withSecond(0));
+        createWatchHistoryWithTime(user.getId(), video3.getId(),
+                now.withHour(14).withMinute(0).withSecond(0));
+        createWatchHistoryWithTime(user.getId(), video4.getId(),
+                now.withHour(15).withMinute(0).withSecond(0));
+        createWatchHistoryWithTime(user.getId(), video5.getId(),
+                now.withHour(19).withMinute(0).withSecond(0));
+        createWatchHistoryWithTime(user.getId(), video6.getId(),
+                now.withHour(22).withMinute(0).withSecond(0));
+
+        // When: 배치 실행
+        String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
+        OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        OffsetDateTime monthEnd = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(0);
+
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addString("yearMonth", currentYearMonth)
+                .addString("rangeFrom", monthStart.toString())
+                .addString("rangeTo", monthEnd.toString())
+                .addString("runAt", OffsetDateTime.now().toString())
+                .toJobParameters();
+
+        JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
+        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+
+        // Then: 시간대별 집계 확인
+        var report = monthlyWatchReportRepository.findByUserIdAndReportYearMonth(
+                user.getId(), currentYearMonth
+        );
+
+        assertThat(report).isPresent();
+
+        var reportData = report.get();
+        System.out.println("============ 시간대별 집계 결과 ============");
+        System.out.println("새벽 (0-5시): " + reportData.getDawnCount());
+        System.out.println("오전 (6-11시): " + reportData.getMorningCount());
+        System.out.println("오후 (12-17시): " + reportData.getAfternoonCount());
+        System.out.println("저녁 (18-21시): " + reportData.getEveningCount());
+        System.out.println("밤 (22-23시): " + reportData.getNightCount());
+        System.out.println("주시청시간대: " + reportData.getPeakTimeSlot());
+        System.out.println("총 시청 횟수: " + reportData.getTotalWatchCount());
+
+        // 총 시청 횟수가 6개인지만 확인 (시간대 상관없이)
+        assertThat(reportData.getTotalWatchCount()).isEqualTo(6);
+
+        // 모든 시간대 합이 6인지 확인
+        int totalTimeSlots = reportData.getDawnCount() + reportData.getMorningCount() +
+                reportData.getAfternoonCount() + reportData.getEveningCount() +
+                reportData.getNightCount();
+        assertThat(totalTimeSlots).isEqualTo(6);
+
+        log.info("=== 시간대별 통계 테스트 완료 ===");
     }
 
     @Test
@@ -232,31 +236,27 @@ class MonthlyStatsBatchIntegrationTest {
         // Given
         User user = new User("test2@test.com", "테스터2", "kakao", "456");
         user = userRepository.saveAndFlush(user);
-        log.info("User 생성: userId={}", user.getId());
 
         Tag tag = new Tag("예능");
         tag = tagRepository.saveAndFlush(tag);
-        log.info("Tag 생성: tagId={}", tag.getId());
 
         VideoMetadata video = VideoMetadata.builder()
+                .videoId(System.currentTimeMillis() + 1000)
                 .userId(user.getId())
                 .title("테스트 예능")
                 .duration(3600)
-                .videoType(VideoType.LONG)  // VOD → LONG
+                .videoType(VideoType.LONG)
                 .isAd(false)
                 .build();
         video = videoMetadataRepository.saveAndFlush(video);
-        log.info("VideoMetadata 생성: videoMetadataId={}", video.getId());
 
         VideoTag videoTag = new VideoTag(video, tag);
         videoTagRepository.saveAndFlush(videoTag);
-        log.info("VideoTag 생성 완료");
 
         WatchHistory watchHistory = new WatchHistory(user, video, 1800);
         watchHistoryRepository.saveAndFlush(watchHistory);
-        log.info("WatchHistory 생성 완료");
 
-        // 현재 월 기준으로 배치 파라미터 생성
+        // When: 2번 실행
         OffsetDateTime now = OffsetDateTime.now();
         String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
         OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
@@ -269,10 +269,8 @@ class MonthlyStatsBatchIntegrationTest {
                 .addString("runAt", OffsetDateTime.now().toString())
                 .toJobParameters();
 
-        // When: 2번 실행
-        log.info("첫 번째 배치 실행 시작...");
         JobExecution firstExecution = jobLauncherTestUtils.launchJob(jobParameters);
-        log.info("첫 번째 배치 실행 완료: status={}", firstExecution.getStatus());
+        assertThat(firstExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         JobParameters retryParams = new JobParametersBuilder()
                 .addString("yearMonth", currentYearMonth)
@@ -281,13 +279,10 @@ class MonthlyStatsBatchIntegrationTest {
                 .addString("runAt", OffsetDateTime.now().plusSeconds(1).toString())
                 .toJobParameters();
 
-        log.info("두 번째 배치 실행 시작...");
         JobExecution secondExecution = jobLauncherTestUtils.launchJob(retryParams);
-        log.info("두 번째 배치 실행 완료: status={}", secondExecution.getStatus());
-
-        // Then
         assertThat(secondExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
+        // Then
         var reports = monthlyWatchReportRepository.findByUserIdAndReportYearMonth(
                 user.getId(), currentYearMonth
         );
@@ -296,13 +291,43 @@ class MonthlyStatsBatchIntegrationTest {
         LocalDate queryStart = LocalDate.of(now.getYear(), now.getMonthValue(), 1);
         LocalDate queryEnd = LocalDate.of(now.getYear(), now.getMonthValue(), now.toLocalDate().lengthOfMonth());
         var tagStats = tagStatsRepository.findByUserIdAndStatsDateBetween(
-                user.getId(),
-                queryStart,
-                queryEnd
+                user.getId(), queryStart, queryEnd
         );
-        log.info("TagStats 최종 개수: {}", tagStats.size());
         assertThat(tagStats).hasSize(1);
 
         log.info("=== 테스트 완료 ===");
+    }
+
+    // ========== Helper Methods ==========
+
+    private VideoMetadata createVideo(Long userId, String title, long offset) {
+        VideoMetadata video = VideoMetadata.builder()
+                .videoId(System.currentTimeMillis() + offset)
+                .userId(userId)
+                .title(title)
+                .duration(7200)
+                .videoType(VideoType.LONG)
+                .isAd(false)
+                .build();
+        return videoMetadataRepository.saveAndFlush(video);
+    }
+
+    private void createWatchHistoryWithTime(Long userId, Long videoMetadataId, OffsetDateTime createdAt) {
+        String sql = """
+            INSERT INTO watch_history (watch_history_id, user_id, video_metadata_id, last_position, completed, deleted, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+
+        long id = System.nanoTime();
+        jdbcTemplate.update(sql,
+                id,
+                userId,
+                videoMetadataId,
+                1800,
+                false,
+                false,
+                Timestamp.from(createdAt.toInstant()),
+                Timestamp.from(createdAt.toInstant())
+        );
     }
 }

@@ -2,9 +2,11 @@ package com.ott.batch.monthly.step2;
 
 import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.repository.TagStatsRepository;
+import com.ott.batch.repository.WatchHistoryRepository;
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.TagStats;
 import com.ott.common.persistence.entity.User;
+import com.ott.common.persistence.entity.WatchHistory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -31,15 +34,20 @@ class MonthlyReportProcessorTest {
     @Mock
     private TagStatsRepository tagStatsRepository;
 
+    @Mock
+    private WatchHistoryRepository watchHistoryRepository;
+
     private MonthlyReportProcessor processor;
 
     @BeforeEach
     void setUp() {
-        processor = new MonthlyReportProcessor(tagStatsRepository);
+        processor = new MonthlyReportProcessor(tagStatsRepository, watchHistoryRepository);
 
-        // StepExecution 모의 설정
+        // StepExecution 모의 설정 (rangeFrom, rangeTo 추가)
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("yearMonth", "2026-03")
+                .addString("rangeFrom", "2026-03-01T00:00:00Z")
+                .addString("rangeTo", "2026-03-31T23:59:59Z")
                 .toJobParameters();
 
         StepExecution stepExecution = mock(StepExecution.class);
@@ -65,6 +73,11 @@ class MonthlyReportProcessorTest {
         when(tagStatsRepository.findByUserIdAndStatsDateBetween(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
+
+        // WatchHistory Mock (빈 리스트 반환)
+        when(watchHistoryRepository.findByUserIdAndCreatedAtBetween(
+                eq(userId), any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
 
         // When
         MonthlyReportDto result = processor.process(userId);
@@ -114,6 +127,10 @@ class MonthlyReportProcessorTest {
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
+        when(watchHistoryRepository.findByUserIdAndCreatedAtBetween(
+                eq(userId), any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
+
         // When
         MonthlyReportDto result = processor.process(userId);
 
@@ -143,6 +160,10 @@ class MonthlyReportProcessorTest {
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
+        when(watchHistoryRepository.findByUserIdAndCreatedAtBetween(
+                eq(userId), any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
+
         // When
         MonthlyReportDto result = processor.process(userId);
 
@@ -168,6 +189,10 @@ class MonthlyReportProcessorTest {
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
+        when(watchHistoryRepository.findByUserIdAndCreatedAtBetween(
+                eq(userId), any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
+
         // When
         MonthlyReportDto result = processor.process(userId);
 
@@ -192,6 +217,10 @@ class MonthlyReportProcessorTest {
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
+        when(watchHistoryRepository.findByUserIdAndCreatedAtBetween(
+                eq(userId), any(OffsetDateTime.class), any(OffsetDateTime.class)))
+                .thenReturn(Collections.emptyList());
+
         // When
         MonthlyReportDto result = processor.process(userId);
 
@@ -203,7 +232,6 @@ class MonthlyReportProcessorTest {
 
     private User createUser(Long userId) {
         User user = new User("test@test.com", "테스터", "kakao", "123");
-        // Reflection으로 ID 설정 (실제로는 더 나은 방법 사용 가능)
         try {
             var idField = user.getClass().getDeclaredField("id");
             idField.setAccessible(true);
@@ -230,17 +258,14 @@ class MonthlyReportProcessorTest {
                                     Integer totalViewTime, Integer viewCount, Integer completedCount) {
         TagStats tagStats = new TagStats(tag, user, statsDate);
         try {
-            // totalViewTime 설정
             var totalViewTimeField = tagStats.getClass().getDeclaredField("totalViewTime");
             totalViewTimeField.setAccessible(true);
             totalViewTimeField.set(tagStats, totalViewTime);
 
-            // viewCount 설정
             var viewCountField = tagStats.getClass().getDeclaredField("viewCount");
             viewCountField.setAccessible(true);
             viewCountField.set(tagStats, viewCount);
 
-            // completedCount 설정
             var completedCountField = tagStats.getClass().getDeclaredField("completedCount");
             completedCountField.setAccessible(true);
             completedCountField.set(tagStats, completedCount);
