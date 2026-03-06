@@ -3,6 +3,7 @@ package com.ott.core.modules.recommendation.service;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.preference.service.UserVectorService;
 import com.ott.core.modules.recommendation.component.RecommendationQueryBuilder;
 import com.ott.core.modules.recommendation.component.VideoFeedEnricher;
 import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
@@ -24,6 +25,7 @@ import java.util.concurrent.Executor;
 public class RecommendationService {
 
     private final UserPreferenceService userPreferenceService;
+    private final UserVectorService userVectorService;
     private final ElasticsearchOperations elasticsearchOperations;
     private final RecommendationQueryBuilder queryBuilder;
     private final VideoFeedEnricher feedEnricher;
@@ -31,11 +33,13 @@ public class RecommendationService {
 
     public RecommendationService(
             UserPreferenceService userPreferenceService,
+            UserVectorService userVectorService,
             ElasticsearchOperations elasticsearchOperations,
             RecommendationQueryBuilder queryBuilder,
             VideoFeedEnricher feedEnricher,
             @Qualifier("watchHistoryTaskExecutor") Executor executor) {
         this.userPreferenceService = userPreferenceService;
+        this.userVectorService = userVectorService;
         this.elasticsearchOperations = elasticsearchOperations;
         this.queryBuilder = queryBuilder;
         this.feedEnricher = feedEnricher;
@@ -47,19 +51,24 @@ public class RecommendationService {
     private static final int USER_PREFERENCE_TAG_LIMIT = 5;
 
     // =========================================================================
-    // [메인 홈 피드]
+    // kNN 벡터 검색 적용
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, int page, int size) {
-        List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, USER_PREFERENCE_TAG_LIMIT);
 
-        NativeQuery searchQuery = userPreferences.isEmpty()
-                ? queryBuilder.buildFallbackQuery(page, size)
-                : queryBuilder.buildMainPersonalizedQuery(userPreferences, page, size);
+        // ✅ TODO: 유저가 기존에 시청했던 영상들의 임베딩 평균값이나 취향 임베딩 벡터를 가져옵니다.
+        // 만약 유저 벡터가 null이거나 없다면 기존 Fallback 쿼리로 우회합니다.
+        List<Double> userVector = userVectorService.getUserVector(userId);
+
+        NativeQuery searchQuery;
+        if (userVector == null || userVector.isEmpty()) {
+            searchQuery = queryBuilder.buildFallbackQuery(page, size);
+        } else {
+            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, page, size);
+        }
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
         return feedEnricher.enrich(rawDocuments, userId);
     }
-    
     // =========================================================================
     // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤)
     // =========================================================================
@@ -73,7 +82,7 @@ public class RecommendationService {
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
                                 ? queryBuilder.buildPopularQuery(personalSize)
-                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, 0, personalSize))
+                                : queryBuilder.buildPersonalizedQuery(userPreferences, 0, personalSize))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->

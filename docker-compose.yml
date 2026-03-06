@@ -69,9 +69,9 @@ services:
     command: >
       /bin/sh -c "
         if ! ./bin/elasticsearch-plugin list | grep -q analysis-nori; then
-          ./bin/elasticsearch-plugin install analysis-nori;
+          ./bin/elasticsearch-plugin install --batch analysis-nori;
         fi;
-        /usr/local/bin/docker-entrypoint.sh
+        exec /usr/local/bin/docker-entrypoint.sh
       "
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]

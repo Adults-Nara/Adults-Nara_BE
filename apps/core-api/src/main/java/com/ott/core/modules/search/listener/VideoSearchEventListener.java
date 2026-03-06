@@ -23,6 +23,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @Slf4j
 @Component
@@ -54,12 +55,12 @@ public class VideoSearchEventListener {
 
             List<String> distinctTagNames = tags.stream()
                     .flatMap(tag -> tag.getParent() != null
-                            ? java.util.stream.Stream.of(tag.getTagName(), tag.getParent().getTagName())
-                            : java.util.stream.Stream.of(tag.getTagName()))
+                            ? Stream.of(tag.getTagName(), tag.getParent().getTagName())
+                            : Stream.of(tag.getTagName()))
                     .distinct()
                     .toList();
 
-            VideoDocument document = VideoDocument.from(metadata, distinctTagNames);
+            VideoDocument document = VideoDocument.from(metadata, distinctTagNames, metadata.getEmbedding());
 
             // 4. ES에 저장 (동일한 ID면 알아서 덮어쓰기 됨)
             videoSearchRepository.save(document);
