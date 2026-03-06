@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Getter
@@ -23,20 +24,25 @@ public class VideoAiAnalysis {
     @Column(name = "subtitle_url", length = 1000)
     private String subtitleUrl;
 
-    @Column(name = "embedding", columnDefinition = "JSON")
-    private String embeddingJson;
+    @Column(name = "embedding", columnDefinition = "vector(384)")
+    private float[] embedding;
 
     @Column(name = "analyzed_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        }
+    }
+
     @Builder
     private VideoAiAnalysis(Long id, String summary,
-            String subtitleUrl, String embeddingJson,
-            OffsetDateTime createdAt) {
+            String subtitleUrl, float[] embedding) {
         this.id = id;
         this.summary = summary;
         this.subtitleUrl = subtitleUrl;
-        this.embeddingJson = embeddingJson;
-        this.createdAt = createdAt;
+        this.embedding = embedding;
     }
 }
