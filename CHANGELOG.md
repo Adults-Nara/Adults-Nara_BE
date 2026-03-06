@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.7...v0.9.0) (2026-03-06)
+
+
+### Features
+
+* release 0.9.0 with fixed manifest ([6622ca3](https://github.com/Adults-Nara/Adults-Nara_BE/commit/6622ca3c70cd89c64a6067ac11d5e7ae6b69f92e))
+
+
+### Bug Fixes
+
+* content management and backend refactoring ([3e62cf5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3e62cf5f515e0b74c7111465757e8e79d997858d))
+* cors 설정 와일드카드로 지정 ([d282d76](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d282d76e4df79a02739fcde10dd4596a8fe515d1))
+* 트랜스코딩 시작시 상태값 변경 ([427df08](https://github.com/Adults-Nara/Adults-Nara_BE/commit/427df089a17d34499aaa9876ef283333c29db81d))
+
 ## [0.3.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.2.1...v0.3.0) (2026-03-06)
 
 
