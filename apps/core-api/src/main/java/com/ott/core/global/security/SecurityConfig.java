@@ -163,13 +163,12 @@ public class SecurityConfig {
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                configuration.setAllowedOrigins(List.of(
-                                "http://localhost:3000",
-                                "http://localhost:5173",
-                                "https://asinna.store",
-                                "https://admin.asinna.store",
-                                "https://api.asinna.store",
-                                "http://api.asinna.store"));
+                configuration.setAllowedOriginPatterns(List.of(
+                        "http://localhost:*",
+                        "https://localhost:*",
+                        "http://*.asinna.store",
+                        "https://*.asinna.store"
+                ));
 
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("*"));

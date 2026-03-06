@@ -42,6 +42,8 @@ public enum ErrorCode {
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
     VIDEO_DELETION_FORBIDDEN("VIDEO-403-003", 403, "요청한 영상을 삭제할 권한이 없습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
+    VIDEO_STATUS_INVALID_VISIBILITY("VIDEO-400-006", 400, "활성(PUBLIC) 또는 비활성(PRIVATE)만 설정할 수 있습니다."),
+    VIDEO_STATUS_UPDATE_FORBIDDEN("VIDEO-403-004", 403, "본인 콘텐츠의 상태만 변경할 수 있습니다."),
 
     AD_NOT_FOUND("AD-404-001", 404, "광고를 찾을 수 없습니다."),
 
