@@ -5,6 +5,9 @@ import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.service.BackofficeService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Encoding;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -69,12 +72,23 @@ public class BackofficeController {
     }
 
     @Operation(summary = "콘텐츠 수정", description = "업로더가 콘텐츠의 썸네일 이미지 및 메타데이터를 수정합니다.")
-    @PutMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                    mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                    schema = @Schema(implementation = BackofficeController.ContentUpdateMultipart.class),
+                    // data 파트를 JSON으로 인코딩한다고 swagger에 알려줌 (중요)
+                    encoding = {
+                            @Encoding(name = "data", contentType = MediaType.APPLICATION_JSON_VALUE)
+                    }
+            )
+    )
+    @PatchMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('UPLOADER')")
     public ApiResponse<ContentUpdateResponse> updateContent(
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
-            @RequestPart("image") MultipartFile image,
+            @RequestPart(value = "image", required = false) MultipartFile image,
             @RequestPart("data") ContentUpdateRequest request
     ) {
         ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
@@ -127,4 +141,17 @@ public class BackofficeController {
         backofficeService.deleteUser(request);
         return ApiResponse.success();
     }
+
+    /**
+     * Swagger 문서용 multipart 스키마
+     */
+    class ContentUpdateMultipart {
+
+        @Schema(type = "string", format = "binary", description = "썸네일 이미지 파일")
+        public MultipartFile image;
+
+        @Schema(description = "업로드 메타데이터(JSON)")
+        public ContentUpdateRequest data;
+    }
+
 }
