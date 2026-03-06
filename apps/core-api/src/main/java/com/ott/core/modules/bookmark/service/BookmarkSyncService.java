@@ -1,11 +1,15 @@
 package com.ott.core.modules.bookmark.service;
 
+import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.core.modules.bookmark.repository.BookmarkRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -15,6 +19,7 @@ public class BookmarkSyncService {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoMetadataRepository videoMetadataRepository;
+    private final BookmarkRepository bookmarkRepository;
 
     private static final String KEY_RANKING = "video:ranking"; // ZSet
     private static final String KEY_DIRTY = "video:dirty:bookmark"; // Set
@@ -25,7 +30,7 @@ public class BookmarkSyncService {
      */
     public void syncBookmarkCounts() {
         // 1. [장애 복구] 이전 작업 중 서버가 뻗었다면 다시 합침
-        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PROCESSING))){
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PROCESSING))) {
             stringRedisTemplate.opsForSet().unionAndStore(KEY_DIRTY, KEY_PROCESSING, KEY_DIRTY);
             stringRedisTemplate.delete(KEY_PROCESSING);
         }
@@ -77,5 +82,30 @@ public class BookmarkSyncService {
         if (successCount > 0) {
             log.info("[SyncService] 북마크 카운트 {}건 DB 완벽 동기화 완료!", successCount);
         }
+    }
+
+    /**
+     * [DB -> Redis] 수동 DB 조작이나 Redis 초기화(장애) 시 랭킹 데이터를 복구하는 메서드
+     * 관리자(Admin) API나 서버 기동 시 호출하도록 설계
+     */
+    @Transactional(readOnly = true)
+    public void warmUpRankingFromDB() {
+        log.info("[Sync] DB 데이터를 기반으로 Redis 랭킹(ZSet) 초기화를 시작합니다...");
+        stringRedisTemplate.delete(KEY_RANKING);
+
+        // DB 딱 1번 찌름! (N+1 완벽 해결)
+        List<Object[]> results = bookmarkRepository.countTotalBookmarksGroupedByVideo();
+
+        int count = 0;
+        for (Object[] row : results) {
+            Long videoId = (Long) row[0];
+            Long bookmarkCount = (Long) row[1];
+
+            if (bookmarkCount > 0) {
+                stringRedisTemplate.opsForZSet().add(KEY_RANKING, String.valueOf(videoId), bookmarkCount.doubleValue());
+                count++;
+            }
+        }
+        log.info("[Sync] 총 {}개 비디오의 랭킹 데이터가 복구되었습니다!", count);
     }
 }

@@ -69,6 +69,7 @@ public class TranscodingWorkerConsumer {
 
             Files.createDirectories(workRoot);
 
+            videoUpdater.updateTranscoding(evt.videoId());
 
             // 소스 다운로드
             Path input = workRoot.resolve("source.mp4");
