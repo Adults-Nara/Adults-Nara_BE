@@ -40,6 +40,9 @@ public class VideoDocument {
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 
+    @Field(type = FieldType.Dense_Vector, dims = 384, similarity = "cosine", index = true)
+    private List<Double> embedding;
+
     // 정렬(Sorting) 및 가중치 계산용 필드
     @Field(type = FieldType.Integer)
     private int viewCount;
@@ -59,7 +62,7 @@ public class VideoDocument {
     @Field(type = FieldType.Date, format = DateFormat.date_time)
     private OffsetDateTime createdAt;
 
-    public static VideoDocument from(com.ott.common.persistence.entity.VideoMetadata metadata, List<String> tagNames) {
+    public static VideoDocument from(com.ott.common.persistence.entity.VideoMetadata metadata, List<String> tagNames, List<Double> embedding) {
         return VideoDocument.builder()
                 .videoId(metadata.getVideoId())
                 .metadataId(metadata.getId())
@@ -69,6 +72,7 @@ public class VideoDocument {
                 .description(metadata.getDescription())
                 .videoType(metadata.getVideoType())
                 .tags(tagNames)
+                .embedding(embedding)
                 .viewCount(metadata.getViewCount())
                 .likeCount(metadata.getLikeCount())
                 .deleted(metadata.isDeleted())
