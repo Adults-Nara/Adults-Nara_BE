@@ -139,43 +139,6 @@ public class ProcessRunner {
         }
     }
 
-    /**
-     * stdout을 문자열로 반환하는 실행 메서드
-     */
-    public String runAndCollect(List<String> command, Path workingDir) {
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(workingDir.toFile());
-        pb.redirectErrorStream(true);
-
-        StringBuilder output = new StringBuilder();
-
-        try {
-            Process p = pb.start();
-
-            try (BufferedReader br = new BufferedReader(
-                    new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
-
-                String line;
-                while ((line = br.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
-            }
-
-            int exit = p.waitFor();
-            if (exit != 0) {
-                throw new RuntimeException(
-                        "Process failed. exit=" + exit + ", cmd=" + String.join(" ", command)
-                );
-            }
-
-            return output.toString();
-
-        } catch (IOException | InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Process execution error", e);
-        }
-    }
-
     private static String joinCommand(List<String> command) {
         StringJoiner sj = new StringJoiner(" ");
         for (String c : command) {

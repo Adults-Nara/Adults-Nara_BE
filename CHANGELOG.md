@@ -1,34 +1,5 @@
 # Changelog
 
-## [0.8.7](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.6...v0.8.7) (2026-03-05)
-
-
-### Bug Fixes
-
-* 소리 없는 영상 트랜스코딩 지원 ([12cdc82](https://github.com/Adults-Nara/Adults-Nara_BE/commit/12cdc8282a383f094b149f57df4c2a08566fa339))
-
-## [0.8.6](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.5...v0.8.6) (2026-03-05)
-
-
-### Bug Fixes
-
-* refreshToken path 수정 ([61116bf](https://github.com/Adults-Nara/Adults-Nara_BE/commit/61116bf57eec4f01f7d6cdce1efa1d72a9cfed9d))
-
-## [0.8.5](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.4...v0.8.5) (2026-03-05)
-
-
-### Bug Fixes
-
-* swagger 토픽 관리 ([1e31384](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1e3138434cad645c1498a758759dcc1c7050af4f))
-* 프론트 테스트를 위한 samesite=None으로 수정 ([d00e4f0](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d00e4f0436d59d34f9642c56d286cd6ce707d97d))
-
-## [0.8.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.3...v0.8.4) (2026-03-04)
-
-
-### Bug Fixes
-
-* trigger release please ([345a882](https://github.com/Adults-Nara/Adults-Nara_BE/commit/345a882d10a8906e62239f64c7d0b736f9144654))
-
 ## [0.8.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.2...v0.8.3) (2026-03-04)
 
 

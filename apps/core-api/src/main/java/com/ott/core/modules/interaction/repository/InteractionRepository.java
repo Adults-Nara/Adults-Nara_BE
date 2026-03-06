@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface InteractionRepository extends JpaRepository<Interaction, Long> {
@@ -25,7 +24,4 @@ public interface InteractionRepository extends JpaRepository<Interaction, Long> 
     @Query("SELECT COUNT(i) FROM Interaction i JOIN i.videoMetadata vm " +
             "WHERE vm.videoId = :videoId AND i.interactionType = :type")
     long countByVideoIdAndType(@Param("videoId") Long videoId, @Param("type") InteractionType type);
-
-    @Query("SELECT i.videoMetadata.videoId, i.interactionType, COUNT(i) FROM Interaction i GROUP BY i.videoMetadata.videoId, i.interactionType")
-    List<Object[]> countTotalInteractionsGroupedByVideoAndType();
 }

@@ -96,10 +96,10 @@ public class AuthController {
 
         Cookie nonceCookie = new Cookie(STATE_NONCE_COOKIE, nonce);
         nonceCookie.setHttpOnly(true);
-        nonceCookie.setSecure(true);                    // None이면 Secure 필수
+        nonceCookie.setSecure(secureCookie);
         nonceCookie.setPath("/api/v1/auth/kakao");
         nonceCookie.setMaxAge((int) STATE_EXPIRY_SECONDS);
-        nonceCookie.setAttribute("SameSite", "None");   // Lax → None
+        nonceCookie.setAttribute("SameSite", "Lax");
         response.addCookie(nonceCookie);
 
         String loginUrl = "https://kauth.kakao.com/oauth/authorize"
@@ -134,10 +134,10 @@ public class AuthController {
 
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
-                .secure(true)                           // None이면 Secure 필수
-                .path("/")
+                .secure(secureCookie)
+                .path("/api/v1/auth/token")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("None")                       // none → None (대소문자 통일)
+                .sameSite("Lax")
                 .build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
@@ -172,7 +172,7 @@ public class AuthController {
 
     @Operation(
             summary = "Access Token 재발급",
-            description = "쿠키의 RefreshToken으로 새로운 AccessToken을 발급합니다."
+            description = "쿠키의 RefreshToken으로 새로운 AccessToken을 발급받습니다."
     )
     @PostMapping("/token/refresh")
     public ApiResponse<TokenRefreshResponse> refreshToken(HttpServletRequest request) {
@@ -199,19 +199,22 @@ public class AuthController {
 
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
-                .secure(true)                           // None이면 Secure 필수
+                .secure(secureCookie)
                 .path("/api/v1/auth/token")
                 .maxAge(0)
-                .sameSite("None")                       // Lax → None
+                .sameSite("Lax")
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
 
         return ApiResponse.success();
     }
 
-
     // ====== Private Methods ======
 
+    /**
+     * OAuth state/nonce 검증을 수행합니다.
+     * validateState=false는 'local' 또는 'test' 프로필에서만 허용됩니다.
+     */
     private void validateOAuthState(String state, HttpServletRequest request, HttpServletResponse response) {
         if (!validateState) {
             log.warn("[카카오 OAuth] state/nonce 검증 우회 중 (로컬 테스트 모드) - 운영 환경에서 절대 사용 금지");
@@ -237,6 +240,10 @@ public class AuthController {
         clearNonceCookie(response);
     }
 
+    /**
+     * state 서명 검증 및 타임스탬프 확인 후 nonce를 반환합니다.
+     * - 서명 불일치, 만료, 미래 시간(clock skew 초과) 시 Optional.empty() 반환
+     */
     private Optional<String> getNonceIfStateIsValid(String state) {
         if (state == null) {
             return Optional.empty();
@@ -286,6 +293,9 @@ public class AuthController {
         return payload + "." + signature;
     }
 
+    /**
+     * HMAC-SHA256으로 데이터를 서명합니다.
+     */
     private String hmacSign(String data) {
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
@@ -311,10 +321,10 @@ public class AuthController {
     private void clearNonceCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie(STATE_NONCE_COOKIE, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);                         // None이면 Secure 필수
+        cookie.setSecure(secureCookie);
         cookie.setPath("/api/v1/auth/kakao");
         cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", "None");        // Lax → None
+        cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
     }
 }
