@@ -26,6 +26,7 @@
 * AuthController 환경변수 수정 ([08d7d10](https://github.com/Adults-Nara/Adults-Nara_BE/commit/08d7d10d2a9528f3ed54a6879eb3ebf1a3945975))
 * CD.yml 최적화 및 로그인 기능 구현 관련 메인 브랜치 반영 ([3c9e945](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3c9e945132adca93f1ec6a9c8e01efbb536f07b1))
 * cd에서 발생하는 docker 빌드 문제 해결 ([ea528d5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ea528d51a592c4a6636a889de96b9b35d87ace5e))
+* content management and backend refactoring ([3e62cf5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3e62cf5f515e0b74c7111465757e8e79d997858d))
 * CORS ([71bc9ee](https://github.com/Adults-Nara/Adults-Nara_BE/commit/71bc9ee740d08292267ae6fc41e56f52d1d050d8))
 * CORS 문제 해결 ([75ff628](https://github.com/Adults-Nara/Adults-Nara_BE/commit/75ff628f388ee93287093c534ea463cb8b73810f))
 * CORS 문제 해결 ([737d1db](https://github.com/Adults-Nara/Adults-Nara_BE/commit/737d1dbfd0847a74e7f6e3b3334f75559d9159d5))
