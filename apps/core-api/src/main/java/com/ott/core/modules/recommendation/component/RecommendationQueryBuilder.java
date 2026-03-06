@@ -19,10 +19,52 @@ public class RecommendationQueryBuilder {
         return Query.of(q -> q.term(t -> t.field("deleted").value(false)));
     }
 
+
     // ==========================================
-    // 1. [메인 피드용] 취향 + 조회수 가중치 쿼리
+    // [메인 피드용] 유저 취향 벡터 기반 kNN 쿼리
     // ==========================================
-    public NativeQuery buildMainPersonalizedQuery(List<TagScoreDto> userPreferences, int page, int size) {
+    public NativeQuery buildMainPersonalizedKnnQuery(List<Double> userVector, int page, int size) {
+        // 벡터가 없으면 Fallback 쿼리 반환 로직을 Service에서 처리
+
+        // kNN 쿼리 내부에 deleted=false 필터 결합
+        Query filterQuery = baseActiveVideoQuery();
+
+        // 후보군을 넉넉히 잡기 위해 size의 5배수를 numCandidates로 설정 (kNN 성능 및 정확도 튜닝용)
+        int numCandidates = Math.max(50, size * 5);
+
+        List<Float> floatVector = userVector.stream().map(Double::floatValue).toList();
+        Query knnQuery = Query.of(q -> q
+                .knn(k -> k
+                        .field("embedding")
+                        .queryVector(floatVector)
+                        .k(size)
+                        .numCandidates(numCandidates)
+                        .filter(filterQuery)
+                )
+        );
+
+        return NativeQuery.builder()
+                .withQuery(knnQuery)
+                .withPageable(PageRequest.of(page, size))
+                .build();
+
+    }
+    // ==========================================
+    // 2. [메인 피드용] 신규 유저 Fallback 쿼리
+    // ==========================================
+    public NativeQuery buildFallbackQuery(int page, int size) {
+        return NativeQuery.builder()
+                .withQuery(baseActiveVideoQuery())
+                .withSort(Sort.by(Sort.Direction.DESC, "viewCount")) // 1순위: 인기순
+                .withSort(Sort.by(Sort.Direction.DESC, "createdAt")) // 2순위: 최신순
+                .withPageable(PageRequest.of(page, size))
+                .build();
+    }
+
+    // ==========================================
+    //  [세로 피드 (70%)] 인기순 쿼리 취향 + 조회수 가중치 쿼리
+    // ==========================================
+    public NativeQuery buildPersonalizedQuery(List<TagScoreDto> userPreferences, int page, int size) {
         List<FunctionScore> functions = new ArrayList<>();
 
         // 가중치 1: 태그 점수
@@ -56,18 +98,8 @@ public class RecommendationQueryBuilder {
                 .build();
     }
     // ==========================================
-    // 2. [메인 피드용] 신규 유저 Fallback 쿼리
+    // [세로 피드 (20%)] 인기순 쿼리
     // ==========================================
-    public NativeQuery buildFallbackQuery(int page, int size) {
-        return NativeQuery.builder()
-                .withQuery(baseActiveVideoQuery())
-                .withSort(Sort.by(Sort.Direction.DESC, "viewCount")) // 1순위: 인기순
-                .withSort(Sort.by(Sort.Direction.DESC, "createdAt")) // 2순위: 최신순
-                .withPageable(PageRequest.of(page, size))
-                .build();
-    }
-
-    // 세로 피드 (20%): 인기순 쿼리
     public NativeQuery buildPopularQuery(int limit) {
         return NativeQuery.builder()
                 .withQuery(baseActiveVideoQuery())
@@ -76,7 +108,24 @@ public class RecommendationQueryBuilder {
                 .build();
     }
 
-    // [가로 피드] 연관 영상 (More Like This / Terms) - 필터링 제거됨
+    // ==========================================
+    // [세로 피드: (10%)] 엘라스틱서치 random_score 쿼리
+    // ==========================================
+    public NativeQuery buildRandomQuery(int limit) {
+        Query randomQuery = FunctionScoreQuery.of(fsq -> fsq
+                .query(baseActiveVideoQuery())
+                .functions(FunctionScore.of(f -> f.randomScore(rs -> rs)))
+        )._toQuery();
+
+        return NativeQuery.builder()
+                .withQuery(randomQuery)
+                .withPageable(PageRequest.of(0, limit))
+                .build();
+    }
+
+    // ==========================================
+    // [가로 피드] 연관 영상 (More Like This / Terms)
+    // ==========================================
     public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int page, int limit) {
         Query relatedQuery = Query.of(q -> q.bool(b -> b
                 .must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
@@ -88,20 +137,6 @@ public class RecommendationQueryBuilder {
                 .withQuery(relatedQuery)
                 .withSort(Sort.by(Sort.Direction.DESC, "viewCount"))
                 .withPageable(PageRequest.of(page, limit))
-                .build();
-    }
-
-
-    // [세로 피드: 랜덤] 엘라스틱서치 random_score 쿼리
-    public NativeQuery buildRandomQuery(int limit) {
-        Query randomQuery = FunctionScoreQuery.of(fsq -> fsq
-                .query(baseActiveVideoQuery())
-                .functions(FunctionScore.of(f -> f.randomScore(rs -> rs)))
-        )._toQuery();
-
-        return NativeQuery.builder()
-                .withQuery(randomQuery)
-                .withPageable(PageRequest.of(0, limit))
                 .build();
     }
 }
