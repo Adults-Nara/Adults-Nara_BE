@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.3...v0.8.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* cors 설정 와일드카드로 지정 ([d282d76](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d282d76e4df79a02739fcde10dd4596a8fe515d1))
+* refreshToken path 수정 ([61116bf](https://github.com/Adults-Nara/Adults-Nara_BE/commit/61116bf57eec4f01f7d6cdce1efa1d72a9cfed9d))
+* swagger 토픽 관리 ([1e31384](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1e3138434cad645c1498a758759dcc1c7050af4f))
+* trigger release please ([345a882](https://github.com/Adults-Nara/Adults-Nara_BE/commit/345a882d10a8906e62239f64c7d0b736f9144654))
+* 소리 없는 영상 트랜스코딩 지원 ([12cdc82](https://github.com/Adults-Nara/Adults-Nara_BE/commit/12cdc8282a383f094b149f57df4c2a08566fa339))
+* 트랜스코딩 시작시 상태값 변경 ([427df08](https://github.com/Adults-Nara/Adults-Nara_BE/commit/427df089a17d34499aaa9876ef283333c29db81d))
+* 프론트 테스트를 위한 samesite=None으로 수정 ([d00e4f0](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d00e4f0436d59d34f9642c56d286cd6ce707d97d))
+
 ## [0.8.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.8.2...v0.8.3) (2026-03-04)
 
 
