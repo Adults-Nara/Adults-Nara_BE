@@ -10,7 +10,6 @@ public record AdminUserResponse(
         String nickname,
         String email,
         BanStatus banStatus,
-        String banReason,
         OffsetDateTime createdAt
 ) {
 }

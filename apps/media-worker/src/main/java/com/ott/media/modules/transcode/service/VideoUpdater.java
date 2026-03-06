@@ -28,12 +28,6 @@ public class VideoUpdater {
     }
 
     @Transactional
-    public void updateTranscoding(Long videoId) {
-        Video video = readByVideo(videoId);
-        video.setProcessingStatus(ProcessingStatus.TRANSCODING);
-    }
-
-    @Transactional
     public void updateVideoDuration(Long videoId, int duration) {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));

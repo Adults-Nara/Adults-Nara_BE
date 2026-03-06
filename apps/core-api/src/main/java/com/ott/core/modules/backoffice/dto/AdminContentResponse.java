@@ -1,6 +1,5 @@
 package com.ott.core.modules.backoffice.dto;
 
-import com.ott.common.persistence.enums.ProcessingStatus;
 import com.ott.common.persistence.enums.Visibility;
 
 import java.time.OffsetDateTime;
@@ -16,7 +15,6 @@ public record AdminContentResponse(
         int dislikeCount,
         int commentCount,
         Visibility visibility,
-        OffsetDateTime createdAt,
-        ProcessingStatus processingStatus
+        OffsetDateTime createdAt
 ) {
 }

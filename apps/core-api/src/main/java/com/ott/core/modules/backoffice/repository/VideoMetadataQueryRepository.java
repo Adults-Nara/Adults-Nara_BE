@@ -68,8 +68,7 @@ public class VideoMetadataQueryRepository {
                         videoMetadata.dislikeCount,
                         videoMetadata.commentCount,
                         video.visibility,
-                        videoMetadata.createdAt,
-                        video.processingStatus
+                        videoMetadata.createdAt
                 ))
                 .from(videoMetadata)
                 .innerJoin(video).on(video.id.eq(videoMetadata.videoId))
@@ -88,8 +87,7 @@ public class VideoMetadataQueryRepository {
                         videoMetadata.dislikeCount,
                         videoMetadata.commentCount,
                         video.visibility,
-                        videoMetadata.createdAt,
-                        video.processingStatus
+                        videoMetadata.createdAt
                 )
                 .orderBy(toOrderSpecifier(pageable))
                 .offset(pageable.getOffset())
@@ -138,8 +136,7 @@ public class VideoMetadataQueryRepository {
                         videoMetadata.dislikeCount,
                         videoMetadata.commentCount,
                         video.visibility,
-                        videoMetadata.createdAt,
-                        video.processingStatus
+                        videoMetadata.createdAt
                 ))
                 .from(videoMetadata)
                 .innerJoin(video).on(video.id.eq(videoMetadata.videoId))
@@ -158,8 +155,7 @@ public class VideoMetadataQueryRepository {
                         videoMetadata.dislikeCount,
                         videoMetadata.commentCount,
                         video.visibility,
-                        videoMetadata.createdAt,
-                        video.processingStatus
+                        videoMetadata.createdAt
                 )
                 .orderBy(toOrderSpecifier(pageable))
                 .offset(pageable.getOffset())
