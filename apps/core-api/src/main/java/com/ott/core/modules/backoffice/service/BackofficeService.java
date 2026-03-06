@@ -215,7 +215,8 @@ public class BackofficeService {
                 video.getVisibility(),
                 tagIds,
                 videoMetadata.getCreatedAt(),
-                videoMetadata.getOtherVideoUrl()
+                videoMetadata.getOtherVideoUrl(),
+                videoMetadata.getVideoType()
         );
     }
 }
