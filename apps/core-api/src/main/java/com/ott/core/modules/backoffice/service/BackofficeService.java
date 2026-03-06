@@ -109,13 +109,9 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
-            videoMetadataList.stream()
-                    .forEach(videoMetadata -> {
-                        if (!videoMetadata.getUserId().equals(userId)) {
-                            throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
-                        }
-                    });
+            if (videoMetadataRepository.existsByVideoIdInAndUserIdNot(request.videoIds(), userId)) {
+                throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+            }
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
 
             // Redis 랭킹에서 삭제된 비디오 일괄 삭제
@@ -152,11 +148,8 @@ public class BackofficeService {
         }
 
         if (!isAdmin) {
-            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
-            for (VideoMetadata vm : videoMetadataList) {
-                if (!vm.getUserId().equals(userId)) {
-                    throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
-                }
+            if (videoMetadataRepository.existsByVideoIdInAndUserIdNot(request.videoIds(), userId)) {
+                throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
             }
         }
 
