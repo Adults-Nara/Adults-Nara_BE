@@ -54,6 +54,7 @@ public class UserQueryRepository {
                         user.nickname,
                         user.email,
                         user.banned,
+                        user.banReason,
                         user.createdAt
                 ))
                 .from(user)
