@@ -25,7 +25,6 @@ public class AiAnalysisCompletedConsumer {
             aiAnalysisService.processAnalysisResult(event);
         } else {
             log.error("AI 분석 실패 수신: videoId={}, error={}", event.videoId(), event.error());
-            // TODO: 필요한 경우 비디오 상태 업데이트 (예: 실패 처리)
         }
     }
 }
