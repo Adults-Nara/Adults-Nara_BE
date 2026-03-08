@@ -25,7 +25,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AiAnalysisService {
+public class VideoAiAnalysisService {
 
     private final VideoMetadataRepository videoMetadataRepository;
     private final VideoAiAnalysisRepository videoAiAnalysisRepository;
@@ -44,12 +44,6 @@ public class AiAnalysisService {
             // 필요한 태그만 DB에서 1번에 조회 (OOM 방지)
             List<Tag> existingTags = tagRepository.findByTagNameIn(aiTagNames);
 
-            // 영상에 이미 달린 태그 목록을 for 문 바깥에서 1번만 캐싱 (N+1 방지)
-            List<Long> alreadyLinkedTagIds = videoTagRepository.findTagsByVideoMetadataId(metadata.getId())
-                    .stream()
-                    .map(Tag::getId)
-                    .toList();
-
             for (String tagName : aiTagNames) {
                 Tag tag = existingTags.stream()
                         .filter(t -> t.getTagName().equals(tagName))
@@ -57,11 +51,8 @@ public class AiAnalysisService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.TAG_NOT_FOUND));
 
                 // VideoTag 생성 (source = AI)
-                // 미리 조회해둔 캐시 리스트 이용 (DB 쿼리 X)
-                if (!alreadyLinkedTagIds.contains(tag.getId())) {
-                    VideoTag videoTag = new VideoTag(metadata, tag, TagSource.AI);
-                    videoTagRepository.save(videoTag);
-                }
+                VideoTag videoTag = new VideoTag(metadata, tag, TagSource.AI);
+                videoTagRepository.save(videoTag);
             }
         }
 
