@@ -32,7 +32,14 @@ public class MonthlyStatsController {
             @AuthenticationPrincipal String userIdStr,
             @PathVariable String yearMonth) {
 
-        Long userId = Long.parseLong(userIdStr);
+        Long userId;
+        try {
+            userId = Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid user ID format in principal: {}", userIdStr);
+            return ResponseEntity.badRequest().build();
+        }
+
         log.info("월간 리포트 조회: userId={}, yearMonth={}", userId, yearMonth);
 
         MonthlyStatsResponse response = monthlyStatsService.getMonthlyReport(userId, yearMonth);

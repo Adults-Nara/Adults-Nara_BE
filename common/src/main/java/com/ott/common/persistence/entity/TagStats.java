@@ -39,7 +39,7 @@ public class TagStats extends BaseEntity {
     private LocalDate statsDate;
 
     @Column(name = "total_view_time", nullable = false)
-    private Integer totalViewTime;
+    private Long totalViewTime;
 
     @Column(name = "view_count", nullable = false)
     private Integer viewCount;
@@ -52,7 +52,7 @@ public class TagStats extends BaseEntity {
         this.tag            = tag;
         this.user           = user;
         this.statsDate      = statsDate;
-        this.totalViewTime  = 0;
+        this.totalViewTime  = 0L;
         this.viewCount      = 0;
         this.completedCount = 0;
     }
@@ -60,7 +60,7 @@ public class TagStats extends BaseEntity {
     @PrePersist
     private void prePersist() {
         if (id == null)             id             = IdGenerator.generate();
-        if (totalViewTime == null)  totalViewTime  = 0;
+        if (totalViewTime == null)  totalViewTime  = 0L;
         if (viewCount == null)      viewCount      = 0;
         if (completedCount == null) completedCount = 0;
     }
