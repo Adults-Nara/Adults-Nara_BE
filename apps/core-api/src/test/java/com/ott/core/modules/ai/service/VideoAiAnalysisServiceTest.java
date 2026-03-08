@@ -63,7 +63,7 @@ class VideoAiAnalysisServiceTest {
 
         given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
         given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of(tag1, tag2));
-        given(videoAiAnalysisRepository.findByVideoId(videoId)).willReturn(Optional.empty());
+        given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.empty());
 
         // when
         videoAiAnalysisService.processAnalysisResult(event);
@@ -137,7 +137,7 @@ class VideoAiAnalysisServiceTest {
         given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
         given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of(tag1));
         // 이미 분석 결과가 존재하는 상황
-        given(videoAiAnalysisRepository.findByVideoId(videoId)).willReturn(Optional.of(existingAnalysis));
+        given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.of(existingAnalysis));
 
         // when
         videoAiAnalysisService.processAnalysisResult(event);

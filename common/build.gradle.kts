@@ -19,7 +19,7 @@ dependencies {
     annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
     // pgvector support
-    api("org.hibernate.orm:hibernate-vector:6.4.4.Final")
+    api("org.hibernate.orm:hibernate-vector:6.6.4.Final")
 
     implementation("io.hypersistence:hypersistence-utils-hibernate-60:3.5.1") // TSID
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")

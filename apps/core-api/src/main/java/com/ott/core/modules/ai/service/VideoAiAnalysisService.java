@@ -57,7 +57,7 @@ public class VideoAiAnalysisService {
         }
 
         // 2. VideoAiAnalysis 엔티티 저장 (요약, 자막, 임베딩)
-        Optional<VideoAiAnalysis> analysis = videoAiAnalysisRepository.findByVideoId(metadata.getVideoId());
+        Optional<VideoAiAnalysis> analysis = videoAiAnalysisRepository.findById(metadata.getVideoId());
         if (analysis.isPresent()) {
             log.info("이미 AI 분석 결과가 존재합니다. 덮어쓰지 않습니다. videoMetadataId: {}", metadata.getId());
         } else {
