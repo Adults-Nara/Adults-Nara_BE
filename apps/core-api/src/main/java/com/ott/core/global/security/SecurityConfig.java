@@ -110,7 +110,7 @@ public class SecurityConfig {
 
 
                                                 // --- 통계 API ---
-                                                .requestMatchers(HttpMethod.GET, "/api/v1/stats/monthly").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/statistics/monthly/**").authenticated()
 
                                                 // ===================================================================
                                                 // 3. UPLOADER 전용
