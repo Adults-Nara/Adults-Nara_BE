@@ -7,6 +7,9 @@ java {
 }
 
 dependencies {
+    // Spring (for Lombok NullAnnotations)
+    compileOnly("org.springframework.boot:spring-boot-starter:3.4.2")
+
     // 엔티티 컴파일에 필요한 최소 의존성만
     api("jakarta.persistence:jakarta.persistence-api:3.1.0")
 
