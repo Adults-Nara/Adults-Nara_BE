@@ -15,6 +15,8 @@ public record VideoInfoResult(
         OffsetDateTime createdAt,
         String otherVideoUrl,
         String userProfile,
-        String userNickname
+        String userNickname,
+        List<String> aiTagIds,
+        String summary
 ) {
 }
