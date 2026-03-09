@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.2...v0.9.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* Fargate S3 limitation 버그 해결 (인라인 awsfirelens 옵션 적용) ([1c6cffe](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1c6cffed73d82313ef08a66a88cccd66981b4e58))
+* Fargate S3 limitation 버그 해결 (인라인 awsfirelens 옵션 적용) ([7becc1f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7becc1f784e35f6f254e49cc42a8defe2813cde8))
+
 ## [0.9.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.1...v0.9.2) (2026-03-09)
 
 
