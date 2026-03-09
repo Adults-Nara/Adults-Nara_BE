@@ -28,7 +28,7 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
     @Query("DELETE FROM VideoTag vt WHERE vt.videoMetadata = :videoMetadata")
     void deleteAllByVideoMetadata(@Param("videoMetadata") VideoMetadata videoMetadata);
 
-    @Query("SELECT vt.videoMetadata FROM VideoTag vt WHERE vt.tag.id = :tagId AND vt.videoMetadata.deleted = false ORDER BY vt.videoMetadata.viewCount DESC")
+    @Query("SELECT vt.videoMetadata FROM VideoTag vt WHERE vt.tag.id = :tagId AND vt.videoMetadata.deleted = false AND vt.videoMetadata.videoType = com.ott.common.persistence.enums.VideoType.LONG ORDER BY vt.videoMetadata.viewCount DESC")
     List<VideoMetadata> findTop10VideosByTagId(@Param("tagId") Long tagId, Pageable pageable);
 
     // 1. 단건 비디오에 대한 태그 + 부모 태그 페치 조인 (EventListener용)

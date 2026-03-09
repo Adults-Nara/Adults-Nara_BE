@@ -90,6 +90,9 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/videos/*/play").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/videos/*").permitAll()
 
+                                                // --- 태그별 영상 목록 (비로그인 조회 가능) ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/tags/*/videos").permitAll()
+
                                                 // --- 광고 ---
                                                 .requestMatchers("/api/v1/ads").permitAll()
 
