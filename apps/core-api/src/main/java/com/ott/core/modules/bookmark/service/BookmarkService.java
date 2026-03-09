@@ -42,10 +42,10 @@ public class BookmarkService {
     private final StringRedisTemplate stringRedisTemplate;
     private final WatchHistoryRepository watchHistoryRepository;
 
-
     // Redis Key 상수
     private static final String KEY_VIDEO_COUNT = "video:count:bookmark"; // Hash 구조
-    private static final String KEY_RANKING = "video:ranking"; // ZSet 구조
+    private static final String KEY_RANKING_LONG = "video:ranking:long";
+    private static final String KEY_RANKING_SHORT = "video:ranking:short";
     private static final String KEY_DIRTY_DATA = "video:dirty:bookmark"; // 변경된 영상 ID 목록 (Set)
 
     @Transactional
@@ -74,7 +74,8 @@ public class BookmarkService {
             String videoIdStr = String.valueOf(videoId);
 
             // 2. Redis ZSet 실시간 랭킹 차트 갱신
-            stringRedisTemplate.opsForZSet().add(KEY_RANKING, videoIdStr, realCount);
+            String targetRankingKey = (metadata.getVideoType() == VideoType.LONG) ? KEY_RANKING_LONG : KEY_RANKING_SHORT;
+            stringRedisTemplate.opsForZSet().add(targetRankingKey, videoIdStr, realCount);
 
             stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);
 
@@ -99,7 +100,7 @@ public class BookmarkService {
         stringRedisTemplate.opsForHash().increment(KEY_VIDEO_COUNT, videoIdStr, delta);
 
         // 인기 차트용 점수 (Sorted Set) -> 실시간 랭킹 반영
-        stringRedisTemplate.opsForZSet().incrementScore(KEY_RANKING, videoIdStr, delta);
+        stringRedisTemplate.opsForZSet().incrementScore(KEY_RANKING_LONG, videoIdStr, delta);
 
         // [Write-Back] 변경 감지 목록에 추가 -> 스케줄러가 이 Set을 뒤져서 DB에 반영함. (중복 방지를 위해 Set 사용)
         stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);

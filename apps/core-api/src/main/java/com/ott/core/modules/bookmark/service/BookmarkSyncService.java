@@ -1,6 +1,7 @@
 package com.ott.core.modules.bookmark.service;
 
 import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.core.modules.bookmark.repository.BookmarkRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,8 @@ public class BookmarkSyncService {
     private final VideoMetadataRepository videoMetadataRepository;
     private final BookmarkRepository bookmarkRepository;
 
-    private static final String KEY_RANKING = "video:ranking"; // ZSet
+    private static final String KEY_RANKING_LONG = "video:ranking:long";
+    private static final String KEY_RANKING_SHORT = "video:ranking:short";
     private static final String KEY_DIRTY = "video:dirty:bookmark"; // Set
     private static final String KEY_PROCESSING = "video:processing:bookmark"; // Set (안전 큐)
 
@@ -61,12 +63,18 @@ public class BookmarkSyncService {
                 Long videoId = Long.valueOf(videoIdStr);
 
                 // 3. Redis ZSet에서 현재 이 비디오의 북마크 카운트를 가져옵니다.
-                Double score = stringRedisTemplate.opsForZSet().score(KEY_RANKING, videoIdStr);
+                Double score = stringRedisTemplate.opsForZSet().score(KEY_RANKING_LONG, videoIdStr);
 
+                if (score == null) {
+                    score = stringRedisTemplate.opsForZSet().score(KEY_RANKING_SHORT, videoIdStr);
+                }
                 if (score != null) {
                     // 4. Repository에 이미 @Transactional이 있으므로 안전하게 업데이트 됨
                     videoMetadataRepository.updateBookmarkCount(videoId, score.intValue());
                     successCount++;
+                } else {
+                    // 캐시에 점수가 아예 없는 이상 상태에 대한 로그
+                    log.warn("[SyncService] 비디오 {}의 캐시 데이터를 찾을 수 없어 동기화 스킵", videoIdStr);
                 }
 
             } catch (Exception e) {
@@ -91,18 +99,21 @@ public class BookmarkSyncService {
     @Transactional(readOnly = true)
     public void warmUpRankingFromDB() {
         log.info("[Sync] DB 데이터를 기반으로 Redis 랭킹(ZSet) 초기화를 시작합니다...");
-        stringRedisTemplate.delete(KEY_RANKING);
+        stringRedisTemplate.delete(KEY_RANKING_LONG);
+        stringRedisTemplate.delete(KEY_RANKING_SHORT);
 
         // DB 딱 1번 찌름! (N+1 완벽 해결)
-        List<Object[]> results = bookmarkRepository.countTotalBookmarksGroupedByVideo();
+        List<Object[]> results = bookmarkRepository.countTotalBookmarksGroupedByVideoAndType();
 
         int count = 0;
         for (Object[] row : results) {
             Long videoId = (Long) row[0];
-            Long bookmarkCount = (Long) row[1];
+            VideoType type = (VideoType) row[1];
+            Long bookmarkCount = (Long) row[2];
 
             if (bookmarkCount > 0) {
-                stringRedisTemplate.opsForZSet().add(KEY_RANKING, String.valueOf(videoId), bookmarkCount.doubleValue());
+                String targetKey = (type == VideoType.LONG) ? KEY_RANKING_LONG: KEY_RANKING_SHORT;
+                stringRedisTemplate.opsForZSet().add(targetKey, String.valueOf(videoId), bookmarkCount.doubleValue());
                 count++;
             }
         }

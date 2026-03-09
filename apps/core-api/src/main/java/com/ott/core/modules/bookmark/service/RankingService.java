@@ -21,7 +21,7 @@ public class RankingService {
     private final StringRedisTemplate stringRedisTemplate;
     private final VideoMetadataRepository videoMetadataRepository;
 
-    private static final String KEY_RANKING = "video:ranking";
+    private static final String KEY_RANKING_LONG = "video:ranking:long";
 
     /**
      * [Step 3] Redis에 저장된 카운트를 통해 실시간 인기 차트 제공
@@ -30,7 +30,7 @@ public class RankingService {
     public List<RankingResponse> getTopBookmarkVideos(int limit) {
         // 1. Redis에서 순위대로 꺼내옴
         Set<ZSetOperations.TypedTuple<String>> topRankings = stringRedisTemplate.opsForZSet()
-                .reverseRangeWithScores(KEY_RANKING, 0, limit - 1);
+                .reverseRangeWithScores(KEY_RANKING_LONG, 0, limit - 1);
 
         if (topRankings == null || topRankings.isEmpty()) {
             return List.of();
