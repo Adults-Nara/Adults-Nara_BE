@@ -22,7 +22,7 @@ public class UserVectorService {
 
     private static final String REDIS_USER_VECTOR_KEY_PREFIX = "user:vector:";
     private static final int VECTOR_DIMENSION = 384;
-
+    private static final long USER_VECTOR_TTL_DAYS = 30L;
     private static final double ALPHA_WATCH_NORMAL = 0.05;    // 일반 시청: 5% 반영
     private static final double ALPHA_WATCH_COMPLETE = 0.10;  // 완료: 10% 반영
     private static final double ALPHA_LIKE = 0.20;            // 좋아요: 20% 반영
@@ -52,11 +52,15 @@ public class UserVectorService {
         try {
             // 1. ES에서 시청/인터랙션 한 영상의 벡터를 조회
             VideoDocument videoDoc = elasticsearchOperations.get(videoId.toString(), VideoDocument.class);
-            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().isEmpty()) {
+            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().length == 0) {
                 log.warn("[UserVector] 영상의 벡터 데이터가 없어 업데이트 취소 - videoId: {}", videoId);
                 return;
             }
-            List<Double> videoVector = videoDoc.getEmbedding();
+            float[] rawEmbedding = videoDoc.getEmbedding();
+            List<Double> videoVector = new ArrayList<>(VECTOR_DIMENSION);
+            for (float v : rawEmbedding) {
+                videoVector.add((double) v);
+            }
 
             // 2. Redis에서 유저의 기존 벡터를 조회
             String redisKey = REDIS_USER_VECTOR_KEY_PREFIX + userId;
@@ -72,8 +76,8 @@ public class UserVectorService {
                 newVector = calculateEMA(currentUserVector, videoVector, alpha);
             }
 
-            // 3. 업데이트된 벡터를 Redis에 저장 (예: TTL 30일 설정)
-            redisVectorTemplate.opsForValue().set(redisKey, newVector, 30, TimeUnit.DAYS);
+            // 3. 업데이트된 벡터를 Redis에 저장
+            redisVectorTemplate.opsForValue().set(redisKey, newVector, USER_VECTOR_TTL_DAYS, TimeUnit.DAYS);
             log.info("[UserVector] 유저 취향 벡터 업데이트 완료 - userId: {}, alpha: {}", userId, alpha);
 
         } catch (Exception e) {
@@ -85,14 +89,14 @@ public class UserVectorService {
      * 지수 이동 평균(EMA)을 활용한 벡터 융합 계산
      * V_new = (1 - alpha) * V_old + (alpha) * V_video
      */
-    private List<Double> calculateEMA(List<Double> oldVector, List<Double> newVector, double alpha) {
-        if (oldVector.size() != VECTOR_DIMENSION || newVector.size() != VECTOR_DIMENSION) {
+    private List<Double> calculateEMA(List<Double> currentUserVector, List<Double> videoVector, double alpha) {
+        if (currentUserVector.size() != VECTOR_DIMENSION || videoVector.size() != VECTOR_DIMENSION) {
             throw new IllegalArgumentException("벡터의 차원이 일치하지 않습니다. 기대값: " + VECTOR_DIMENSION);
         }
         List<Double> updatedVector = new ArrayList<>(VECTOR_DIMENSION);
         for (int i = 0;i < VECTOR_DIMENSION; i++) {
-            double oldVal = oldVector.get(i);
-            double newVal = newVector.get(i);
+            double oldVal = currentUserVector.get(i);
+            double newVal = videoVector.get(i);
 
             // 수학 공식 적용
             double blendedVal = ((1.0 - alpha) * oldVal) + (alpha * newVal);

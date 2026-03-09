@@ -18,11 +18,13 @@ public class UserVectorEventListener {
 
     private final UserVectorService userVectorService;
 
+    private static final int MIN_WATCH_SECONDS_FOR_VECTOR_UPDATE = 60;
+
     @Async("watchHistoryTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleVideoWatchedEvent(VideoWatchedEvent event) {
         // 영상을 끝까지 봤거나, 60초 이상 시청했을 때만 취향 벡터에 반영
-        if (event.isCompleted() || (event.watchSeconds() != null && event.watchSeconds() > 60)) {
+        if (event.isCompleted() || (event.watchSeconds() != null && event.watchSeconds() > MIN_WATCH_SECONDS_FOR_VECTOR_UPDATE)) {
             log.debug("[AI Vector] 유의미한 시청 기록 감지 (벡터 갱신 대상) - User: {}, Video: {}",
                     event.userId(), event.videoId());
 

@@ -50,12 +50,13 @@ public class RedisConfig {
         RedisTemplate<String, List<Double>> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        // Key는 일반 String
         template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
 
-        // Value는 List 타입을 위한 Jackson 직렬화기 사용 (복잡한 타입 검증 없이 단순 JSON 배열로 처리)
-        Jackson2JsonRedisSerializer<List> serializer = new Jackson2JsonRedisSerializer<>(List.class);
-        template.setValueSerializer(serializer);
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        template.afterPropertiesSet();
 
         return template;
     }
