@@ -3,11 +3,9 @@ package com.ott.core.modules.video.service;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.*;
-import com.ott.common.persistence.enums.ProcessingStatus;
-import com.ott.common.persistence.enums.UploadSessionStatus;
-import com.ott.common.persistence.enums.VideoType;
-import com.ott.common.persistence.enums.Visibility;
+import com.ott.common.persistence.enums.*;
 import com.ott.common.util.IdGenerator;
+import com.ott.core.modules.ai.repository.VideoAiAnalysisRepository;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
@@ -43,6 +41,7 @@ public class VideoService {
     private final VideoTagRepository videoTagRepository;
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final VideoAiAnalysisRepository videoAiAnalysisRepository;
 
 
     private final PresignedMultipartProcessor presignedMultipartProcessor;
@@ -63,6 +62,7 @@ public class VideoService {
                         VideoTagRepository videoTagRepository,
                         TagRepository tagRepository,
                         UserRepository userRepository,
+                        VideoAiAnalysisRepository videoAiAnalysisRepository,
                         PresignedMultipartProcessor presignedMultipartProcessor,
                         S3ObjectStorage s3ObjectStorage,
                         ObjectStorageVerifier objectStorageVerifier,
@@ -77,6 +77,7 @@ public class VideoService {
         this.videoTagRepository = videoTagRepository;
         this.tagRepository = tagRepository;
         this.userRepository = userRepository;
+        this.videoAiAnalysisRepository = videoAiAnalysisRepository;
 
         this.presignedMultipartProcessor = presignedMultipartProcessor;
         this.s3ObjectStorage = s3ObjectStorage;
@@ -273,8 +274,15 @@ public class VideoService {
             throw new BusinessException(ErrorCode.VIDEO_NOT_PUBLIC);
         }
 
-        List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
-        List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
+        List<VideoTag> videoTagList = videoTagRepository.findAllByVideoMetadataIdAndSource(videoMetadata.getId(), TagSource.USER);
+        List<String> tagIds = videoTagList.stream().map(videoTag -> String.valueOf(videoTag.getTag().getId())).toList();
+
+        List<VideoTag> aiVideoTagList = videoTagRepository.findAllByVideoMetadataIdAndSource(videoMetadata.getId(), TagSource.AI);
+        List<String> aiVideoTagIds = aiVideoTagList.stream().map(videoTag -> String.valueOf(videoTag.getTag().getId())).toList();
+
+        VideoAiAnalysis videoAiAnalysis = videoAiAnalysisRepository.findById(video.getId())
+                .orElse(null);
+        String summary = videoAiAnalysis == null ? null : videoAiAnalysis.getSummary();
 
         User uploader = userRepository.findById(videoMetadata.getUserId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -289,7 +297,9 @@ public class VideoService {
                 videoMetadata.getCreatedAt(),
                 videoMetadata.getOtherVideoUrl(),
                 uploader.getProfileImageUrl(),
-                uploader.getNickname()
+                uploader.getNickname(),
+                aiVideoTagIds,
+                summary
         );
     }
 }
