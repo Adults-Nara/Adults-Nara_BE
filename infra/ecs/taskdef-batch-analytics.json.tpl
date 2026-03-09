@@ -42,7 +42,7 @@
         "logDriver": "awsfirelens",
         "options": {
           "Name": "loki",
-          "Host": "15.165.11.129",
+          "Host": "10.0.1.101",
           "Port": "3100",
           "Labels": "job=ecs-fargate, app=batch-analytics, env=prod"
         }
