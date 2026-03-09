@@ -67,12 +67,6 @@ public class VideoMetadata extends BaseEntity {
 
     private boolean deleted;
 
-    @Column(columnDefinition = "TEXT")
-    private String summary; // 파이썬 AI 서버가 생성한 영상 요약본
-
-    @Column(columnDefinition = "TEXT")
-    private List<Double> embedding; // 384차원 임베딩 벡터 (DB에는 JSON 텍스트로 저장)
-
     public void setDuration(Integer duration) {
         this.duration = duration;
     }
@@ -103,11 +97,6 @@ public class VideoMetadata extends BaseEntity {
 
     public void softDelete() {
         this.deleted = true;
-    }
-
-    public void updateAiData(String summary, List<Double> embedding) {
-        this.summary = summary;
-        this.embedding = embedding;
     }
 
     @PrePersist

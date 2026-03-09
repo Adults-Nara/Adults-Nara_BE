@@ -3,7 +3,9 @@ package com.ott.core.modules.search.listener;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.persistence.entity.Tag;
+import com.ott.common.persistence.entity.VideoAiAnalysis;
 import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.core.modules.ai.repository.VideoAiAnalysisRepository;
 import com.ott.core.modules.search.document.VideoDocument;
 import com.ott.core.modules.search.event.VideoIndexDeletedEvent;
 import com.ott.core.modules.search.event.VideoIndexRequestedEvent;
@@ -33,6 +35,7 @@ public class VideoSearchEventListener {
     private final VideoMetadataRepository videoMetadataRepository;
     private final VideoTagRepository videoTagRepository;
     private final VideoSearchRepository videoSearchRepository;
+    private final VideoAiAnalysisRepository videoAiAnalysisRepository;
 
     /**
      * DB 저장이 완료된 후, ES에 문서를 색인
@@ -43,14 +46,14 @@ public class VideoSearchEventListener {
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public void handleVideoIndexRequest(VideoIndexRequestedEvent event) {
         log.debug("[Search] ES 검색 문서 동기화 시작: videoId={}", event.videoId());
-
+        try {
             // 1. RDB에서 최신 메타데이터 조회
             VideoMetadata metadata = videoMetadataRepository.findByVideoIdAndDeleted(event.videoId(), false)
                     .orElseThrow(() -> {
                         log.warn("[Search] 동기화 대상 비디오를 찾을 수 없습니다. - videoId: {}", event.videoId());
                         return new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND);
                     });
-        try {
+
             List<Tag> tags = videoTagRepository.findTagsWithParentByVideoMetadataId(metadata.getId());
 
             List<String> distinctTagNames = tags.stream()
@@ -60,7 +63,10 @@ public class VideoSearchEventListener {
                     .distinct()
                     .toList();
 
-            VideoDocument document = VideoDocument.from(metadata, distinctTagNames, metadata.getEmbedding());
+            //  AI 분석 데이터 조회 (아직 분석 중이거나 실패해서 없을 수도 있으므로 orElse(null) 처리)
+            VideoAiAnalysis aiAnalysis = videoAiAnalysisRepository.findById(metadata.getVideoId())
+                    .orElse(null);
+            VideoDocument document = VideoDocument.from(metadata, distinctTagNames, aiAnalysis);
 
             // 4. ES에 저장 (동일한 ID면 알아서 덮어쓰기 됨)
             videoSearchRepository.save(document);
