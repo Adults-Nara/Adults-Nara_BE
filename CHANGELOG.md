@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.4](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.3...v0.9.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* private ip로 수정 ([ea5c598](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ea5c598cc4bf7797185fc98bda84caf5f4255398))
+* private ip로 수정 ([b61e29a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/b61e29aad73d31193ffbbc2aabcd36555c1827cb))
+
 ## [0.9.3](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.2...v0.9.3) (2026-03-09)
 
 
