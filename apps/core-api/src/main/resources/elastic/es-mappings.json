@@ -23,6 +23,12 @@
     "deleted": { "type": "boolean" },
     "thumbnailUrl": { "type": "keyword", "index": false },
     "duration": { "type": "integer", "index": false },
-    "createdAt": { "type": "date" }
+    "createdAt": { "type": "date" },
+    "embedding": {
+      "type": "dense_vector",
+      "dims": 384,
+      "index": true,
+      "similarity": "cosine"
+    }
   }
 }

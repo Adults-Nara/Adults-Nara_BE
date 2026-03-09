@@ -3,6 +3,7 @@ package com.ott.core.modules.recommendation.service;
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.service.UserPreferenceService;
+import com.ott.core.modules.preference.service.UserVectorService;
 import com.ott.core.modules.recommendation.component.RecommendationQueryBuilder;
 import com.ott.core.modules.recommendation.component.VideoFeedEnricher;
 import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
@@ -24,6 +25,7 @@ import java.util.concurrent.Executor;
 public class RecommendationService {
 
     private final UserPreferenceService userPreferenceService;
+    private final UserVectorService userVectorService;
     private final ElasticsearchOperations elasticsearchOperations;
     private final RecommendationQueryBuilder queryBuilder;
     private final VideoFeedEnricher feedEnricher;
@@ -31,11 +33,13 @@ public class RecommendationService {
 
     public RecommendationService(
             UserPreferenceService userPreferenceService,
+            UserVectorService userVectorService,
             ElasticsearchOperations elasticsearchOperations,
             RecommendationQueryBuilder queryBuilder,
             VideoFeedEnricher feedEnricher,
             @Qualifier("watchHistoryTaskExecutor") Executor executor) {
         this.userPreferenceService = userPreferenceService;
+        this.userVectorService = userVectorService;
         this.elasticsearchOperations = elasticsearchOperations;
         this.queryBuilder = queryBuilder;
         this.feedEnricher = feedEnricher;
@@ -47,19 +51,22 @@ public class RecommendationService {
     private static final int USER_PREFERENCE_TAG_LIMIT = 5;
 
     // =========================================================================
-    // [메인 홈 피드]
+    // kNN 벡터 검색 적용
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, int page, int size) {
-        List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, USER_PREFERENCE_TAG_LIMIT);
 
-        NativeQuery searchQuery = userPreferences.isEmpty()
-                ? queryBuilder.buildFallbackQuery(page, size)
-                : queryBuilder.buildMainPersonalizedQuery(userPreferences, page, size);
+        List<Double> userVector = userVectorService.getUserVector(userId);
+
+        NativeQuery searchQuery;
+        if (userVector == null || userVector.isEmpty()) {
+            searchQuery = queryBuilder.buildFallbackQuery(page, size);
+        } else {
+            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, page, size);
+        }
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
         return feedEnricher.enrich(rawDocuments, userId);
     }
-    
     // =========================================================================
     // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤)
     // =========================================================================
@@ -73,7 +80,7 @@ public class RecommendationService {
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
                                 ? queryBuilder.buildPopularQuery(personalSize)
-                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, 0, personalSize))
+                                : queryBuilder.buildPersonalizedQuery(userPreferences, 0, personalSize))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
@@ -86,15 +93,33 @@ public class RecommendationService {
 
         CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
 
-        Set<VideoDocument> mixedFeed = new LinkedHashSet<>(personalFuture.join());
-        for (VideoDocument doc : popularFuture.join()) {
-            if (mixedFeed.size() < personalSize + popularSize) mixedFeed.add(doc);
-        }
-        for (VideoDocument doc : randomFuture.join()) {
-            if (mixedFeed.size() < size) mixedFeed.add(doc);
+        // 비디오 ID를 기준으로 완벽하게 중복을 제거하면서 피드 병합 (Set<Long> 활용)
+        Set<Long> seenVideoIds = new HashSet<>();
+        List<VideoDocument> mixedFeed = new ArrayList<>();
+
+        // 1. 취향 영상 담기
+        for (VideoDocument doc : personalFuture.join()) {
+            if (seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
         }
 
-        return feedEnricher.enrich(new ArrayList<>(mixedFeed), userId);
+        // 2. 인기 영상 담기 (목표 사이즈를 채울 때까지)
+        int targetSizeAfterPopular = personalSize + popularSize;
+        for (VideoDocument doc : popularFuture.join()) {
+            if (mixedFeed.size() < targetSizeAfterPopular && seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
+        }
+
+        // 3. 랜덤 영상 담기 (최종 목표 사이즈를 채울 때까지)
+        for (VideoDocument doc : randomFuture.join()) {
+            if (mixedFeed.size() < size && seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
+        }
+
+        return feedEnricher.enrich(mixedFeed, userId);
     }
 
     // =========================================================================

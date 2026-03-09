@@ -181,6 +181,8 @@ public class WatchHistoryService {
                             .watchProgressPercent(calculateWatchProgressPercent(wh.getLastPosition(), vm.getDuration()))
                             .watchedAt(wh.getUpdatedAt())
                             .duration(vm.getDuration())
+                            .videoType(vm.getVideoType())
+                            .uploadedAt(vm.getCreatedAt())
                             .build();
                 })
                 .collect(Collectors.toList());
