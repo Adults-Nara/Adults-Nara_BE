@@ -55,8 +55,6 @@ public class RecommendationService {
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, int page, int size) {
 
-        // ✅ TODO: 유저가 기존에 시청했던 영상들의 임베딩 평균값이나 취향 임베딩 벡터를 가져옵니다.
-        // 만약 유저 벡터가 null이거나 없다면 기존 Fallback 쿼리로 우회합니다.
         List<Double> userVector = userVectorService.getUserVector(userId);
 
         NativeQuery searchQuery;
@@ -95,15 +93,33 @@ public class RecommendationService {
 
         CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
 
-        Set<VideoDocument> mixedFeed = new LinkedHashSet<>(personalFuture.join());
-        for (VideoDocument doc : popularFuture.join()) {
-            if (mixedFeed.size() < personalSize + popularSize) mixedFeed.add(doc);
-        }
-        for (VideoDocument doc : randomFuture.join()) {
-            if (mixedFeed.size() < size) mixedFeed.add(doc);
+        // 비디오 ID를 기준으로 완벽하게 중복을 제거하면서 피드 병합 (Set<Long> 활용)
+        Set<Long> seenVideoIds = new HashSet<>();
+        List<VideoDocument> mixedFeed = new ArrayList<>();
+
+        // 1. 취향 영상 담기
+        for (VideoDocument doc : personalFuture.join()) {
+            if (seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
         }
 
-        return feedEnricher.enrich(new ArrayList<>(mixedFeed), userId);
+        // 2. 인기 영상 담기 (목표 사이즈를 채울 때까지)
+        int targetSizeAfterPopular = personalSize + popularSize;
+        for (VideoDocument doc : popularFuture.join()) {
+            if (mixedFeed.size() < targetSizeAfterPopular && seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
+        }
+
+        // 3. 랜덤 영상 담기 (최종 목표 사이즈를 채울 때까지)
+        for (VideoDocument doc : randomFuture.join()) {
+            if (mixedFeed.size() < size && seenVideoIds.add(doc.getVideoId())) {
+                mixedFeed.add(doc);
+            }
+        }
+
+        return feedEnricher.enrich(mixedFeed, userId);
     }
 
     // =========================================================================
