@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.1...v0.9.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* 영상 단일 조회 API 응답값 ai 요약 및 태그 추가 ([ff41827](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ff41827d968270809b361ccdb4d9bebe8d7ce575))
+
 ## [0.9.1](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.0...v0.9.1) (2026-03-09)
 
 
