@@ -8,6 +8,28 @@
   "memory": "2048",
   "containerDefinitions": [
     {
+      "name": "log_router",
+      "image": "grafana/fluent-bit-plugin-loki:latest",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "enable-ecs-log-metadata": "true",
+          "config-file-type": "s3",
+          "config-file-value": "arn:aws:s3:::${S3_BUCKET}/fluent-bit.conf"
+        }
+      },
+      "memoryReservation": 50,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/log_router",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    },
+    {
       "name": "media-worker",
       "image": "${MEDIA_WORKER_IMAGE_URI}",
       "portMappings": [{ "containerPort": 8081, "protocol": "tcp" }],
@@ -28,12 +50,7 @@
         { "name": "S3_BUCKET",                       "value": "${S3_BUCKET}" }
       ],
       "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/media-worker",
-          "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "ecs"
-        }
+        "logDriver": "awsfirelens"
       }
     }
   ]
