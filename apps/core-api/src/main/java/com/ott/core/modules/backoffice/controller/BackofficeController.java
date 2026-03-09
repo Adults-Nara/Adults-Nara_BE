@@ -110,6 +110,20 @@ public class BackofficeController {
         return ApiResponse.success();
     }
 
+    @Operation(summary = "콘텐츠 상태 변경", description = "업로더는 본인 컨텐츠의, 어드민은 모든 콘텐츠의 활성(PUBLIC)/비활성(PRIVATE) 상태를 변경합니다.")
+    @PatchMapping("/contents/status")
+    @PreAuthorize("hasAnyRole('UPLOADER', 'ADMIN')")
+    public ApiResponse<ContentStatusUpdateResponse> updateContentStatus(
+            Authentication authentication,
+            @AuthenticationPrincipal String userId,
+            @RequestBody ContentStatusUpdateRequest request
+    ) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        ContentStatusUpdateResponse result = backofficeService.updateContentStatus(Long.parseLong(userId), isAdmin, request);
+        return ApiResponse.success(result);
+    }
+
     @Operation(summary = "유저 목록 조회", description = "어드민이 역할(userRole) 및 키워드로 유저 목록을 페이지네이션으로 조회합니다.")
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")

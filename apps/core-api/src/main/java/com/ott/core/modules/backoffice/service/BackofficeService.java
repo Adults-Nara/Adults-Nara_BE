@@ -109,13 +109,9 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
-            videoMetadataList.stream()
-                    .forEach(videoMetadata -> {
-                        if (!videoMetadata.getUserId().equals(userId)) {
-                            throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
-                        }
-                    });
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+            }
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
 
             // Redis 랭킹에서 삭제된 비디오 일괄 삭제
@@ -139,6 +135,27 @@ public class BackofficeService {
                     }
                 }
         );
+    }
+
+    @Transactional
+    public ContentStatusUpdateResponse updateContentStatus(Long userId, boolean isAdmin, ContentStatusUpdateRequest request) {
+        if (request.videoIds() == null || request.videoIds().isEmpty()) {
+            return new ContentStatusUpdateResponse(List.of());
+        }
+
+        if (request.visibility() == null) {
+            throw new BusinessException(ErrorCode.VIDEO_STATUS_INVALID_VISIBILITY);
+        }
+
+        if (!isAdmin) {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
+            }
+        }
+
+        videoRepository.updateVisibilityByIds(request.visibility(), OffsetDateTime.now(), request.videoIds());
+
+        return new ContentStatusUpdateResponse(request.videoIds().stream().map(String::valueOf).toList());
     }
 
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
@@ -191,7 +208,8 @@ public class BackofficeService {
                 video.getVisibility(),
                 tagIds,
                 videoMetadata.getCreatedAt(),
-                videoMetadata.getOtherVideoUrl()
+                videoMetadata.getOtherVideoUrl(),
+                videoMetadata.getVideoType()
         );
     }
 }

@@ -13,4 +13,6 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
 
     @Query("SELECT t FROM Tag t JOIN FETCH t.parent WHERE t.parent IS NOT NULL ORDER BY t.parent.id, t.tagName")
     List<Tag> findAllChildTagsWithParent();
+
+    List<Tag> findByTagNameIn(List<String> tagNames);
 }

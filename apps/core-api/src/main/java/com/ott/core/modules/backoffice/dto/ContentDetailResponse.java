@@ -1,5 +1,6 @@
 package com.ott.core.modules.backoffice.dto;
 
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.persistence.enums.Visibility;
 
 import java.time.OffsetDateTime;
@@ -13,6 +14,7 @@ public record ContentDetailResponse(
         Visibility visibility,
         List<String> tagIds,
         OffsetDateTime createdAt,
-        String otherVideoUrl
+        String otherVideoUrl,
+        VideoType videoType
 ) {
 }
