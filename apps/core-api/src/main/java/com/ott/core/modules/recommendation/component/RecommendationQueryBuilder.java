@@ -21,8 +21,40 @@ public class RecommendationQueryBuilder {
             .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
         ));
     }
+
     // ==========================================
-    // 1. [메인 피드용] 취향 + 조회수 가중치 쿼리
+    // [메인 피드용] 유저 취향 벡터 기반 kNN 쿼리
+    // ==========================================
+    public NativeQuery buildMainPersonalizedKnnQuery(List<Double> userVector, VideoType videoType, int page, int size) {
+        // 벡터가 없으면 Fallback 쿼리 반환 로직을 Service에서 처리
+
+        int cappedSize = Math.min(size, 100); // 보안 방어 로직: size 상한선을 100으로 제한
+
+        // kNN 쿼리 내부에 deleted=false 필터 결합
+        Query filterQuery = baseActiveVideoQuery(videoType);
+
+        // 후보군 넉넉히 잡되, DoS 방지를 위해 최대 500으로 제한
+        int numCandidates = Math.min(Math.max(50, cappedSize * 5), 500);
+
+        List<Float> floatVector = userVector.stream().map(Double::floatValue).toList();
+        Query knnQuery = Query.of(q -> q
+                .knn(k -> k
+                        .field("embedding")
+                        .queryVector(floatVector)
+                        .k(cappedSize)
+                        .numCandidates(numCandidates)
+                        .filter(filterQuery)
+                )
+        );
+
+        return NativeQuery.builder()
+                .withQuery(knnQuery)
+                .withPageable(PageRequest.of(page, size))
+                .build();
+
+    }
+    // ==========================================
+    // 2. [메인 피드용] 신규 유저 Fallback 쿼리
     // ==========================================
     public NativeQuery buildMainPersonalizedQuery(List<TagScoreDto> userPreferences, VideoType videoType, int page, int size) {
         List<FunctionScore> functions = new ArrayList<>();
@@ -78,8 +110,10 @@ public class RecommendationQueryBuilder {
                 .build();
     }
 
-    // [가로 피드] 연관 영상 (More Like This / Terms) - 필터링 제거됨
-    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, VideoType videoType, int page, int limit) {
+    // ==========================================
+    // [가로 피드] 연관 영상 (More Like This / Terms)
+    // ==========================================
+    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int page, int limit) {
         Query relatedQuery = Query.of(q -> q.bool(b -> b
             .must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
             .mustNot(mn -> mn.term(t -> t.field("_id").value(currentVideoId.toString())))
