@@ -8,6 +8,28 @@
   "memory": "1024",
   "containerDefinitions": [
     {
+      "name": "log_router",
+      "image": "grafana/fluent-bit-plugin-loki:latest",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "enable-ecs-log-metadata": "true",
+          "config-file-type": "s3",
+          "config-file-value": "arn:aws:s3:::${S3_BUCKET}/fluent-bit.conf"
+        }
+      },
+      "memoryReservation": 50,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/log_router",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    },
+    {
       "name": "batch-analytics",
       "image": "${BATCH_ANALYTICS_IMAGE_URI}",
       "portMappings": [{ "containerPort": 8082, "protocol": "tcp" }],
@@ -19,12 +41,7 @@
         { "name": "DB_PASSWORD",            "value": "${DB_PASSWORD}" }
       ],
       "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/batch-analytics",
-          "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "ecs"
-        }
+        "logDriver": "awsfirelens"
       }
     }
   ]
