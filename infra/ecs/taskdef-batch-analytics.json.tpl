@@ -14,9 +14,7 @@
       "firelensConfiguration": {
         "type": "fluentbit",
         "options": {
-          "enable-ecs-log-metadata": "true",
-          "config-file-type": "s3",
-          "config-file-value": "arn:aws:s3:::${S3_BUCKET}/fluent-bit.conf"
+          "enable-ecs-log-metadata": "true"
         }
       },
       "memoryReservation": 50,
@@ -41,7 +39,13 @@
         { "name": "DB_PASSWORD",            "value": "${DB_PASSWORD}" }
       ],
       "logConfiguration": {
-        "logDriver": "awsfirelens"
+        "logDriver": "awsfirelens",
+        "options": {
+          "Name": "loki",
+          "Host": "10.0.1.101",
+          "Port": "3100",
+          "Labels": "job=ecs-fargate, app=batch-analytics, env=prod"
+        }
       }
     }
   ]
