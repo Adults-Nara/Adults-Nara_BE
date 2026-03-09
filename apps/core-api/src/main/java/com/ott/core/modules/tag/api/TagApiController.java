@@ -37,7 +37,13 @@ public class TagApiController {
             @AuthenticationPrincipal String userId,
             @PathVariable("tagId") Long tagId
     ) {
-        List<TagVideoResponse> response = tagService.getVideosByTag(tagId, Long.parseLong(userId));
+        Long parsedUserId = null;
+
+        if (userId != null && !userId.equals("anonymousUser")) {
+            parsedUserId = Long.parseLong(userId);
+        }
+
+        List<TagVideoResponse> response = tagService.getVideosByTag(tagId, parsedUserId);
         return ApiResponse.success(response);
     }
 

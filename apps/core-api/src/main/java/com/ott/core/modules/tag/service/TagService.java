@@ -53,12 +53,13 @@ public class TagService {
         List<Long> videoMetadataIds = videoMetadataList.stream()
                 .map(VideoMetadata::getId).toList();
 
-        List<WatchHistory> watchHistoryList = watchHistoryRepository.findByUserIdAndVideoMetadataIdIn(userId, videoMetadataIds);
-        Map<Long, Integer> watchPositionMap = watchHistoryList.stream()
-                .collect(Collectors.toMap(
-                        wh -> wh.getVideoMetadata().getId(),
-                        WatchHistory::getLastPosition
-                ));
+        Map<Long, Integer> watchPositionMap = userId != null
+                ? watchHistoryRepository.findByUserIdAndVideoMetadataIdIn(userId, videoMetadataIds).stream()
+                        .collect(Collectors.toMap(
+                                wh -> wh.getVideoMetadata().getId(),
+                                WatchHistory::getLastPosition
+                        ))
+                : Map.of();
 
         return videoMetadataList.stream()
                 .map(vm -> new TagVideoResponse(
