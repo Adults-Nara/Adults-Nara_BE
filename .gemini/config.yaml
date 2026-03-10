@@ -5,6 +5,8 @@ memory_config:
 
 code_review:
   disable: false
+  language: ko-KR
+  system_prompt: "코드 리뷰 코멘트와 PR 요약은 항상 한국어(Korean)로만 작성해 주세요."
   comment_severity_threshold: MEDIUM
   max_review_comments: 50
   pull_request_opened:

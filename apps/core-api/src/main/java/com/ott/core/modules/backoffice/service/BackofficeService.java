@@ -10,18 +10,23 @@ import com.ott.common.persistence.enums.BanStatus;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.repository.UserQueryRepository;
-import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
+import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import com.ott.core.modules.video.repository.VideoRepository;
+import com.ott.core.modules.video.service.S3ObjectStorage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -37,6 +42,16 @@ public class BackofficeService {
     private final TagRepository tagRepository;
     private final UserQueryRepository userQueryRepository;
     private final UserRepository userRepository;
+    private final S3ObjectStorage s3ObjectStorage;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String KEY_RANKING = "video:ranking";
+
+    @Value("${aws.s3.source-bucket}")
+    private String bucket;
+
+    @Value("${aws.cloudfront.domain}")
+    private String cloudFrontDomain;
 
     public Page<UploaderContentResponse> getUploaderContents(Long userId, String keyword, Pageable pageable) {
         return videoMetadataQueryRepository.findUploaderContents(userId, keyword, pageable);
@@ -48,8 +63,8 @@ public class BackofficeService {
 
 
     @Transactional
-    public ContentUpdateResponse updateContent(long userId, Long videoId, ContentUpdateRequest request) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    public ContentUpdateResponse updateContent(long userId, Long videoId, MultipartFile image, ContentUpdateRequest request) {
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -57,9 +72,8 @@ public class BackofficeService {
 
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
-        if (request.thumbnailUrl() != null) videoMetadata.setThumbnailUrl(request.thumbnailUrl());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -70,6 +84,17 @@ public class BackofficeService {
                     .map(tag -> new VideoTag(videoMetadata, tag))
                     .toList();
             videoTagRepository.saveAll(videoTags);
+        }
+
+        if (image != null && !image.isEmpty()) {
+            String thumbnailExtension = image.getOriginalFilename().substring(image.getOriginalFilename().lastIndexOf("."));
+            String thumbnailKey = "videos/" + videoId + "/outputs/thumbnail" + thumbnailExtension;
+            try {
+                s3ObjectStorage.save(bucket, thumbnailKey, image.getBytes(), image.getContentType());
+            } catch (IOException e) {
+                throw new BusinessException(ErrorCode.IO_EXCEPTION);
+            }
+            videoMetadata.setThumbnailUrl("https://" + cloudFrontDomain + "/" + thumbnailKey);
         }
 
         return new ContentUpdateResponse(String.valueOf(videoId));
@@ -84,8 +109,53 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+            }
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
+
+            // Redis 랭킹에서 삭제된 비디오 일괄 삭제
+            Object[] videoIdsToRemove = request.videoIds().stream()
+                    .map(String::valueOf)
+                    .toArray();
+            stringRedisTemplate.opsForZSet().remove(KEY_RANKING, videoIdsToRemove);
         }
+
+        videoRepository.softDeleteByIds(request.videoIds());
+
+        // 커밋 이후 실행
+        List<Long> ids = List.copyOf(request.videoIds());
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (Long videoId : ids) {
+                            s3ObjectStorage.deleteByPrefix(bucket, "videos/" + videoId + "/");
+                        }
+                    }
+                }
+        );
+    }
+
+    @Transactional
+    public ContentStatusUpdateResponse updateContentStatus(Long userId, boolean isAdmin, ContentStatusUpdateRequest request) {
+        if (request.videoIds() == null || request.videoIds().isEmpty()) {
+            return new ContentStatusUpdateResponse(List.of());
+        }
+
+        if (request.visibility() == null) {
+            throw new BusinessException(ErrorCode.VIDEO_STATUS_INVALID_VISIBILITY);
+        }
+
+        if (!isAdmin) {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
+            }
+        }
+
+        videoRepository.updateVisibilityByIds(request.visibility(), OffsetDateTime.now(), request.videoIds());
+
+        return new ContentStatusUpdateResponse(request.videoIds().stream().map(String::valueOf).toList());
     }
 
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
@@ -120,13 +190,13 @@ public class BackofficeService {
     }
 
     public ContentDetailResponse getContentDetail(long userId, Long videoId) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
         List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
         List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
 
@@ -138,7 +208,8 @@ public class BackofficeService {
                 video.getVisibility(),
                 tagIds,
                 videoMetadata.getCreatedAt(),
-                videoMetadata.getOtherVideoUrl()
+                videoMetadata.getOtherVideoUrl(),
+                videoMetadata.getVideoType()
         );
     }
 }

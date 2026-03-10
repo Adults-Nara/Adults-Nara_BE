@@ -6,6 +6,8 @@ import com.ott.common.util.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 
 @Entity
 @Getter
@@ -60,6 +62,7 @@ public class VideoMetadata extends BaseEntity {
 
     private String otherVideoUrl;
 
+    @Enumerated(EnumType.STRING)
     private VideoType videoType;
 
     private boolean deleted;

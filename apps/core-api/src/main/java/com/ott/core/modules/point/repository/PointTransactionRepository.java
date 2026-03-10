@@ -19,10 +19,4 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
 
         List<PointTransaction> findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long userId,
                         OffsetDateTime startOfDay, OffsetDateTime endOfDay);
-
-        @Modifying(clearAutomatically = true, flushAutomatically = true)
-        @Query("UPDATE UserPointBalance b SET b.currentBalance = :newBalance, b.lastUpdatedAt = :newUpdatedAt WHERE b.userId = :userId")
-        void updateUserPoint(@Param("userId") Long userId,
-                             @Param("newBalance") int newBalance,
-                             @Param("newUpdatedAt") OffsetDateTime newUpdatedAt);
 }

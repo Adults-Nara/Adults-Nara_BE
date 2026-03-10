@@ -15,6 +15,7 @@ import com.ott.core.modules.point.repository.PointRepository;
 import com.ott.core.modules.point.repository.PointTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +37,14 @@ public class PointService {
     private final PointPolicyService pointPolicyService;
 
     // 광고 시청 시 포인트 지급
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     public void rewardAdPoint(Long userId, VideoMetadata videoMetadata) {
-        // 1. 오늘 이미 적립한 횟수 조회
+        // 1. 잔액 조회
+        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
+        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
+        int newBalance = currentBalance.getCurrentBalance() + adRewardValue;
+
+        // 2. 오늘 광고로 적립한 횟수 조회
         OffsetDateTime startOfToday = LocalDate.now(ZoneOffset.UTC)
                 .atStartOfDay(ZoneOffset.UTC)
                 .toOffsetDateTime();
@@ -51,12 +57,7 @@ public class PointService {
             throw new BusinessException(ErrorCode.DAILY_LIMIT_OVER);
         }
 
-        // 2. 잔액 조회 및 수정
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
-        int adRewardValue = pointPolicyService.getPolicyValue(PointPolicy.AD_REWARD);
-        int newBalance = currentBalance + adRewardValue;
-
-        // 3. 고유 키 생성 (비즈니스 파라미터 조합)
+        // 3. 고유 키 생성 (유저 Id + 비디오메타데이터 Id + 횟수) ==> 멱등성 유지
         String txKey = PointKeyGenerator.generateAdRewardKey(userId, videoMetadata.getId(), currentCount + 1);
 
         try {
@@ -73,9 +74,9 @@ public class PointService {
             pointTransactionRepository.save(transaction);
 
             // 5. 사용자 실제 잔액 업데이트
-            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
-            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
-
+            OffsetDateTime nowUtc = transaction.getCreatedAt();
+            currentBalance.setCurrentBalance(newBalance);
+            currentBalance.setLastUpdatedAt(OffsetDateTime.now(nowUtc.getOffset()));
         } catch (DataIntegrityViolationException e) { // DB 레벨에서 중복 키 충돌 시 발생
             log.warn("중복 광고 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_AD_REWARD);
@@ -83,13 +84,13 @@ public class PointService {
     }
 
     // 상품 구매 시 포인트 지급
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void rewardPurchaseBonus(Long userId, ProductPurchaseRequest req) {
-        int currentBalance = pointRepository.findUserPointBalanceByUserId(userId).getCurrentBalance();
+        UserPointBalance currentBalance = pointRepository.findUserPointBalanceByUserIdUpdateLock(userId);
 
         int purchaseRate = pointPolicyService.getPolicyValue(PointPolicy.PURCHASE_RATE);
         int rewardAmount = Math.toIntExact((req.getPrice() * purchaseRate) / 100);
-        int newBalance = currentBalance + rewardAmount;
+        int newBalance = currentBalance.getCurrentBalance() + rewardAmount;
 
         String txKey = PointKeyGenerator.generatePurchaseKey(userId, req.getOrderId());
 
@@ -104,8 +105,9 @@ public class PointService {
                     .build();
             pointTransactionRepository.save(transaction);
 
-            OffsetDateTime nowUtc = OffsetDateTime.now(ZoneOffset.UTC);
-            pointTransactionRepository.updateUserPoint(userId, newBalance, nowUtc);
+            OffsetDateTime nowUtc = transaction.getCreatedAt();
+            currentBalance.setCurrentBalance(newBalance);
+            currentBalance.setLastUpdatedAt(OffsetDateTime.now(nowUtc.getOffset()));
         } catch (DataIntegrityViolationException e) {
             log.warn("중복 구매 적립 요청 감지 및 차단: {}", txKey);
             throw new BusinessException(ErrorCode.DUPLICATE_PURCHASE_REWARD);

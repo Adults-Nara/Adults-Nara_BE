@@ -103,12 +103,34 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
 
         int gop = calcGop(segSec, fps);
 
-        String filter = String.join("",
-                "[0:v]split=3[v360][v720][v1080];",
-                "[v360]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2[v360out];",
-                "[v720]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v720out];",
-                "[v1080]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2[v1080out]"
-        );
+        // 1) 오디오 존재 여부 체크 (ffprobe로 "오디오 스트림 있음/없음" 확인)
+        boolean hasAudio = ffprobeMediaProbe.hasAudioStream(inputFile);
+
+        // 2) filter_complex 구성: 비디오는 split/scale/pad, 오디오는 있으면 사용, 없으면 무음 생성
+        String filter;
+        if (hasAudio) {
+            filter = String.join("",
+                    "[0:v]split=3[v360][v720][v1080];",
+                    "[v360]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2[v360out];",
+                    "[v720]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v720out];",
+                    "[v1080]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2[v1080out];",
+                    "[0:a]aresample=async=1:min_hard_comp=0.100:first_pts=0[a];",
+                    "[a]asplit=3[a360][a720][a1080]"
+            );
+        } else {
+            double durationSec = ffprobeMediaProbe.readDurationSeconds(inputFile);
+            durationSec = Math.max(0.1, durationSec);
+            String duration = String.format("%.3f", durationSec);
+
+            filter = String.join("",
+                    "[0:v]split=3[v360][v720][v1080];",
+                    "[v360]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2[v360out];",
+                    "[v720]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2[v720out];",
+                    "[v1080]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2[v1080out];",
+                    "anullsrc=channel_layout=stereo:sample_rate=48000:d=" + duration + "[a];",
+                    "[a]aresample=async=1:first_pts=0,asplit=3[a360][a720][a1080]"
+            );
+        }
 
         String segmentPattern = outputRoot.resolve("%v/seg_%05d.ts").toString();
         String playlistPattern = outputRoot.resolve("%v/playlist.m3u8").toString();
@@ -119,28 +141,30 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
                 "-filter_complex", filter,
 
                 // 360p
-                "-map", "[v360out]", "-map", "0:a:0?",
+                "-map", "[v360out]", "-map", "[a360]",
                 "-c:v:0", "libx264", "-profile:v:0", "main", "-pix_fmt", "yuv420p",
                 "-b:v:0", "900k", "-maxrate:v:0", "1100k", "-bufsize:v:0", "1800k",
                 "-g:v:0", String.valueOf(gop), "-keyint_min:v:0", String.valueOf(gop),
                 "-sc_threshold:v:0", "0",
-                "-c:a:0", "aac", "-b:a:0", "128k", "-ac:a:0", "2",
+                "-c:a:0", "aac", "-b:a:0", "128k", "-ac:a:0", "2", "-ar:a:0", "48000",
 
                 // 720p
-                "-map", "[v720out]", "-map", "0:a:0?",
+                "-map", "[v720out]", "-map", "[a720]",
                 "-c:v:1", "libx264", "-profile:v:1", "main", "-pix_fmt", "yuv420p",
                 "-b:v:1", "2800k", "-maxrate:v:1", "3500k", "-bufsize:v:1", "5000k",
                 "-g:v:1", String.valueOf(gop), "-keyint_min:v:1", String.valueOf(gop),
                 "-sc_threshold:v:1", "0",
-                "-c:a:1", "aac", "-b:a:1", "128k", "-ac:a:1", "2",
+                "-c:a:1", "aac", "-b:a:1", "128k", "-ac:a:1", "2", "-ar:a:1", "48000",
 
                 // 1080p
-                "-map", "[v1080out]", "-map", "0:a:0?",
+                "-map", "[v1080out]", "-map", "[a1080]",
                 "-c:v:2", "libx264", "-profile:v:2", "main", "-pix_fmt", "yuv420p",
                 "-b:v:2", "5500k", "-maxrate:v:2", "6500k", "-bufsize:v:2", "9000k",
                 "-g:v:2", String.valueOf(gop), "-keyint_min:v:2", String.valueOf(gop),
                 "-sc_threshold:v:2", "0",
-                "-c:a:2", "aac", "-b:a:2", "128k", "-ac:a:2", "2",
+                "-c:a:2", "aac", "-b:a:2", "128k", "-ac:a:2", "2", "-ar:a:2", "48000",
+
+                "-shortest",
 
                 // HLS
                 "-f", "hls",

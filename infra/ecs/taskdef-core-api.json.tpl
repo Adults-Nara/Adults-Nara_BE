@@ -8,6 +8,26 @@
   "memory": "1024",
   "containerDefinitions": [
     {
+      "name": "log_router",
+      "image": "grafana/fluent-bit-plugin-loki:latest",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "enable-ecs-log-metadata": "true"
+        }
+      },
+      "memoryReservation": 50,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/log_router",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    },
+    {
       "name": "core-api",
       "image": "${CORE_API_IMAGE_URI}",
       "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
@@ -35,14 +55,16 @@
         { "name": "JWT_SECRET",                            "value": "${JWT_SECRET}" },
         { "name": "KAKAO_CLIENT_ID",                       "value": "${KAKAO_CLIENT_ID}" },
         { "name": "KAKAO_CLIENT_SECRET",                   "value": "${KAKAO_CLIENT_SECRET}" },
-        { "name": "OAUTH2_REDIRECT_URI",                   "value": "${OAUTH2_REDIRECT_URI}" }
+        { "name": "OAUTH2_REDIRECT_URI",                   "value": "${OAUTH2_REDIRECT_URI}" },
+        { "name": "OAUTH_STATE_SECRET",                    "value": "${OAUTH_STATE_SECRET}" }
       ],
       "logConfiguration": {
-        "logDriver": "awslogs",
+        "logDriver": "awsfirelens",
         "options": {
-          "awslogs-group": "/ecs/core-api",
-          "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "ecs"
+          "Name": "loki",
+          "Host": "10.0.1.101",
+          "Port": "3100",
+          "Labels": "job=ecs-fargate, app=core-api, env=prod"
         }
       }
     }

@@ -6,13 +6,18 @@ import com.ott.core.modules.video.controller.request.MultipartInitRequest;
 import com.ott.core.modules.video.controller.request.UploadRequest;
 import com.ott.core.modules.video.controller.response.MultipartInitResponse;
 import com.ott.core.modules.video.controller.response.PlayResponse;
+import com.ott.core.modules.video.controller.response.VideoInfoResponse;
 import com.ott.core.modules.video.dto.PlayResult;
+import com.ott.core.modules.video.dto.VideoInfoResult;
 import com.ott.core.modules.video.dto.multipart.MultipartInitResult;
 import com.ott.core.modules.video.service.VideoService;
+import com.ott.core.modules.watch.dto.response.WatchHistoryResponse;
+import com.ott.core.modules.watch.service.WatchHistoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Encoding;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,13 +25,21 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
+@Tag(name = "Video API", description = "비디오 업로드/재생 API")
 public class VideoController {
     private final VideoService videoService;
+    private final WatchHistoryService watchHistoryService;
 
-    public VideoController(VideoService videoService) {
+    public VideoController(VideoService videoService,
+                           WatchHistoryService watchHistoryService) {
         this.videoService = videoService;
+        this.watchHistoryService = watchHistoryService;
     }
 
+    @Operation(
+            summary = "Multipart 업로드 초기화",
+            description = "S3 Multipart Upload를 시작하고, uploadId/videoId/Presigned URL 발급 등 필요한 정보를 생성합니다."
+    )
     @PostMapping("/api/v1/videos/upload/multipart/init")
     public ApiResponse<MultipartInitResponse> initMultipartUpload(@AuthenticationPrincipal String userId,
                                                                   @RequestBody MultipartInitRequest request) {
@@ -34,6 +47,10 @@ public class VideoController {
         return ApiResponse.success(MultipartInitResponse.of(result));
     }
 
+    @Operation(
+            summary = "Multipart 업로드 완료",
+            description = "클라이언트가 업로드한 parts 정보를 바탕으로 Multipart Upload를 Complete 합니다."
+    )
     @PostMapping("/api/v1/videos/{videoId}/upload/multipart/complete")
     public ApiResponse<?> completeMultipartUpload(@PathVariable Long videoId,
                                                   @AuthenticationPrincipal String userId,
@@ -42,6 +59,10 @@ public class VideoController {
         return ApiResponse.success(null);
     }
 
+    @Operation(
+            summary = "Multipart 업로드 중단(Abort)",
+            description = "업로드를 중단하고 MultipartUploadId 기준으로 abort 처리합니다."
+    )
     @PostMapping("/api/v1/videos/{videoId}/upload/multipart/abort")
     public ApiResponse<?> abortMultipartUpload(@PathVariable Long videoId,
                                                @AuthenticationPrincipal String userId,
@@ -81,12 +102,31 @@ public class VideoController {
         return ApiResponse.success(null);
     }
 
+    @Operation(
+            summary = "비디오 재생",
+            description = "재생에 필요한 정보(m3u8 URL)를 반환합니다. 응답 헤더에 쿠키를 함께 내려줍니다."
+    )
     @GetMapping("/api/v1/videos/{videoId}/play")
     public ResponseEntity<ApiResponse<PlayResponse>> play(@PathVariable Long videoId) {
         PlayResult result = videoService.play(videoId);
         return ResponseEntity.ok()
                 .headers(result.httpHeaders())
                 .body(ApiResponse.success(PlayResponse.of(result)));
+    }
+
+    @Operation(
+            summary = "영상 단일 조회",
+            description = "영상 정보를 단일 조회합니다."
+    )
+    @GetMapping("/api/v1/videos/{videoId}")
+    public ApiResponse<VideoInfoResponse> getVideoInfo(@AuthenticationPrincipal String userId,
+                                                       @PathVariable Long videoId) {
+        Long longUserId = userId == null || userId.equals("anonymousUser") ? null : Long.parseLong(userId);
+        VideoInfoResult result = videoService.getVideoInfo(longUserId, videoId);
+
+        WatchHistoryResponse watchHistory = watchHistoryService.getWatchHistory(longUserId, videoId);
+
+        return ApiResponse.success(VideoInfoResponse.of(result, watchHistory));
     }
 
     /**

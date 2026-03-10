@@ -1,5 +1,6 @@
 package com.ott.core.modules.watch.dto.response;
 
+import com.ott.common.persistence.enums.VideoType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,4 +19,6 @@ public class WatchHistoryItemResponse {
     private double watchProgressPercent;
     private OffsetDateTime watchedAt;
     private Integer duration;
+    private VideoType videoType;
+    private OffsetDateTime uploadedAt;
 }

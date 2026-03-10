@@ -30,8 +30,12 @@ public class InteractionService {
     private final StringRedisTemplate stringRedisTemplate;
 
     public void interact(Long userId, Long videoId, InteractionType newType) {
-        User user = findUser(userId);
-        VideoMetadata metadata = findMetadataByVideoId(videoId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        VideoMetadata metadata = videoMetadataRepository.findByVideoId(videoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+
         Long metadataId = metadata.getId();
 
         Optional<Interaction> existingInteraction = interactionRepository.findByUserAndVideoMetadata(user, metadata);
@@ -55,7 +59,7 @@ public class InteractionService {
                     interactionRepository.flush(); // 따닥 방어
 
                     updateRedis(videoId, oldType, -1); // 기존 카운트 감소
-                    updateRedis(videoId, newType, 1);  // 새 카운트 증가
+                    updateRedis(videoId, newType,1);  // 새 카운트 증가
                     // [이벤트 발행] 변경 전/후 타입 모두 보냄
                     eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, oldType, newType));
                 }
@@ -64,7 +68,7 @@ public class InteractionService {
                 Interaction newInteraction = new Interaction(user, metadata, newType);
                 interactionRepository.save(newInteraction);
                 interactionRepository.flush(); // 따닥 방어
-                updateRedis(videoId, newType, 1);
+                updateRedis(videoId, newType,1);
                 // [이벤트 발행] 새로 생성되었으므로 oldType은 null로 보냄
                 eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, null, newType));
             }
@@ -86,25 +90,24 @@ public class InteractionService {
     /**
      * Redis 카운트, 랭킹, 그리고 스케줄러 동기화 큐(Dirty Set) 업데이트
      */
-    private void updateRedis (Long videoId, InteractionType type,int delta){
+    private void updateRedis(Long videoId, InteractionType type, long delta) {
         String videoIdStr = String.valueOf(videoId);
         String typeLower = type.name().toLowerCase(); // like, dislike, superlike
 
-        // 개별 카운트 증감 (Hash) - 상세 페이지 표시용
         String countKey = "video:count:" + typeLower;
-        stringRedisTemplate.opsForHash().increment(countKey, videoIdStr, delta);
-
-
-        // 스케줄러 처리 대상 목록에 추가 (Set) - Write-Back 패턴
         String dirtyKey = "video:dirty:" + typeLower;
-        stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
+
+        // 1. [Cache Miss 처리] Redis에 값이 없는 경우
+        if (Boolean.FALSE.equals(stringRedisTemplate.opsForHash().hasKey(countKey, videoIdStr))) {
+            // 앞선 로직에서 이미 DB flush()가 일어났으므로, DB 값 자체가 최신값
+            long exactCount = interactionRepository.countByVideoIdAndType(videoId, type);
+            stringRedisTemplate.opsForHash().put(countKey, videoIdStr, String.valueOf(exactCount));
+            // 캐시 미스 시에는 이미 정확한 값을 세팅했으므로 increment를 건너뜀
+        } else {
+            // 2. [Cache Hit 처리] 캐시에 값이 있는 경우에만 delta 증감 연산 수행
+            stringRedisTemplate.opsForHash().increment(countKey, videoIdStr, delta);
         }
-    private User findUser (Long userId){
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-    }
-    private VideoMetadata findMetadataByVideoId (Long videoId){
-        return videoMetadataRepository.findByVideoId(videoId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+        // 3. 10분 뒤 VideoMetadata에 반영하기 위해 스케줄러 대기열(Set)에 추가
+        stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
     }
 }

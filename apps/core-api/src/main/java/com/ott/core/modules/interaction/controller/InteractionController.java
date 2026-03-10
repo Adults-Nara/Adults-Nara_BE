@@ -4,10 +4,10 @@ import com.ott.common.persistence.enums.InteractionType;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.interaction.dto.InteractionStatusResponseDto;
 import com.ott.core.modules.interaction.service.InteractionService;
+import com.ott.core.modules.interaction.service.InteractionSyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class InteractionController {
 
     private final InteractionService interactionService;
+    private final InteractionSyncService interactionSyncService;
 
     // 좋아요
     @Operation(summary = "좋아요 누르기", description = "해당 영상에 좋아요를 표시합니다.")
@@ -61,5 +62,12 @@ public class InteractionController {
         InteractionStatusResponseDto responseDto = InteractionStatusResponseDto.from(type);
 
         return ApiResponse.success(responseDto);
+    }
+
+    @Operation(summary = "[관리자] 인터랙션 캐시 웜업", description = "DB의 모든 좋아요/싫어요 데이터를 Redis에 강제 동기화(복구)합니다.")
+    @PostMapping("/admin/warmup")
+    public ApiResponse<String> warmUpInteractions() {
+        interactionSyncService.warmUpInteractionFromDB();
+        return ApiResponse.success("✅ 인터랙션(좋아요/싫어요/조회수) Redis 캐시 복구가 완료되었습니다.");
     }
 }

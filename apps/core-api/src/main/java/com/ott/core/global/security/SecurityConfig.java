@@ -25,139 +25,172 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomAccessDeniedHandler customAccessDeniedHandler;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder(10);
+        }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                .csrf(csrf -> csrf.disable())
+                                .csrf(csrf -> csrf.disable())
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                                // 완전 무상태 - JWT 인증이므로 세션/JSESSIONID 미생성
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                                // JWT 인증 필터
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                .exceptionHandling(exception ->
-                        exception.accessDeniedHandler(customAccessDeniedHandler)
-                )
+                                // 403 에러 핸들링
+                                .exceptionHandling(
+                                                exception -> exception.accessDeniedHandler(customAccessDeniedHandler))
 
-                .authorizeHttpRequests(auth -> auth
+                                .authorizeHttpRequests(auth -> auth
 
-                        // ===================================================================
-                        // 1. 완전 공개 (Public)
-                        // ===================================================================
+                                                // ===================================================================
+                                                // ADMIN 전용
+                                                // ===================================================================
 
-                        // --- 카카오 OAuth 인증 ---
-                        .requestMatchers("/api/v1/auth/kakao/**").permitAll()
+                                                // --- 사용자 관리 ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**")
+                                                .hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
 
-                        // --- 토큰 갱신 (쿠키 기반, 인증 헤더 없이 접근 가능해야 함) ---
-                        .requestMatchers("/api/v1/auth/token/refresh").permitAll()
+                                                // --- 관리자 백오피스 (전체 영상 접근, 유저 제재) ---
+                                                .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/admin/warmup").hasRole("ADMIN")
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/sync").hasRole("ADMIN")
 
-                        // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
-                        .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
-                        .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
-                        .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
-                        .requestMatchers("/api/v1/backoffice/auth/token/refresh").permitAll()  // 추가: 토큰 갱신 (쿠키 기반이므로 인증 불필요)
-                        .requestMatchers("/api/v1/backoffice/auth/logout").authenticated()      // 추가: 로그아웃 (Access Token 필요)
+                                                // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
+                                                .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
+                                                .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
+                                                .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
+                                                .requestMatchers("/api/v1/backoffice/auth/token/refresh").permitAll()  // 추가: 토큰 갱신 (쿠키 기반이므로 인증 불필요)
+                                                .requestMatchers("/api/v1/backoffice/auth/logout").authenticated()      // 추가: 로그아웃 (Access Token 필요)
+                                                // ===================================================================
+                                                // 1. 완전 공개 (Public) - 비로그인 사용자도 접근 가능
+                                                // ===================================================================
 
-                        // --- 비디오 (비로그인 시청 가능) ---
-                        .requestMatchers("/api/v1/videos/*/play").permitAll()
+                                                // --- 카카오 OAuth 인증 ---
+                                                .requestMatchers("/api/v1/auth/kakao/**").permitAll()
+                                                .requestMatchers("/api/v1/auth/token/refresh").permitAll()
 
-                        // --- 검색/추천 (비로그인 사용 가능) ---
-                        .requestMatchers("/api/v1/search/**").permitAll()
-                        .requestMatchers("/api/v1/recommendations/**").permitAll()
+                                                .requestMatchers("/api/v1/auth/onboarding/complete").authenticated()
 
-                        // --- 좋아요/북마크 (비로그인도 조회 가능) ---
-                        .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+                                                // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
+                                                .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
+                                                .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
+                                                .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
 
-                        // --- Swagger ---
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                                // --- 비디오 (비로그인 시청 가능) ---
+                                                .requestMatchers("/api/v1/videos/*/play").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/videos/*").permitAll()
 
-                        // --- Health Check ---
-                        .requestMatchers("/actuator/health").permitAll()
+                                                // --- 태그별 영상 목록 (비로그인 조회 가능) ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/tags/*/videos").permitAll()
 
-                        // ===================================================================
-                        // 2. 인증 필요 (로그인 사용자)
-                        // ===================================================================
+                                                // --- 광고 ---
+                                                .requestMatchers("/api/v1/ads").permitAll()
 
-                        // --- 현재 사용자 정보 조회 ---
-                        .requestMatchers("/api/v1/auth/me").authenticated()
+                                                // --- 검색/추천 (비로그인 사용 가능) ---
+                                                .requestMatchers("/api/v1/search/**").permitAll()
+                                                .requestMatchers("/api/v1/recommendations/**").permitAll()
 
-                        // --- 로그아웃 (AccessToken으로 인증 후 RefreshToken 무효화) ---
-                        .requestMatchers("/api/v1/auth/token/logout").authenticated()
+                                                // --- 좋아요/북마크/랭킹 (비로그인도 조회 가능하도록) ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/interactions/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
 
-                        // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
-                        .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
+                                                // --- 댓글 목록 조회 --- (순서 변경 금지)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/*/me").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/**").permitAll()
 
-                        // --- 사용자 프로필 수정 ---
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
-                        .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
+                                                // --- Swagger ---
+                                                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // --- 시청 통계 (로그인 필수) ---
-                        .requestMatchers("/api/v1/stats/me/**").authenticated()
+                                                // --- Health Check ---
+                                                .requestMatchers("/actuator/health").permitAll()
 
-                        // ===================================================================
-                        // 3. UPLOADER 전용
-                        // ===================================================================
+                                                // --- UPlus ---
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/uplus/plans").permitAll()
+                                                .requestMatchers("/api/v1/uplus/**").authenticated()
 
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/backoffice/auth/account").hasRole("UPLOADER")
-                        .requestMatchers("/api/v1/backoffice/uploader/**").hasRole("UPLOADER")
+                                        // ===================================================================
+                                                // 2. 인증 필요 (로그인 사용자)
+                                                // ===================================================================
 
-                        // ===================================================================
-                        // 4. ADMIN 전용
-                        // ===================================================================
+                                                // --- 현재 사용자 정보 조회 (로그인 필수) ---
+                                                .requestMatchers("/api/v1/auth/me").authenticated()
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/stats/{userId:\\d+}/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
+                                                // --- 좋아요/북마크 (쓰기: 로그인 필수) ---
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**")
+                                                .authenticated()
+                                                 .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
 
-                        // ===================================================================
-                        // 5. UPLOADER 또는 ADMIN
-                        // ===================================================================
-                        .requestMatchers("/api/v1/backoffice/contents/**").hasAnyRole("UPLOADER", "ADMIN")
+                                                // --- 사용자 프로필 수정 (본인만 가능 - @PreAuthorize로 세부 제어) ---
+                                                .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}")
+                                                .authenticated()
+                                                .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
 
-                        // ===================================================================
-                        // 6. 나머지는 인증 필요
-                        // ===================================================================
-                        .anyRequest().authenticated()
-                );
+                                                // ===================================================================
+                                                // 3. UPLOADER 전용
+                                                // ===================================================================
 
-        return http.build();
-    }
+                                                // --- 업로더 계정 탈퇴 ---
+                                                .requestMatchers(HttpMethod.DELETE, "/api/v1/backoffice/auth/account")
+                                                .hasRole("UPLOADER")
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+                                                // --- 업로더 컨텐츠 관리 ---
+                                                .requestMatchers("/api/v1/backoffice/uploader/**").hasRole("UPLOADER")
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://asinna.store",
-                "https://admin.asinna.store"
-        ));
 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+                                                // ===================================================================
+                                                // 5. UPLOADER 또는 ADMIN
+                                                // ===================================================================
+                                                .requestMatchers("/api/v1/backoffice/contents/**")
+                                                .hasAnyRole("UPLOADER", "ADMIN")
+
+                                                // ===================================================================
+                                                // 6. 나머지는 인증 필요
+                                                // ===================================================================
+                                                .anyRequest().authenticated());
+
+                return http.build();
+        }
+
+        /**
+         * CORS 설정
+         * Set-Cookie는 CloudFront Signed Cookie(비디오 재생)에 필요하므로 유지
+         */
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+
+                configuration.setAllowedOriginPatterns(List.of(
+                        "http://localhost:*",
+                        "https://localhost:*",
+                        "http://*.asinna.store",
+                        "https://*.asinna.store"
+                ));
+
+                configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(List.of("*"));
+                configuration.setAllowCredentials(true);
+                configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
 }
