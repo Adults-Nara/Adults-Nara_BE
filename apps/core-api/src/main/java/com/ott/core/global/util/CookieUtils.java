@@ -27,13 +27,11 @@ public final class CookieUtils {
         if (request.getCookies() == null) {
             return null;
         }
-        String value = Arrays.stream(request.getCookies())
+        return Arrays.stream(request.getCookies())
                 .filter(c -> cookieName.equals(c.getName()))
                 .map(Cookie::getValue)
+                .filter(StringUtils::hasText)
                 .findFirst()
                 .orElse(null);
-
-        // 빈 문자열도 null로 처리 (명시적 실패 처리를 호출부에서 일관되게 수행)
-        return StringUtils.hasText(value) ? value : null;
     }
 }

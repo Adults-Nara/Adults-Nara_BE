@@ -22,6 +22,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/backoffice/auth")
@@ -30,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 public class BackofficeAuthController {
 
     private static final String REFRESH_TOKEN_COOKIE = "backoffice_refresh_token";
-    private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = 90 * 24 * 60 * 60; // 90일
+    private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = (int) TimeUnit.DAYS.toSeconds(90);
 
     private final BackofficeAuthService backofficeAuthService;
 

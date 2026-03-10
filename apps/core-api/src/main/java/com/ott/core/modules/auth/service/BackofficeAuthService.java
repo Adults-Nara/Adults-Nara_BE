@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * 백오피스 인증 서비스 (업로더/관리자용)
  *
@@ -46,7 +48,7 @@ public class BackofficeAuthService {
     // 카카오(VIEWER) 세션과 키 충돌 방지를 위해 별도 prefix 사용
     // 카카오: "refresh:token:{userId}" / 백오피스: "backoffice:refresh:token:{userId}"
     private static final String REFRESH_TOKEN_PREFIX = "backoffice:refresh:token:";
-    private static final long REFRESH_TOKEN_TTL_SECONDS = 90L * 24 * 60 * 60; // 90일
+    private static final long REFRESH_TOKEN_TTL_SECONDS = TimeUnit.DAYS.toSeconds(90);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
