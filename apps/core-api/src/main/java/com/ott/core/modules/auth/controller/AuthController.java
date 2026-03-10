@@ -3,6 +3,7 @@ package com.ott.core.modules.auth.controller;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
+import com.ott.core.global.util.CookieUtils;
 import com.ott.core.modules.auth.dto.LoginResponse;
 import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.auth.service.AuthService;
@@ -96,10 +97,10 @@ public class AuthController {
 
         Cookie nonceCookie = new Cookie(STATE_NONCE_COOKIE, nonce);
         nonceCookie.setHttpOnly(true);
-        nonceCookie.setSecure(true);                    // None이면 Secure 필수
+        nonceCookie.setSecure(true);
         nonceCookie.setPath("/api/v1/auth/kakao");
         nonceCookie.setMaxAge((int) STATE_EXPIRY_SECONDS);
-        nonceCookie.setAttribute("SameSite", "None");   // Lax → None
+        nonceCookie.setAttribute("SameSite", "None");
         response.addCookie(nonceCookie);
 
         String loginUrl = "https://kauth.kakao.com/oauth/authorize"
@@ -134,10 +135,10 @@ public class AuthController {
 
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
-                .secure(true)                           // None이면 Secure 필수
+                .secure(true)
                 .path("/")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("None")                       // none → None (대소문자 통일)
+                .sameSite("None")
                 .build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
@@ -176,7 +177,7 @@ public class AuthController {
     )
     @PostMapping("/token/refresh")
     public ApiResponse<TokenRefreshResponse> refreshToken(HttpServletRequest request) {
-        String refreshToken = extractCookieValue(request, REFRESH_TOKEN_COOKIE);
+        String refreshToken = CookieUtils.extractValue(request, REFRESH_TOKEN_COOKIE);
 
         if (refreshToken == null) {
             log.warn("[토큰 갱신] refresh_token 쿠키 없음");
@@ -199,16 +200,15 @@ public class AuthController {
 
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
-                .secure(true)                           // None이면 Secure 필수
-                .path("/api/v1/auth/token")
+                .secure(true)
+                .path("/")   // 생성 시 path("/")와 동일하게 맞춰야 쿠키가 정상 삭제됨
                 .maxAge(0)
-                .sameSite("None")                       // Lax → None
+                .sameSite("None")
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
 
         return ApiResponse.success();
     }
-
 
     // ====== Private Methods ======
 
@@ -221,7 +221,7 @@ public class AuthController {
         String stateNonce = getNonceIfStateIsValid(state)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
-        String cookieNonce = extractCookieValue(request, STATE_NONCE_COOKIE);
+        String cookieNonce = CookieUtils.extractValue(request, STATE_NONCE_COOKIE);
         if (cookieNonce == null) {
             log.warn("[카카오 OAuth] nonce 쿠키 없음 - CSRF 공격 의심");
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -297,24 +297,13 @@ public class AuthController {
         }
     }
 
-    private String extractCookieValue(HttpServletRequest request, String cookieName) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        return Arrays.stream(request.getCookies())
-                .filter(c -> cookieName.equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
-    }
-
     private void clearNonceCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie(STATE_NONCE_COOKIE, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);                         // None이면 Secure 필수
+        cookie.setSecure(true);
         cookie.setPath("/api/v1/auth/kakao");
         cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", "None");        // Lax → None
+        cookie.setAttribute("SameSite", "None");
         response.addCookie(cookie);
     }
 }
