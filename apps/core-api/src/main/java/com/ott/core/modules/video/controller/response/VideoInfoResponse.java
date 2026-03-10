@@ -18,6 +18,8 @@ public record VideoInfoResponse(
         String otherVideoUrl,
         String userProfile,
         String userNickname,
+        List<String> aiTagIds,
+        String summary,
         WatchHistoryResponse watchHistory
 ) {
     public static VideoInfoResponse of(VideoInfoResult result, WatchHistoryResponse watchHistory) {
@@ -32,6 +34,8 @@ public record VideoInfoResponse(
                 result.otherVideoUrl(),
                 result.userProfile(),
                 result.userNickname(),
+                result.aiTagIds(),
+                result.summary(),
                 watchHistory
         );
     }

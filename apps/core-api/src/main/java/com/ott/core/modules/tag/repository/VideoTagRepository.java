@@ -3,6 +3,7 @@ package com.ott.core.modules.tag.repository;
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
+import com.ott.common.persistence.enums.TagSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -38,4 +39,6 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
     // 2. 다건 비디오에 대한 태그 + 부모 태그 페치 조인 (SyncService 벌크용)
     @Query("SELECT vt FROM VideoTag vt JOIN FETCH vt.tag t LEFT JOIN FETCH t.parent WHERE vt.videoMetadata.id IN :metadataIds")
     List<VideoTag> findWithTagAndParentByVideoMetadataIdIn(@Param("metadataIds") List<Long> metadataIds);
+
+    List<VideoTag> findAllByVideoMetadataIdAndSource(@Param("videoMetadataId") Long videoMetadataId, @Param("source") TagSource source);
 }
