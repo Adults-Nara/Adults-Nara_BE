@@ -72,8 +72,10 @@ public class VideoSearchEventListener {
             videoSearchRepository.save(document);
             log.debug("[Search] ES 검색 문서 동기화 완료: videoId={}", event.videoId());
 
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("[Search] Elasticsearch 저장 중 오류 발생 (재시도 예정) - videoId: {}", event.videoId());
+            log.error("ES 동기화 알 수 없는 에러", e);
             throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR);
         }
     }

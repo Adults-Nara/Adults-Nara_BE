@@ -1,6 +1,7 @@
 package com.ott.core.modules.recommendation.service;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.service.UserPreferenceService;
 import com.ott.core.modules.preference.service.UserVectorService;
@@ -53,15 +54,15 @@ public class RecommendationService {
     // =========================================================================
     // kNN 벡터 검색 적용
     // =========================================================================
-    public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, int page, int size) {
+    public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, VideoType videoType, int page, int size) {
 
         List<Double> userVector = userVectorService.getUserVector(userId);
 
         NativeQuery searchQuery;
         if (userVector == null || userVector.isEmpty()) {
-            searchQuery = queryBuilder.buildFallbackQuery(page, size);
+            searchQuery = queryBuilder.buildFallbackQuery(videoType, page, size);
         } else {
-            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, page, size);
+            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, videoType, page, size);
         }
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
@@ -70,7 +71,7 @@ public class RecommendationService {
     // =========================================================================
     // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤)
     // =========================================================================
-    public List<VideoFeedResponseDto> getVerticalMixedFeed(Long userId, int size) {
+    public List<VideoFeedResponseDto> getVerticalMixedFeed(Long userId, VideoType videoType, int size) {
         int personalSize = (int) Math.round(size * FEED_RATIO_PERSONAL);
         int popularSize = (int) Math.round(size * FEED_RATIO_POPULAR);
         int randomSize = size - personalSize - popularSize;
@@ -79,16 +80,16 @@ public class RecommendationService {
         // 취향 영상 (개인화)
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
-                                ? queryBuilder.buildPopularQuery(personalSize)
-                                : queryBuilder.buildPersonalizedQuery(userPreferences, 0, personalSize))
+                                ? queryBuilder.buildPopularQuery(videoType,personalSize)
+                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, 0, personalSize))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildPopularQuery(popularSize + 5))
+                        executeSearch(queryBuilder.buildPopularQuery(videoType,popularSize + 5))
                 , executor);
         // 랜덤 영상
         CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildRandomQuery(randomSize + 5))
+                        executeSearch(queryBuilder.buildRandomQuery(videoType,randomSize + 5))
                 , executor);
 
         CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
@@ -125,7 +126,7 @@ public class RecommendationService {
     // =========================================================================
     //  [가로 스와이프 피드] - 상세페이지 연관 영상 추천
     // =========================================================================
-    public List<VideoFeedResponseDto> getHorizontalRelatedVideos(Long videoId, Long currentUserId, int page, int size) {
+    public List<VideoFeedResponseDto> getHorizontalRelatedVideos(Long videoId, Long currentUserId, VideoType videoType, int page, int size) {
         VideoDocument currentVideo = elasticsearchOperations.get(videoId.toString(), VideoDocument.class);
 
         if (currentVideo == null || currentVideo.getTags() == null || currentVideo.getTags().isEmpty()) {
@@ -133,7 +134,7 @@ public class RecommendationService {
         }
 
         List<FieldValue> tagValues = currentVideo.getTags().stream().map(FieldValue::of).toList();
-        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getVideoId(), page, size);
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getVideoId(), videoType, page, size);
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
         return feedEnricher.enrich(rawDocuments, currentUserId);
