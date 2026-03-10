@@ -7,38 +7,31 @@ import com.ott.core.modules.search.document.VideoDocument;
 import java.util.List;
 
 public record VideoFeedResponseDto(
-        @JsonFormat(shape = JsonFormat.Shape.STRING)
-        Long videoId,
-        Long userId,
-        String uploaderNickname,
-        String uploaderProfileImageUrl,
+        String videoId,
+        String thumbnailSrc,
         String title,
-        String description,
-        String thumbnailUrl,
+        String uploader,
+        String uploaderProfileImageUrl,
+        int progress,
         Integer duration,
-        List<String> tags,
-        int viewCount,
-        int likeCount,
-        String uploadDate,
-        VideoType videoType,
-        Integer watchProgress
+        int views,
+        String date,
+        Long userId,
+        VideoType videoType
 ) {
-    public static VideoFeedResponseDto of(VideoDocument doc, String nickname, String profileUrl, Integer watchProgress){
+    public static VideoFeedResponseDto of(VideoDocument doc, String nickname, String profileUrl, int progress){
         return new VideoFeedResponseDto(
-                doc.getVideoId(),
-                doc.getUserId(),
+                String.valueOf(doc.getVideoId()),
+                doc.getThumbnailUrl(),
+                doc.getTitle(),
                 nickname,
                 profileUrl,
-                doc.getTitle(),
-                doc.getDescription(),
-                doc.getThumbnailUrl(),
+                progress,
                 doc.getDuration(),
-                doc.getTags(),
                 doc.getViewCount(),
-                doc.getLikeCount(),
-                doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null,
-                doc.getVideoType(),
-                watchProgress
+                doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null, // date
+                doc.getUserId(),
+                doc.getVideoType()
         );
     }
 }

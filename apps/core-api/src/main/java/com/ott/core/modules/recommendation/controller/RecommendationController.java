@@ -1,9 +1,8 @@
 package com.ott.core.modules.recommendation.controller;
 
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.docs.RecommendationApiDocs;
-
-import com.ott.core.modules.search.document.VideoDocument;
 import com.ott.core.modules.recommendation.dto.SliceResponse;
 import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
 import com.ott.core.modules.recommendation.service.RecommendationService;
@@ -34,11 +33,12 @@ public class RecommendationController implements RecommendationApiDocs {
     @GetMapping("/feed")
     public ApiResponse<SliceResponse<VideoFeedResponseDto>> getFeed(
             @AuthenticationPrincipal String userId,
+            @RequestParam(required = false) VideoType videoType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         Long parsedUserId = parseUserIdSafely(userId);
-        List<VideoFeedResponseDto> dtoList = recommendationService.getPersonalizedFeed(parsedUserId, page, size);
+        List<VideoFeedResponseDto> dtoList = recommendationService.getPersonalizedFeed(parsedUserId, videoType, page, size);
         boolean hasNext = dtoList.size() == size;
         SliceResponse<VideoFeedResponseDto> response = SliceResponse.of(dtoList, page, size, hasNext);
 
@@ -51,11 +51,11 @@ public class RecommendationController implements RecommendationApiDocs {
     @GetMapping("/feed/vertical")
     public ApiResponse<SliceResponse<VideoFeedResponseDto>> getVerticalFeed(
             @AuthenticationPrincipal String userId,
+            @RequestParam(required = true) VideoType videoType,
             @RequestParam(defaultValue = "10") int size
     ) {
         Long parsedUserId = parseUserIdSafely(userId);
-        List<VideoFeedResponseDto> dtoList = recommendationService.getVerticalMixedFeed(parsedUserId, size);
-
+        List<VideoFeedResponseDto> dtoList = recommendationService.getVerticalMixedFeed(parsedUserId, videoType, size);
         boolean hasNext = !dtoList.isEmpty();
         SliceResponse<VideoFeedResponseDto> sliceResponse = SliceResponse.of(dtoList, 0, size, hasNext);
 
@@ -70,14 +70,14 @@ public class RecommendationController implements RecommendationApiDocs {
     public ApiResponse<SliceResponse<VideoFeedResponseDto>> getRelatedFeed(
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
+            @RequestParam(required = true) VideoType videoType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         Long parsedUserId = parseUserIdSafely(userId);
 
         // ✅ Document가 아닌 DTO 리스트를 반환받고, parsedUserId를 서비스로 넘김
-        List<VideoFeedResponseDto> dtoList = recommendationService.getHorizontalRelatedVideos(videoId, parsedUserId, page, size);
-
+        List<VideoFeedResponseDto> dtoList = recommendationService.getHorizontalRelatedVideos(videoId, parsedUserId, videoType, page, size);
         boolean hasNext = dtoList.size() == size;
         SliceResponse<VideoFeedResponseDto> sliceResponse = SliceResponse.of(dtoList, page, size, hasNext);
 
