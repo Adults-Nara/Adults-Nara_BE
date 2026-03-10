@@ -7,8 +7,7 @@ import com.ott.core.modules.search.document.VideoDocument;
 import java.util.List;
 
 public record VideoFeedResponseDto(
-        @JsonFormat(shape = JsonFormat.Shape.STRING)
-        Long videoId,
+        String videoId,
         String thumbnailSrc,
         String title,
         String uploader,
@@ -22,7 +21,7 @@ public record VideoFeedResponseDto(
 ) {
     public static VideoFeedResponseDto of(VideoDocument doc, String nickname, String profileUrl, int progress){
         return new VideoFeedResponseDto(
-                doc.getVideoId(),
+                String.valueOf(doc.getVideoId()),
                 doc.getThumbnailUrl(),
                 doc.getTitle(),
                 nickname,

@@ -5,12 +5,10 @@ import com.ott.common.persistence.enums.VideoType;
 import com.ott.core.modules.search.document.VideoDocument;
 import lombok.Builder;
 
-import java.time.OffsetDateTime;
 
 @Builder
 public record VideoSearchResponse(
-        @JsonFormat(shape = JsonFormat.Shape.STRING)
-        Long videoId,
+        String videoId,
         String thumbnailSrc,
         String title,
         String uploader,
@@ -24,7 +22,7 @@ public record VideoSearchResponse(
 ) {
     public static VideoSearchResponse of(VideoDocument document, String uploader, String profileUrl, int progress) {
         return VideoSearchResponse.builder()
-                .videoId(document.getVideoId())
+                .videoId(String.valueOf(document.getVideoId()))
                 .thumbnailSrc(document.getThumbnailUrl())
                 .title(document.getTitle())
                 .uploader(uploader)
