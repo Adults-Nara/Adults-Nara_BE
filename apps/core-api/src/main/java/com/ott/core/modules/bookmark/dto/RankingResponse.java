@@ -31,7 +31,8 @@ public record RankingResponse (
                 .uploader(uploader)
                 .uploaderProfileImageUrl(profileUrl)
                 .progress(progress)
-                .duration(metadata.getDuration() != null ? metadata.getDuration() : 0)
+                .duration(metadata.getDuration())
+
                 .views(metadata.getViewCount())
                 .date(metadata.getCreatedAt() != null ? metadata.getCreatedAt().toString() : null)
                 .videoType(metadata.getVideoType())
