@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.7](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.6...v0.9.7) (2026-03-10)
+
+
+### Bug Fixes
+
+* 업로더 토큰 로직 추가 ([5306b0c](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5306b0c8b128cfd08fb805a3da146248b654e2c0))
+* 코드 리뷰 반영 ([3f85568](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3f85568a8b7b12a355736e581b3a5ebb9d284cb9))
+* 코드 리뷰 반영 ([24fb9c9](https://github.com/Adults-Nara/Adults-Nara_BE/commit/24fb9c9b8df1ed59f21e77cd2644ba39a4feb71e))
+
 ## [0.9.6](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.5...v0.9.6) (2026-03-10)
 
 
