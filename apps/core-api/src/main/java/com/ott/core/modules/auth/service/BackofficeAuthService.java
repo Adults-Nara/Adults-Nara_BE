@@ -9,13 +9,17 @@ import com.ott.core.global.security.jwt.JwtTokenProvider;
 import com.ott.core.modules.auth.dto.BackofficeLoginRequest;
 import com.ott.core.modules.auth.dto.BackofficeLoginResponse;
 import com.ott.core.modules.auth.dto.BackofficeSignupRequest;
+import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * 백오피스 인증 서비스 (업로더/관리자용)
@@ -24,6 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
  * 1. 이메일 + 비밀번호 로그인 (업로더, 관리자 공용)
  * 2. 업로더 회원가입 (자체 가입)
  * 3. 업로더 계정 탈퇴 (Soft Delete)
+ * 4. Access Token 재발급 (Refresh Token 기반)
+ * 5. 로그아웃 (Redis Refresh Token 삭제)
+ *
+ * 토큰 정책 (카카오 로그인과 동일):
+ * - Access Token  → Response body
+ * - Refresh Token → HttpOnly 쿠키 + Redis(90일 TTL)
+ * - 로그아웃 시 Redis에서 Refresh Token 즉시 삭제
+ * - 탈취 의심 시 Redis 토큰 삭제 → 강제 로그아웃
  *
  * 관리자 계정은 DB에 사전 생성되어 있다고 가정합니다. (회원가입 API 없음)
  */
@@ -32,13 +44,21 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BackofficeAuthService {
 
+    // 카카오 로그인과 동일한 Redis key prefix, TTL 정책 사용
+    private static final String REFRESH_TOKEN_PREFIX = "refresh:token:";
+    private static final long REFRESH_TOKEN_TTL_SECONDS = 90L * 24 * 60 * 60; // 90일
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * 백오피스 로그인 (이메일 + 비밀번호)
      * UPLOADER 또는 ADMIN만 로그인 가능
+     *
+     * 카카오 로그인과 동일한 토큰 정책 적용:
+     * - Refresh Token → Redis 저장 (90일 TTL)
      */
     @Transactional
     public BackofficeLoginResponse login(BackofficeLoginRequest request) {
@@ -63,11 +83,83 @@ public class BackofficeAuthService {
         // 로그인 가능 상태 확인
         validateLoginStatus(user);
 
+        // JWT 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
+        // Refresh Token → Redis 저장 (90일 TTL)
+        saveRefreshToken(user.getId(), refreshToken);
+
         log.info("[백오피스 로그인] 로그인 성공 - userId: {}, role: {}", user.getId(), user.getRole());
         return BackofficeLoginResponse.of(user, accessToken, refreshToken);
+    }
+
+    /**
+     * Access Token 재발급 (Refresh Token 기반)
+     *
+     * 카카오 로그인의 AuthService.refreshAccessToken()과 동일한 검증 로직:
+     * 1. 서명/만료 검증
+     * 2. Refresh Token 타입 확인
+     * 3. Redis 저장 토큰과 비교 (탈취 의심 시 강제 로그아웃)
+     * 4. 유저 상태 검증
+     */
+    public TokenRefreshResponse refreshAccessToken(String refreshToken) {
+        // 1. 토큰 서명/만료 검증
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 2. Refresh Token 타입 확인 (Access Token으로 갱신 시도 차단)
+        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
+            log.warn("[백오피스 토큰 갱신] Access Token으로 갱신 시도 차단");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Long userId = jwtTokenProvider.getUserId(refreshToken);
+
+        // 3. Redis에 저장된 토큰과 비교 (탈취/로그아웃 여부 확인)
+        String redisKey = REFRESH_TOKEN_PREFIX + userId;
+        String storedToken = stringRedisTemplate.opsForValue().get(redisKey);
+
+        if (storedToken == null) {
+            log.warn("[백오피스 토큰 갱신] Redis에 RefreshToken 없음 - 로그아웃된 사용자 또는 만료 - userId: {}", userId);
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (!storedToken.equals(refreshToken)) {
+            log.warn("[백오피스 토큰 갱신] Redis 저장 토큰 불일치 - 탈취 의심 - userId: {}", userId);
+            // 탈취 의심 시 Redis 토큰 즉시 삭제 (강제 로그아웃)
+            stringRedisTemplate.delete(redisKey);
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 4. 유저 상태 검증
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        validateLoginStatus(user);
+
+        // 5. 새 Access Token 발급
+        String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
+
+        log.info("[백오피스 토큰 갱신] 새 AccessToken 발급 완료 - userId: {}", userId);
+        return new TokenRefreshResponse(newAccessToken);
+    }
+
+    /**
+     * 로그아웃 - Redis에서 Refresh Token 삭제
+     *
+     * 카카오 로그인의 AuthService.logout()과 동일한 정책
+     */
+    public void logout(Long userId) {
+        String redisKey = REFRESH_TOKEN_PREFIX + userId;
+        Boolean deleted = stringRedisTemplate.delete(redisKey);
+
+        if (Boolean.TRUE.equals(deleted)) {
+            log.info("[백오피스 로그아웃] RefreshToken Redis 삭제 완료 - userId: {}", userId);
+        } else {
+            log.warn("[백오피스 로그아웃] 이미 로그아웃된 사용자 - userId: {}", userId);
+        }
     }
 
     /**
@@ -90,6 +182,7 @@ public class BackofficeAuthService {
 
     /**
      * 업로더 계정 탈퇴 (Soft Delete)
+     * 탈퇴 시 Redis Refresh Token도 함께 삭제
      */
     @Transactional
     public void deleteUploaderAccount(Long userId) {
@@ -105,6 +198,10 @@ public class BackofficeAuthService {
         }
 
         user.markDeleted("업로더 본인 탈퇴");
+
+        // 탈퇴 시 Redis Refresh Token 삭제 (강제 로그아웃)
+        logout(userId);
+
         log.info("[백오피스] 업로더 계정 탈퇴 처리 - userId: {}", userId);
     }
 
@@ -117,6 +214,15 @@ public class BackofficeAuthService {
     }
 
     // ====== Private Methods ======
+
+    /**
+     * Refresh Token Redis 저장 (90일 TTL)
+     */
+    private void saveRefreshToken(Long userId, String refreshToken) {
+        String redisKey = REFRESH_TOKEN_PREFIX + userId;
+        stringRedisTemplate.opsForValue().set(redisKey, refreshToken, REFRESH_TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
+        log.info("[백오피스 로그인] RefreshToken Redis 저장 완료 - userId: {}", userId);
+    }
 
     /**
      * 로그인 가능 상태 검증

@@ -62,10 +62,12 @@ public class SecurityConfig {
                         // --- 토큰 갱신 (쿠키 기반, 인증 헤더 없이 접근 가능해야 함) ---
                         .requestMatchers("/api/v1/auth/token/refresh").permitAll()
 
-                        // --- 백오피스 인증 ---
+                        // --- 백오피스 인증 (로그인/회원가입/이메일체크) ---
                         .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
                         .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
                         .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
+                        .requestMatchers("/api/v1/backoffice/auth/token/refresh").permitAll()  // 추가: 토큰 갱신 (쿠키 기반이므로 인증 불필요)
+                        .requestMatchers("/api/v1/backoffice/auth/logout").authenticated()      // 추가: 로그아웃 (Access Token 필요)
 
                         // --- 비디오 (비로그인 시청 가능) ---
                         .requestMatchers("/api/v1/videos/*/play").permitAll()
