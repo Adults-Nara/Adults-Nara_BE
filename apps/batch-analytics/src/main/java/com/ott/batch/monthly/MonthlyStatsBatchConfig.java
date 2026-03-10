@@ -2,9 +2,7 @@ package com.ott.batch.monthly;
 
 import com.ott.batch.monthly.dto.TagStatDto;
 import com.ott.batch.monthly.dto.MonthlyReportDto;
-import com.ott.batch.monthly.step1.TagStatReader;
 import com.ott.batch.monthly.step1.TagStatWriter;
-import com.ott.batch.monthly.step2.MonthlyReportReader;
 import com.ott.batch.monthly.step2.MonthlyReportProcessor;
 import com.ott.batch.monthly.step2.MonthlyReportWriter;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +17,10 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
+import javax.sql.DataSource;
 import java.time.OffsetDateTime;
 
 /**
@@ -33,11 +33,10 @@ public class MonthlyStatsBatchConfig {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager platformTransactionManager;
+    private final DataSource dataSource;
+    private final JdbcTemplate jdbcTemplate;
 
-    private final TagStatReader tagStatReader;
     private final TagStatWriter tagStatWriter;
-
-    private final MonthlyReportReader monthlyReportReader;
     private final MonthlyReportProcessor monthlyReportProcessor;
     private final MonthlyReportWriter monthlyReportWriter;
 
@@ -50,8 +49,8 @@ public class MonthlyStatsBatchConfig {
     public Job monthlyStatsJob() {
         log.info("[monthlyStatsJob] Job 빌드");
         return new JobBuilder("monthlyStatsJob", jobRepository)
-                .start(monthlyTagStatsStep())
-                .next(monthlyReportStep())
+                .start(monthlyTagStatsStep(null, null))
+                .next(monthlyReportStep(null))
                 .build();
     }
 
@@ -59,11 +58,13 @@ public class MonthlyStatsBatchConfig {
      * Step 1: 태그별 통계 집계
      */
     @Bean
-    public Step monthlyTagStatsStep() {
+    public Step monthlyTagStatsStep(
+            @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
+            @Value("#{jobParameters['rangeTo']}") String rangeTo) {
         log.debug("[monthlyTagStatsStep] Step 빌드");
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
                 .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(tagStatItemReader(null, null))
+                .reader(tagStatItemReader(rangeFrom, rangeTo))
                 .writer(tagStatWriter)
                 .build();
     }
@@ -72,11 +73,12 @@ public class MonthlyStatsBatchConfig {
      * Step 2: 사용자별 월간 리포트 생성
      */
     @Bean
-    public Step monthlyReportStep() {
+    public Step monthlyReportStep(
+            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
         log.debug("[monthlyReportStep] Step 빌드");
         return new StepBuilder("monthlyReportStep", jobRepository)
                 .<Long, MonthlyReportDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(monthlyReportItemReader(null))
+                .reader(monthlyReportItemReader(yearMonth))
                 .processor(monthlyReportProcessor)
                 .writer(monthlyReportWriter)
                 .build();
@@ -95,7 +97,7 @@ public class MonthlyStatsBatchConfig {
         OffsetDateTime from = OffsetDateTime.parse(rangeFrom);
         OffsetDateTime to = OffsetDateTime.parse(rangeTo);
 
-        return tagStatReader.reader(from, to);
+        return new com.ott.batch.monthly.step1.TagStatReader(dataSource).reader(from, to);
     }
 
     /**
@@ -107,6 +109,6 @@ public class MonthlyStatsBatchConfig {
             @Value("#{jobParameters['yearMonth']}") String yearMonth) {
         log.info("[monthlyReportItemReader] Reader 생성: yearMonth={}", yearMonth);
 
-        return monthlyReportReader.reader(yearMonth);
+        return new com.ott.batch.monthly.step2.MonthlyReportReader(dataSource).reader(yearMonth);
     }
 }

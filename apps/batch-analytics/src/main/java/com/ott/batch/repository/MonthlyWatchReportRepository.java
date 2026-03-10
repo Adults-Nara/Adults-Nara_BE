@@ -11,5 +11,4 @@ public interface MonthlyWatchReportRepository extends JpaRepository<MonthlyWatch
 
     Optional<MonthlyWatchReport> findByUserIdAndReportYearMonth(Long userId, String reportYearMonth);
 
-    // upsertMonthlyReport() 메서드 삭제됨
 }
