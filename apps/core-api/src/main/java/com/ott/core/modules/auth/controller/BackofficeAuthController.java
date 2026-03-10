@@ -68,7 +68,8 @@ public class BackofficeAuthController {
 
         log.info("[백오피스 로그인] 쿠키 발급 완료 - userId: {}, role: {}", loginResponse.userId(), loginResponse.role());
 
-        return ApiResponse.success(loginResponse.withoutRefreshToken());
+        // @JsonIgnore 로 refreshToken 필드는 JSON 직렬화에서 자동 제외됨
+        return ApiResponse.success(loginResponse);
     }
 
     /**
@@ -103,19 +104,8 @@ public class BackofficeAuthController {
     @PostMapping("/logout")
     public ApiResponse<?> logout(Authentication authentication, HttpServletResponse response) {
         Long userId = Long.parseLong(authentication.getName());
-
         backofficeAuthService.logout(userId);
-
-        // 쿠키 만료 처리 (카카오 로그아웃과 동일한 방식)
-        ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/api/v1/backoffice/auth")
-                .maxAge(0)
-                .sameSite("None")
-                .build();
-        response.addHeader("Set-Cookie", expiredCookie.toString());
-
+        expireRefreshTokenCookie(response);
         return ApiResponse.success();
     }
 
@@ -151,17 +141,7 @@ public class BackofficeAuthController {
     ) {
         Long userId = Long.parseLong(authentication.getName());
         backofficeAuthService.deleteUploaderAccount(userId);
-
-        // 탈퇴 시 쿠키도 만료 처리
-        ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/api/v1/backoffice/auth")
-                .maxAge(0)
-                .sameSite("None")
-                .build();
-        response.addHeader("Set-Cookie", expiredCookie.toString());
-
+        expireRefreshTokenCookie(response);
         return ApiResponse.success();
     }
 
@@ -179,6 +159,21 @@ public class BackofficeAuthController {
     }
 
     // ====== Private Methods ======
+
+    /**
+     * Refresh Token 쿠키 만료 처리
+     * logout, deleteAccount에서 공통으로 사용
+     */
+    private void expireRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/v1/backoffice/auth")
+                .maxAge(0)
+                .sameSite("None")
+                .build();
+        response.addHeader("Set-Cookie", expiredCookie.toString());
+    }
 
     private String extractCookieValue(HttpServletRequest request, String cookieName) {
         if (request.getCookies() == null) {
