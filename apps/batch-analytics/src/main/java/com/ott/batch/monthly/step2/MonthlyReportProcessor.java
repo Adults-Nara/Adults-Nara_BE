@@ -3,6 +3,7 @@ package com.ott.batch.monthly.step2;
 import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.repository.TagStatsRepository;
 import com.ott.batch.repository.WatchHistoryRepository;
+import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.TagStats;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
@@ -97,11 +98,11 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                         Collectors.counting()
                 ));
 
-        // 주 시청 시간대 (명시적 람다)
+        // 주 시청 시간대 (기본값 NONE)
         String peakTimeSlot = timeSlotCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(entry -> entry.getKey())
-                .orElse("MORNING");
+                .orElse("NONE");
 
         // 최장 시청 세션
         int longestSessionSeconds = watchHistories.stream()
@@ -120,11 +121,14 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                 .map(entry -> entry.getKey().getTagName())
                 .orElse("없음");
 
-        // 다양성 점수 (시청한 태그 수 * 20)
+        // 다양성 점수 (고유 부모 태그 수 * 20, 최대 100점)
         int diversityScore = (int) tagStatsList.stream()
-                .map(ts -> ts.getTag().getId())
+                .map(ts -> ts.getTag().getParent())
+                .filter(Objects::nonNull)
+                .map(Tag::getId)
                 .distinct()
                 .count() * 20;
+        diversityScore = Math.min(100, diversityScore);
 
         log.debug("[MonthlyReportProcessor] userId={}, watchCount={}, completed={}, diversity={}",
                 userId, watchHistories.size(), completedCount, diversityScore);

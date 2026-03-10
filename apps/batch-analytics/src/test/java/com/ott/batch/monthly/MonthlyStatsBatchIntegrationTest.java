@@ -126,7 +126,7 @@ class MonthlyStatsBatchIntegrationTest {
         LocalDate queryStart = LocalDate.of(now.getYear(), now.getMonthValue(), 1);
         LocalDate queryEnd = LocalDate.of(now.getYear(), now.getMonthValue(), now.toLocalDate().lengthOfMonth());
 
-        var tagStats = tagStatsRepository.findByUserIdAndStatsDateBetween(
+        var tagStats = tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 user.getId(), queryStart, queryEnd
         );
         assertThat(tagStats).isNotEmpty();
