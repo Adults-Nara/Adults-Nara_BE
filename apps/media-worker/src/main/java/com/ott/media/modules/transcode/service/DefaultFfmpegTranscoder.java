@@ -63,7 +63,9 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
 
                 // 비디오 인코딩
                 "-c:v", "libx264",
+                "-preset", "veryfast",
                 "-profile:v", "main",
+                "-threads", "0",
                 "-pix_fmt", "yuv420p",
                 "-vf", vf,
 
@@ -142,7 +144,7 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
 
                 // 360p
                 "-map", "[v360out]", "-map", "[a360]",
-                "-c:v:0", "libx264", "-profile:v:0", "main", "-pix_fmt", "yuv420p",
+                "-c:v:0", "libx264", "-preset", "veryfast", "-profile:v:0", "main", "-threads", "0", "-pix_fmt", "yuv420p",
                 "-b:v:0", "900k", "-maxrate:v:0", "1100k", "-bufsize:v:0", "1800k",
                 "-g:v:0", String.valueOf(gop), "-keyint_min:v:0", String.valueOf(gop),
                 "-sc_threshold:v:0", "0",
@@ -150,7 +152,7 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
 
                 // 720p
                 "-map", "[v720out]", "-map", "[a720]",
-                "-c:v:1", "libx264", "-profile:v:1", "main", "-pix_fmt", "yuv420p",
+                "-c:v:1", "libx264", "-preset", "veryfast", "-profile:v:1", "main", "-threads", "0", "-pix_fmt", "yuv420p",
                 "-b:v:1", "2800k", "-maxrate:v:1", "3500k", "-bufsize:v:1", "5000k",
                 "-g:v:1", String.valueOf(gop), "-keyint_min:v:1", String.valueOf(gop),
                 "-sc_threshold:v:1", "0",
@@ -158,7 +160,7 @@ public class DefaultFfmpegTranscoder implements FfmpegTranscoder {
 
                 // 1080p
                 "-map", "[v1080out]", "-map", "[a1080]",
-                "-c:v:2", "libx264", "-profile:v:2", "main", "-pix_fmt", "yuv420p",
+                "-c:v:2", "libx264", "-preset", "veryfast", "-profile:v:2", "main", "-threads", "0", "-pix_fmt", "yuv420p",
                 "-b:v:2", "5500k", "-maxrate:v:2", "6500k", "-bufsize:v:2", "9000k",
                 "-g:v:2", String.valueOf(gop), "-keyint_min:v:2", String.valueOf(gop),
                 "-sc_threshold:v:2", "0",
