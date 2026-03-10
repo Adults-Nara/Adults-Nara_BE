@@ -4,8 +4,8 @@
   "executionRoleArn": "${AWS_EXE_ROLE_ARN}",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
+  "cpu": "2048",
+  "memory": "4096",
   "containerDefinitions": [
     {
       "name": "log_router",
