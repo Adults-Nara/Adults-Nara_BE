@@ -147,10 +147,12 @@ public class AuthService {
      * Refresh Token으로 Access Token 재발급
      */
     public TokenRefreshResponse refreshAccessToken(String refreshToken) {
+        // 1. 토큰 서명/만료 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
+        // 2. RefreshToken 타입 확인
         if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
             log.warn("[토큰 갱신] Access Token으로 갱신 시도 차단");
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -158,25 +160,29 @@ public class AuthService {
 
         Long userId = jwtTokenProvider.getUserId(refreshToken);
 
+        // 3. Redis에 저장된 토큰과 비교 (탈취/로그아웃 여부 확인)
         String redisKey = REFRESH_TOKEN_PREFIX + userId;
         String storedToken = stringRedisTemplate.opsForValue().get(redisKey);
 
         if (storedToken == null) {
-            log.warn("[토큰 갱신] Redis에 RefreshToken 없음 - userId: {}", userId);
+            log.warn("[토큰 갱신] Redis에 RefreshToken 없음 - 로그아웃된 사용자 또는 만료 - userId: {}", userId);
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         if (!storedToken.equals(refreshToken)) {
-            log.warn("[토큰 갱신] 토큰 불일치 - 탈취 의심 - userId: {}", userId);
+            log.warn("[토큰 갱신] 토큰 불일치 - 탈취 의심 → 강제 로그아웃 - userId: {}", userId);
+            // 탈취 의심 시 Redis 토큰 즉시 삭제 (강제 로그아웃)
             stringRedisTemplate.delete(redisKey);
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
+        // 4. 유저 상태 검증
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         validateLoginStatus(user);
 
+        // 5. 새 AccessToken 발급
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
         log.info("[토큰 갱신] 새 AccessToken 발급 완료 - userId: {}", userId);
         return new TokenRefreshResponse(newAccessToken);
