@@ -33,7 +33,7 @@ public class RecommendationController implements RecommendationApiDocs {
     @GetMapping("/feed")
     public ApiResponse<SliceResponse<VideoFeedResponseDto>> getFeed(
             @AuthenticationPrincipal String userId,
-            @RequestParam(required = true) VideoType videoType,
+            @RequestParam(required = false) VideoType videoType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
