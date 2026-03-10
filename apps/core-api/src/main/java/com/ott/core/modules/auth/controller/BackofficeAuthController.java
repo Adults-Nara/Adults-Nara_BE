@@ -3,15 +3,14 @@ package com.ott.core.modules.auth.controller;
 import com.ott.common.error.BusinessException;
 import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
+import com.ott.core.global.util.CookieUtils;
 import com.ott.core.modules.auth.dto.BackofficeLoginRequest;
 import com.ott.core.modules.auth.dto.BackofficeLoginResponse;
 import com.ott.core.modules.auth.dto.BackofficeSignupRequest;
-import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.auth.service.BackofficeAuthService;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -22,8 +21,6 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Arrays;
 
 @Slf4j
 @RestController
@@ -40,8 +37,8 @@ public class BackofficeAuthController {
     /**
      * 백오피스 로그인 (이메일 + 비밀번호)
      *
-     * 카카오 로그인과 동일한 토큰 정책:
-     * - Access Token → Response body
+     * 토큰 정책:
+     * - Access Token  → Response body (@JsonIgnore로 refreshToken 필드 직렬화 제외)
      * - Refresh Token → HttpOnly 쿠키 (backoffice_refresh_token)
      */
     @Operation(
@@ -55,42 +52,44 @@ public class BackofficeAuthController {
             HttpServletResponse response
     ) {
         BackofficeLoginResponse loginResponse = backofficeAuthService.login(request);
-
-        // Refresh Token → HttpOnly 쿠키 (카카오 로그인과 동일한 쿠키 정책)
-        ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/api/v1/backoffice/auth")
-                .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("None")
-                .build();
-        response.addHeader("Set-Cookie", refreshCookie.toString());
+        setRefreshTokenCookie(response, loginResponse.refreshToken());
 
         log.info("[백오피스 로그인] 쿠키 발급 완료 - userId: {}, role: {}", loginResponse.userId(), loginResponse.role());
 
-        // @JsonIgnore 로 refreshToken 필드는 JSON 직렬화에서 자동 제외됨
-        return ApiResponse.success(loginResponse);
+        return ApiResponse.success(loginResponse); // refreshToken은 @JsonIgnore로 자동 제외
     }
 
     /**
-     * Access Token 재발급
-     * 쿠키의 backoffice_refresh_token으로 새로운 Access Token 발급
+     * Access Token 재발급 + Refresh Token Rotation (RTR)
+     *
+     * RTR 정책:
+     * - 갱신 시마다 새 Refresh Token 발급 → Redis 갱신 → 쿠키 재세팅
+     * - 기존 Refresh Token 즉시 무효화
+     * - 이전 토큰으로 재시도 시 탈취 의심 → Redis 삭제 후 강제 로그아웃
      */
     @Operation(
-            summary = "Access Token 재발급",
-            description = "쿠키의 backoffice_refresh_token으로 새로운 AccessToken을 발급합니다."
+            summary = "Access Token 재발급 (RTR)",
+            description = "쿠키의 backoffice_refresh_token으로 새로운 AccessToken과 RotatedRefreshToken을 발급합니다. " +
+                    "기존 RefreshToken은 즉시 무효화되며, 새 RefreshToken이 쿠키로 재세팅됩니다."
     )
     @PostMapping("/token/refresh")
-    public ApiResponse<TokenRefreshResponse> refreshToken(HttpServletRequest request) {
-        String refreshToken = extractCookieValue(request, REFRESH_TOKEN_COOKIE);
+    public ApiResponse<BackofficeLoginResponse> refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = CookieUtils.extractValue(request, REFRESH_TOKEN_COOKIE);
 
         if (refreshToken == null) {
-            log.warn("[백오피스 토큰 갱신] backoffice_refresh_token 쿠키 없음");
+            log.warn("[백오피스 토큰 갱신] backoffice_refresh_token 쿠키가 없거나 비어있습니다.");
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        TokenRefreshResponse tokenResponse = backofficeAuthService.refreshAccessToken(refreshToken);
-        return ApiResponse.success(tokenResponse);
+        BackofficeLoginResponse refreshed = backofficeAuthService.refreshAccessToken(refreshToken);
+
+        // [RTR] 새 Refresh Token으로 쿠키 재세팅
+        setRefreshTokenCookie(response, refreshed.refreshToken());
+
+        return ApiResponse.success(refreshed);
     }
 
     /**
@@ -160,10 +159,17 @@ public class BackofficeAuthController {
 
     // ====== Private Methods ======
 
-    /**
-     * Refresh Token 쿠키 만료 처리
-     * logout, deleteAccount에서 공통으로 사용
-     */
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/api/v1/backoffice/auth")
+                .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
+                .sameSite("None")
+                .build();
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
     private void expireRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
@@ -173,16 +179,5 @@ public class BackofficeAuthController {
                 .sameSite("None")
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
-    }
-
-    private String extractCookieValue(HttpServletRequest request, String cookieName) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        return Arrays.stream(request.getCookies())
-                .filter(c -> cookieName.equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
     }
 }

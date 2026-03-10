@@ -9,7 +9,6 @@ import com.ott.core.global.security.jwt.JwtTokenProvider;
 import com.ott.core.modules.auth.dto.BackofficeLoginRequest;
 import com.ott.core.modules.auth.dto.BackofficeLoginResponse;
 import com.ott.core.modules.auth.dto.BackofficeSignupRequest;
-import com.ott.core.modules.auth.dto.TokenRefreshResponse;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +43,9 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class BackofficeAuthService {
 
-    // 카카오 로그인과 동일한 Redis key prefix, TTL 정책 사용
-    private static final String REFRESH_TOKEN_PREFIX = "refresh:token:";
+    // 카카오(VIEWER) 세션과 키 충돌 방지를 위해 별도 prefix 사용
+    // 카카오: "refresh:token:{userId}" / 백오피스: "backoffice:refresh:token:{userId}"
+    private static final String REFRESH_TOKEN_PREFIX = "backoffice:refresh:token:";
     private static final long REFRESH_TOKEN_TTL_SECONDS = 90L * 24 * 60 * 60; // 90일
 
     private final UserRepository userRepository;
@@ -95,15 +95,16 @@ public class BackofficeAuthService {
     }
 
     /**
-     * Access Token 재발급 (Refresh Token 기반)
+     * Access Token 재발급 + Refresh Token Rotation (RTR)
      *
-     * 카카오 로그인의 AuthService.refreshAccessToken()과 동일한 검증 로직:
-     * 1. 서명/만료 검증
-     * 2. Refresh Token 타입 확인
-     * 3. Redis 저장 토큰과 비교 (탈취 의심 시 강제 로그아웃)
-     * 4. 유저 상태 검증
+     * RTR 정책:
+     * - 갱신 시마다 새 Refresh Token 발급 → Redis 갱신 → 새 쿠키 세팅
+     * - 기존 Refresh Token 즉시 무효화
+     * - 이전 토큰으로 재시도 시 탈취 의심 → 강제 로그아웃
+     *
+     * 반환: accessToken + 새 refreshToken (컨트롤러에서 쿠키 재발급)
      */
-    public TokenRefreshResponse refreshAccessToken(String refreshToken) {
+    public BackofficeLoginResponse refreshAccessToken(String refreshToken) {
         // 1. 토큰 서명/만료 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -127,8 +128,7 @@ public class BackofficeAuthService {
         }
 
         if (!storedToken.equals(refreshToken)) {
-            log.warn("[백오피스 토큰 갱신] Redis 저장 토큰 불일치 - 탈취 의심 - userId: {}", userId);
-            // 탈취 의심 시 Redis 토큰 즉시 삭제 (강제 로그아웃)
+            log.warn("[백오피스 토큰 갱신] Redis 저장 토큰 불일치 - 탈취 의심 → 강제 로그아웃 - userId: {}", userId);
             stringRedisTemplate.delete(redisKey);
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
@@ -139,11 +139,15 @@ public class BackofficeAuthService {
 
         validateLoginStatus(user);
 
-        // 5. 새 Access Token 발급
+        // 5. [RTR] 새 Access Token + 새 Refresh Token 발급
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        log.info("[백오피스 토큰 갱신] 새 AccessToken 발급 완료 - userId: {}", userId);
-        return new TokenRefreshResponse(newAccessToken);
+        // 6. [RTR] 기존 Refresh Token 즉시 무효화 → 새 토큰으로 교체
+        saveRefreshToken(userId, newRefreshToken);
+
+        log.info("[백오피스 토큰 갱신] AccessToken + RefreshToken 재발급 완료 (RTR) - userId: {}", userId);
+        return BackofficeLoginResponse.of(user, newAccessToken, newRefreshToken);
     }
 
     /**
