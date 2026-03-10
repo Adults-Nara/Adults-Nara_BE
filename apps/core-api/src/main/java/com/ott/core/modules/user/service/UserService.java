@@ -53,7 +53,7 @@ public class UserService {
 
     /**
      * 사용자 정보 수정
-     * 수정 가능 항목: 닉네임, 관심 태그
+     * 수정 가능 항목: 닉네임
      */
     @Transactional
     public UserResponse updateUser(Long userId, UpdateUserRequest request) {
@@ -66,10 +66,6 @@ public class UserService {
 
         if (request.nickname() != null) {
             user.changeNickname(request.nickname());
-        }
-
-        if (request.preferredTagIds() != null) {
-            updatePreferredTags(user, request.preferredTagIds());
         }
 
         return UserResponse.from(user);

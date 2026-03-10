@@ -41,7 +41,7 @@ public class UserController {
 
     @Operation(
             summary = "내 정보 수정",
-            description = "닉네임, 비밀번호, 프로필 이미지, 관심 태그를 수정합니다. null 필드는 수정하지 않습니다."
+            description = "닉네임을 수정합니다."
     )
     @PatchMapping("/me")
     public ApiResponse<UserResponse> updateMyInfo(
