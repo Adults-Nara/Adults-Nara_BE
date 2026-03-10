@@ -29,7 +29,12 @@ public class CommentApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Long parsedUserId = userId != null ? Long.parseLong(userId) : null;
+        Long parsedUserId = null;
+
+        if (userId != null && !userId.equals("anonymousUser")) {
+            parsedUserId = Long.parseLong(userId);
+        }
+
         CommentPageResponse response = commentService.getComments(parsedUserId, videoId, page, size);
         return ApiResponse.success(response);
     }
