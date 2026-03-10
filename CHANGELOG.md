@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.8](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.7...v0.9.8) (2026-03-10)
+
+
+### Bug Fixes
+
+* media-worker의 하드웨어 스펙 2vCPU, 4GB로 설정 ([386f89a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/386f89a03733d02c274ca0d5d31dfb5dd4c28526))
+* media-worker의 하드웨어 스펙 2vCPU, 4GB로 설정 ([d8730d2](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d8730d2d0567e88e391278accb88509444c3beb5))
+
 ## [0.9.7](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.6...v0.9.7) (2026-03-10)
 
 
