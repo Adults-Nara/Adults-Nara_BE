@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.10](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.9...v0.9.10) (2026-03-10)
+
+
+### Bug Fixes
+
+* 2 vCPU 4GB 메모리로 픽스 ([712e842](https://github.com/Adults-Nara/Adults-Nara_BE/commit/712e842954dc0f4fa09d1674194b060f5ac5edc1))
+* 2 vCPU 4GB 메모리로 픽스 ([d4a521a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d4a521a7657a35ca891c02603f7d4e313ebf4469))
+
 ## [0.9.9](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.8...v0.9.9) (2026-03-10)
 
 
