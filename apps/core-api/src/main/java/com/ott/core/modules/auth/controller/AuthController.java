@@ -201,7 +201,7 @@ public class AuthController {
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/auth/token")
+                .path("/")   // 생성 시 path("/")와 동일하게 맞춰야 쿠키가 정상 삭제됨
                 .maxAge(0)
                 .sameSite("None")
                 .build();

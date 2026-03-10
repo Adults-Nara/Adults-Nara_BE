@@ -105,20 +105,15 @@ public class BackofficeAuthService {
      * 반환: accessToken + 새 refreshToken (컨트롤러에서 쿠키 재발급)
      */
     public BackofficeLoginResponse refreshAccessToken(String refreshToken) {
-        // 1. 토큰 서명/만료 검증
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // 2. Refresh Token 타입 확인 (Access Token으로 갱신 시도 차단)
+        // 1. Refresh Token 타입 확인 (parseClaims 내부에서 서명/만료 검증 포함)
         if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
-            log.warn("[백오피스 토큰 갱신] Access Token으로 갱신 시도 차단");
+            log.warn("[백오피스 토큰 갱신] 유효하지 않거나 Refresh Token이 아닌 토큰으로 갱신 시도 차단");
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         Long userId = jwtTokenProvider.getUserId(refreshToken);
 
-        // 3. Redis에 저장된 토큰과 비교 (탈취/로그아웃 여부 확인)
+        // 2. Redis에 저장된 토큰과 비교 (탈취/로그아웃 여부 확인)
         String redisKey = REFRESH_TOKEN_PREFIX + userId;
         String storedToken = stringRedisTemplate.opsForValue().get(redisKey);
 
@@ -133,17 +128,17 @@ public class BackofficeAuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        // 4. 유저 상태 검증
+        // 3. 유저 상태 검증
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         validateLoginStatus(user);
 
-        // 5. [RTR] 새 Access Token + 새 Refresh Token 발급
+        // 4. [RTR] 새 Access Token + 새 Refresh Token 발급
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-        // 6. [RTR] 기존 Refresh Token 즉시 무효화 → 새 토큰으로 교체
+        // 5. [RTR] 기존 Refresh Token 즉시 무효화 → 새 토큰으로 교체
         saveRefreshToken(userId, newRefreshToken);
 
         log.info("[백오피스 토큰 갱신] AccessToken + RefreshToken 재발급 완료 (RTR) - userId: {}", userId);

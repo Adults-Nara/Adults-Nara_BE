@@ -163,7 +163,7 @@ public class BackofficeAuthController {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/backoffice/auth")
+                .path("/api/v1/backoffice/auth/token/refresh")  // 최소 권한 원칙: 필요한 경로에만 전송
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
                 .sameSite("None")
                 .build();
@@ -174,7 +174,7 @@ public class BackofficeAuthController {
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
                 .secure(true)
-                .path("/api/v1/backoffice/auth")
+                .path("/api/v1/backoffice/auth/token/refresh")  // 생성 시 path와 동일하게 맞춰야 쿠키가 정상 삭제됨
                 .maxAge(0)
                 .sameSite("None")
                 .build();
