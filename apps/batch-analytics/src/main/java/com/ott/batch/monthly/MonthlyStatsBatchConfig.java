@@ -3,6 +3,7 @@ package com.ott.batch.monthly;
 import com.ott.batch.monthly.dto.TagStatDto;
 import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.monthly.step1.TagStatReader;
+import com.ott.batch.monthly.step1.TagStatProcessor;
 import com.ott.batch.monthly.step1.TagStatWriter;
 import com.ott.batch.monthly.step2.MonthlyReportReader;
 import com.ott.batch.monthly.step2.MonthlyReportProcessor;
@@ -36,6 +37,7 @@ public class MonthlyStatsBatchConfig {
     private final PlatformTransactionManager platformTransactionManager;
 
     private final TagStatReader tagStatReader;
+    private final TagStatProcessor tagStatProcessor;
     private final TagStatWriter tagStatWriter;
 
     private final MonthlyReportReader monthlyReportReader;
@@ -66,6 +68,7 @@ public class MonthlyStatsBatchConfig {
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
                 .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
                 .reader(tagStatItemReader(null, null))
+                .processor(tagStatProcessor)
                 .writer(tagStatWriter)
                 .build();
     }

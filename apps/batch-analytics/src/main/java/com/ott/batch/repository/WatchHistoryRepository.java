@@ -16,13 +16,12 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
         SELECT wh FROM WatchHistory wh
         JOIN FETCH wh.user u
         WHERE u.id = :userId
-          AND wh.createdAt BETWEEN :rangeFrom AND :rangeTo
+          AND wh.createdAt >= :rangeFrom 
+          AND wh.createdAt < :rangeTo
     """)
     List<WatchHistory> findByUserIdAndCreatedAtBetween(
             @Param("userId") Long userId,
             @Param("rangeFrom") OffsetDateTime rangeFrom,
             @Param("rangeTo") OffsetDateTime rangeTo
     );
-
-    // upsertWatchHistory() 메서드 삭제됨
 }

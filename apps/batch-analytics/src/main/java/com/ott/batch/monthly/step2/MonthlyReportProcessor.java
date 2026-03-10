@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReportDto> {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final TagStatsRepository tagStatsRepository;
     private final WatchHistoryRepository watchHistoryRepository;
@@ -91,10 +94,10 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                 .multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(watchHistories.size()), 2, RoundingMode.HALF_UP);
 
-        // 시간대별 집계 (Stream으로 개선)
+        // 시간대별 집계 (KST 기준으로 변환)
         Map<String, Long> timeSlotCounts = watchHistories.stream()
                 .collect(Collectors.groupingBy(
-                        wh -> getTimeSlot(wh.getCreatedAt().getHour()),
+                        wh -> getTimeSlot(wh.getCreatedAt().atZoneSameInstant(KST).getHour()),
                         Collectors.counting()
                 ));
 

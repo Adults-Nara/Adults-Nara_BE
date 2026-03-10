@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.regex.Pattern;
+
 /**
  * 월간 통계 API Controller
  */
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/statistics/monthly")
 @RequiredArgsConstructor
 public class MonthlyStatsController {
+
+    private static final Pattern YEAR_MONTH_PATTERN = Pattern.compile("^\\d{4}-\\d{2}$");
 
     private final MonthlyStatsService monthlyStatsService;
 
@@ -31,6 +35,12 @@ public class MonthlyStatsController {
     public ResponseEntity<MonthlyStatsResponse> getMonthlyReport(
             @AuthenticationPrincipal String userIdStr,
             @PathVariable String yearMonth) {
+
+        // yearMonth 유효성 검증 (log injection, XSS 방지)
+        if (!YEAR_MONTH_PATTERN.matcher(yearMonth).matches()) {
+            log.warn("Invalid yearMonth format: {}", yearMonth.replaceAll("[\r\n]", ""));
+            return ResponseEntity.badRequest().build();
+        }
 
         Long userId;
         try {
