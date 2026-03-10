@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,12 +23,20 @@ public class SearchController {
 
     private final VideoSearchService videoSearchService;
 
+    private Long parseUserIdSafely(String userId) {
+        if (userId == null || "anonymousUser".equals(userId)) {
+            return null;
+        }
+        return Long.parseLong(userId);
+    }
+
     @Operation(
             summary = "메인 영상 검색",
             description = "키워드, 영상 타입, 태그를 조합하여 영상을 검색합니다. (주의: 깊은 페이징 방지를 위해 최대 10,000번째 결과까지만 조회 가능합니다.)"
     )
     @GetMapping
     public ApiResponse<Page<VideoSearchResponse>> searchVideos(
+            @AuthenticationPrincipal String userId,
             @Parameter(description = "검색어 (제목, 설명, 태그에 포함된 단어)", example = "아이언맨")
             @RequestParam(required = false) String keyword,
 
@@ -49,7 +58,8 @@ public class SearchController {
         }
         Pageable pageable = PageRequest.of(page, size);
 
-        Page<VideoSearchResponse> result = videoSearchService.searchVideos(keyword, videoType, tag, pageable);
+        Long parsedUserId = parseUserIdSafely(userId);
+        Page<VideoSearchResponse> result = videoSearchService.searchVideos(parsedUserId, keyword, videoType, tag, pageable);
         return ApiResponse.success(result);
     }
 

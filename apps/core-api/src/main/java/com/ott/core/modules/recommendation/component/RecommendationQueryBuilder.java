@@ -113,7 +113,7 @@ public class RecommendationQueryBuilder {
     // ==========================================
     // [가로 피드] 연관 영상 (More Like This / Terms)
     // ==========================================
-    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, int page, int limit) {
+    public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, Long currentVideoId, VideoType videoType, int page, int limit) {
         Query relatedQuery = Query.of(q -> q.bool(b -> b
             .must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
             .mustNot(mn -> mn.term(t -> t.field("_id").value(currentVideoId.toString())))
