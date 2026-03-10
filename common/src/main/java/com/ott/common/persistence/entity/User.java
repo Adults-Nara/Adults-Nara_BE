@@ -64,6 +64,9 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
     @Column(name = "banned_at")
     private OffsetDateTime bannedAt;
 
+    @Column(name = "onboarding_completed", nullable = false)
+    private boolean onboardingCompleted = false;
+
     // ===== 생성자 =====
 
     public User(String email, String nickname, String passwordHash, UserRole userRole) {
@@ -142,6 +145,11 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
         this.bannedUntil = null;
         this.banReason = null;
         this.bannedAt = OffsetDateTime.now();
+    }
+
+    // 온보딩 완료 처리
+    public void completeOnboarding() {
+        this.onboardingCompleted = true;
     }
 
     // ===== 헬퍼 메서드 =====

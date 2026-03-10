@@ -96,7 +96,10 @@ public class WatchHistoryService {
     /**
      * 시청 위치 업데이트 (10초마다 호출)
      */
-    public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition, Integer duration) {
+    public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition) {
+
+        VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
+        Integer duration = vm.getDuration();
 
         // 도메인 로직을 사용하여 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
@@ -116,7 +119,10 @@ public class WatchHistoryService {
      * 시청 종료 시 최종 위치 DB 저장 (Rate limit 무시)
      */
     @Transactional
-    public void stopWatching(Long userId, Long videoId, Integer lastPosition, Integer duration) {
+    public void stopWatching(Long userId, Long videoId, Integer lastPosition) {
+
+        VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
+        Integer duration = vm.getDuration();
 
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
@@ -127,9 +133,9 @@ public class WatchHistoryService {
 
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition,
                 isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
-        userPreferenceService.reflectWatchScore(userId, videoMetadataId, lastPosition, isCompleted);
+        userPreferenceService.reflectWatchScore(userId, videoId, lastPosition, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
-        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoMetadataId, lastPosition, isCompleted));
+        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, lastPosition, isCompleted));
 
         // 포인트 적립
         if (isCompleted && videoMetadata.isAd()) {
@@ -175,6 +181,8 @@ public class WatchHistoryService {
                             .watchProgressPercent(calculateWatchProgressPercent(wh.getLastPosition(), vm.getDuration()))
                             .watchedAt(wh.getUpdatedAt())
                             .duration(vm.getDuration())
+                            .videoType(vm.getVideoType())
+                            .uploadedAt(vm.getCreatedAt())
                             .build();
                 })
                 .collect(Collectors.toList());

@@ -6,10 +6,11 @@ import com.ott.core.modules.bookmark.dto.BookmarkPageResponse;
 import com.ott.core.modules.bookmark.dto.BookmarkStatusResponseDto;
 import com.ott.core.modules.bookmark.dto.BookmarkSummaryResponse;
 import com.ott.core.modules.bookmark.service.BookmarkService;
+import com.ott.core.modules.bookmark.service.BookmarkSyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class BookmarkController {
 
     private final BookmarkService bookmarkService;
+    private final BookmarkSyncService bookmarkSyncService;
 
     // 찜하기
     @Operation(summary = "찜하기(북마크) 토글", description = "누를 때마다 찜 상태가 켜지거나 꺼집니다.")
@@ -46,14 +48,14 @@ public class BookmarkController {
         return ApiResponse.success(responseDto);
     }
 
-    // 찜 재생목록 요약 조회
+    @Operation(summary = "찜 재생목록 요약 조회", description = "찜한 영상의 타입별 개수 요약 정보를 반환합니다.")
     @GetMapping("/summary")
     public ApiResponse<BookmarkSummaryResponse> getBookmarkSummary(@AuthenticationPrincipal String userId) {
         BookmarkSummaryResponse response = bookmarkService.getBookmarkSummary(Long.parseLong(userId));
         return ApiResponse.success(response);
     }
 
-    // 찜한 영상 목록 조회
+    @Operation(summary = "찜한 영상 목록 조회", description = "찜한 영상을 videoType으로 필터링하여 페이지네이션으로 조회합니다.")
     @GetMapping
     public ApiResponse<BookmarkPageResponse> getBookmarkList(
             @AuthenticationPrincipal String userId,
@@ -63,5 +65,11 @@ public class BookmarkController {
     ) {
         BookmarkPageResponse response = bookmarkService.getBookmarkList(Long.parseLong(userId), videoType, page, size);
         return ApiResponse.success(response);
+    }
+    @Operation(summary = "[관리자] 북마크 랭킹 캐시 웜업", description = "DB의 모든 북마크 데이터를 기반으로 Redis 랭킹(ZSet)을 강제 초기화(복구)합니다.")
+    @PostMapping("/admin/warmup")
+    public ApiResponse<String> warmUpBookmarks() {
+        bookmarkSyncService.warmUpRankingFromDB();
+        return ApiResponse.success("✅ 북마크 실시간 랭킹 Redis 캐시 복구가 완료되었습니다.");
     }
 }

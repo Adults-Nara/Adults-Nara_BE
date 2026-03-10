@@ -3,6 +3,7 @@ package com.ott.core.modules.tag.repository;
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
+import com.ott.common.persistence.enums.TagSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -28,7 +29,7 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
     @Query("DELETE FROM VideoTag vt WHERE vt.videoMetadata = :videoMetadata")
     void deleteAllByVideoMetadata(@Param("videoMetadata") VideoMetadata videoMetadata);
 
-    @Query("SELECT vt.videoMetadata FROM VideoTag vt WHERE vt.tag.id = :tagId AND vt.videoMetadata.deleted = false ORDER BY vt.videoMetadata.viewCount DESC")
+    @Query("SELECT vt.videoMetadata FROM VideoTag vt WHERE vt.tag.id = :tagId AND vt.videoMetadata.deleted = false AND vt.videoMetadata.videoType = com.ott.common.persistence.enums.VideoType.LONG ORDER BY vt.videoMetadata.viewCount DESC")
     List<VideoMetadata> findTop10VideosByTagId(@Param("tagId") Long tagId, Pageable pageable);
 
     // 1. 단건 비디오에 대한 태그 + 부모 태그 페치 조인 (EventListener용)
@@ -38,4 +39,6 @@ public interface VideoTagRepository extends JpaRepository<VideoTag, Long> {
     // 2. 다건 비디오에 대한 태그 + 부모 태그 페치 조인 (SyncService 벌크용)
     @Query("SELECT vt FROM VideoTag vt JOIN FETCH vt.tag t LEFT JOIN FETCH t.parent WHERE vt.videoMetadata.id IN :metadataIds")
     List<VideoTag> findWithTagAndParentByVideoMetadataIdIn(@Param("metadataIds") List<Long> metadataIds);
+
+    List<VideoTag> findAllByVideoMetadataIdAndSource(@Param("videoMetadataId") Long videoMetadataId, @Param("source") TagSource source);
 }

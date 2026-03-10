@@ -64,4 +64,6 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
              LIMIT 8
             """, nativeQuery = true)
     List<Object[]> findTop8TagWatchStatsByUserId(@Param("userId") Long userId);
+
+    List<WatchHistory> findByUserIdAndVideoMetadata_VideoIdIn(Long userId, List<Long> videoIds);
 }

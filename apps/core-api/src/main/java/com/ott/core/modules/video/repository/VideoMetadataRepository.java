@@ -8,15 +8,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Long> {
 
     Optional<VideoMetadata> findByVideoId(Long videoId);
-
-    List<VideoMetadata> findAllByVideoIdIsIn(Collection<Long> videoIds);
 
     List<VideoMetadata> findAllByVideoIdIn(List<Long> videoIds);
 
@@ -66,4 +63,16 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE VideoMetadata vm SET vm.deleted = true WHERE vm.videoId IN :ids AND vm.userId = :userId")
     void softDeleteByUploader(@Param("ids") List<Long> ids, @Param("userId") Long userId);
+
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE VideoMetadata v SET v.commentCount = v.commentCount + 1 WHERE v.videoId = :videoId")
+    void incrementCommentCount(@Param("videoId") Long videoId);
+
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE VideoMetadata v SET v.commentCount = CASE WHEN v.commentCount > 0 THEN v.commentCount - 1 ELSE 0 END WHERE v.videoId = :videoId")
+    void decrementCommentCount(@Param("videoId") Long videoId);
+
+    long countByVideoIdInAndUserIdAndDeletedFalse(List<Long> videoIds, Long userId);
 }

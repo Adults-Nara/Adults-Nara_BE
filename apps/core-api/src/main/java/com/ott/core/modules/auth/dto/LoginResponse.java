@@ -14,7 +14,8 @@ public record LoginResponse(
         UserRole role,
         String accessToken,
         String refreshToken,   // 내부 처리용 (쿠키 세팅 후 클라이언트에는 노출 안 함)
-        boolean isNewUser
+        boolean isNewUser,
+        boolean onboardingCompleted
 ) {
     public static LoginResponse of(com.ott.common.persistence.entity.User user,
                                    String accessToken,
@@ -28,7 +29,8 @@ public record LoginResponse(
                 user.getRole(),
                 accessToken,
                 refreshToken,
-                isNewUser
+                isNewUser,
+                user.isOnboardingCompleted()
         );
     }
 
@@ -44,8 +46,9 @@ public record LoginResponse(
                 this.profileImageUrl,
                 this.role,
                 this.accessToken,
-                null,           // body에서 제거
-                this.isNewUser
+                null,
+                this.isNewUser,
+                this.onboardingCompleted
         );
     }
 }

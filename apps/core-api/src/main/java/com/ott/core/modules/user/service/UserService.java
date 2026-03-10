@@ -49,61 +49,6 @@ public class UserService {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
-    @Transactional
-    public UserResponse createUser(CreateUserRequest request) {
-        if (userRepository.existsByEmailAndNotDeleted(request.email())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-        }
-
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.VIEWER);
-
-        if (request.profileImageUrl() != null && !request.profileImageUrl().isBlank()) {
-            user.changeProfileImage(request.profileImageUrl());
-        }
-
-        userRepository.save(user);
-        return UserResponse.from(user);
-    }
-
-    @Transactional
-    public UserResponse createUploader(CreateUserRequest request, String inviteCode) {
-        if (!"UPLOADER_INVITE_2026".equals(inviteCode)) {
-            throw new IllegalArgumentException("유효하지 않은 초대 코드입니다.");
-        }
-
-        if (userRepository.existsByEmailAndNotDeleted(request.email())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-        }
-
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
-
-        if (request.profileImageUrl() != null) {
-            user.changeProfileImage(request.profileImageUrl());
-        }
-
-        userRepository.save(user);
-        return UserResponse.from(user);
-    }
-
-    @Transactional
-    public UserResponse createAdmin(CreateUserRequest request, String adminSecretKey) {
-        if (!"ADMIN_SECRET_KEY_2026".equals(adminSecretKey)) {
-            throw new IllegalArgumentException("관리자 생성 권한이 없습니다.");
-        }
-
-        if (userRepository.existsByEmailAndNotDeleted(request.email())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-        }
-
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.ADMIN);
-
-        userRepository.save(user);
-        return UserResponse.from(user);
-    }
-
     @Transactional(readOnly = true)
     public UserDetailResponse getUserDetail(Long userId) {
         User user = userRepository.findById(userId)

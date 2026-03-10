@@ -2,6 +2,7 @@ package com.ott.core.modules.tag.service;
 
 import com.ott.common.persistence.entity.*;
 import com.ott.common.persistence.enums.UserRole;
+import com.ott.common.persistence.enums.VideoType;
 import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.tag.dto.response.ChildTagResponse;
 import com.ott.core.modules.tag.dto.response.TagVideoResponse;
@@ -68,6 +69,7 @@ class TagServiceTest {
                 .thumbnailUrl("https://thumb.example.com/img.jpg")
                 .viewCount(viewCount)
                 .duration(duration)
+                .videoType(VideoType.LONG)
                 .deleted(false)
                 .build();
         return videoMetadataRepository.save(vm);

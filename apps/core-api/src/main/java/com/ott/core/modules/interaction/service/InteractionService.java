@@ -49,7 +49,7 @@ public class InteractionService {
                     // 같은 버튼 또 누름 -> 취소
                     interactionRepository.delete(interaction);
                     interactionRepository.flush(); // 따닥 방어
-                    updateRedis(videoId, oldType);
+                    updateRedis(videoId, oldType, -1);
                     // [이벤트 발행] 취소되었으므로 newType은 null로 보냄
                     eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, oldType, null));
                 } else {
@@ -58,8 +58,8 @@ public class InteractionService {
                     interactionRepository.save(interaction);
                     interactionRepository.flush(); // 따닥 방어
 
-                    updateRedis(videoId, oldType); // 기존 카운트 감소
-                    updateRedis(videoId, newType);  // 새 카운트 증가
+                    updateRedis(videoId, oldType, -1); // 기존 카운트 감소
+                    updateRedis(videoId, newType,1);  // 새 카운트 증가
                     // [이벤트 발행] 변경 전/후 타입 모두 보냄
                     eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, oldType, newType));
                 }
@@ -68,7 +68,7 @@ public class InteractionService {
                 Interaction newInteraction = new Interaction(user, metadata, newType);
                 interactionRepository.save(newInteraction);
                 interactionRepository.flush(); // 따닥 방어
-                updateRedis(videoId, newType);
+                updateRedis(videoId, newType,1);
                 // [이벤트 발행] 새로 생성되었으므로 oldType은 null로 보냄
                 eventPublisher.publishEvent(new InteractionEvent(userId, metadataId, null, newType));
             }
@@ -90,21 +90,23 @@ public class InteractionService {
     /**
      * Redis 카운트, 랭킹, 그리고 스케줄러 동기화 큐(Dirty Set) 업데이트
      */
-    private void updateRedis(Long videoId, InteractionType type) {
+    private void updateRedis(Long videoId, InteractionType type, long delta) {
         String videoIdStr = String.valueOf(videoId);
         String typeLower = type.name().toLowerCase(); // like, dislike, superlike
 
         String countKey = "video:count:" + typeLower;
         String dirtyKey = "video:dirty:" + typeLower;
 
-        // 1. DB에서 방금 업데이트된 따끈따끈한 '진짜 총개수'를 가져옵니다.
-        long realCount = interactionRepository.countByVideoIdAndType(videoId, type);
-
-        // 2. Redis Hash에 진짜 개수 덮어쓰기 (화면 표시용)
-        stringRedisTemplate.opsForHash().put(countKey, videoIdStr, String.valueOf(realCount));
-
-        log.info("[Interaction] 비디오 {}의 {} 카운트 갱신 완료 -> {}개", videoIdStr, typeLower, realCount);
-
+        // 1. [Cache Miss 처리] Redis에 값이 없는 경우
+        if (Boolean.FALSE.equals(stringRedisTemplate.opsForHash().hasKey(countKey, videoIdStr))) {
+            // 앞선 로직에서 이미 DB flush()가 일어났으므로, DB 값 자체가 최신값
+            long exactCount = interactionRepository.countByVideoIdAndType(videoId, type);
+            stringRedisTemplate.opsForHash().put(countKey, videoIdStr, String.valueOf(exactCount));
+            // 캐시 미스 시에는 이미 정확한 값을 세팅했으므로 increment를 건너뜀
+        } else {
+            // 2. [Cache Hit 처리] 캐시에 값이 있는 경우에만 delta 증감 연산 수행
+            stringRedisTemplate.opsForHash().increment(countKey, videoIdStr, delta);
+        }
         // 3. 10분 뒤 VideoMetadata에 반영하기 위해 스케줄러 대기열(Set)에 추가
         stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
     }

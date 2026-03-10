@@ -42,6 +42,8 @@ public enum ErrorCode {
     VIDEO_NOT_READY("VIDEO-403-002", 403, "비디오가 준비되지 않았습니다."),
     VIDEO_DELETION_FORBIDDEN("VIDEO-403-003", 403, "요청한 영상을 삭제할 권한이 없습니다."),
     VIDEO_NOT_FOUND("VIDEO-404-001", 404, "요청한 비디오를 찾을 수 없습니다."),
+    VIDEO_STATUS_INVALID_VISIBILITY("VIDEO-400-006", 400, "활성(PUBLIC) 또는 비활성(PRIVATE)만 설정할 수 있습니다."),
+    VIDEO_STATUS_UPDATE_FORBIDDEN("VIDEO-403-004", 403, "본인 콘텐츠의 상태만 변경할 수 있습니다."),
 
     AD_NOT_FOUND("AD-404-001", 404, "광고를 찾을 수 없습니다."),
 
@@ -53,25 +55,40 @@ public enum ErrorCode {
     POLICY_NOT_FOUND("POINT-404-001", 404, "지원하지 않는 정책입니다."),
 
     IO_EXCEPTION("IOE-500-001", 400, "IOException이 발생했습니다."),
-    // ===== Bookmark (찜하기 관련 세분화) =====
+
+    // ===== Bookmark =====
     BOOKMARK_CONFLICT("BOOKMARK-409-001", 409, "이미 처리 중이거나 완료된 찜하기 요청입니다. 잠시 후 다시 시도해주세요."),
     BOOKMARK_NOT_FOUND("BOOKMARK-404-001", 404, "해당 찜하기 내역을 찾을 수 없습니다."),
 
-    // ===== Interaction (좋아요/싫어요 관련 세분화) =====
+    // ===== Interaction =====
     INTERACTION_CONFLICT("INTERACTION-409-001", 409, "이미 처리 중이거나 완료된 반응 요청입니다. 잠시 후 다시 시도해주세요."),
 
-    // ===== System / Sync (백그라운드 스케줄러 & Redis 세분화) =====
+    // ===== System / Sync =====
     REDIS_DATA_PARSING_ERROR("SYSTEM-500-001", 500, "Redis 캐시 데이터 파싱 중 오류가 발생했습니다."),
     DB_SYNC_ERROR("SYSTEM-500-002", 500, "상호작용 계산 데이터베이스 동기화 중 오류가 발생했습니다."),
 
     // ===== Tag =====
     TAG_NOT_FOUND("TAG-404-001", 404, "태그를 찾을 수 없습니다."),
 
+    // ===== Comment =====
+    COMMENT_NOT_FOUND("COMMENT-404-001", 404, "댓글을 찾을 수 없습니다."),
+    COMMENT_FORBIDDEN("COMMENT-403-001", 403, "본인 댓글만 수정/삭제할 수 있습니다."),
+    COMMENT_ALREADY_EXISTS("COMMENT-409-001", 409, "이미 해당 영상에 댓글을 작성했습니다."),
+
+    // ===== VideoMetadata =====
+    VIDEO_METADATA_NOT_FOUND("VIDEO-METADATA-404-001", 404, "비디오 메타데이터를 찾을 수 없습니다."),
+
     // ===== U+ =====
     UPLUS_NOT_REGISTERED("UPLUS-404-001", 404, "U+ 가입 정보가 없습니다."),
     UPLUS_ALREADY_REGISTERED("UPLUS-409-001", 409, "이미 U+ 가입 정보가 등록되어 있습니다."),
-    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요.");
-    ;
+    UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
+
+    // ===== Sync =====
+    ELASTICSEARCH_INIT_ERROR("SYSTEM-500-003", 500, "Elasticsearch 인덱스 초기화 중 오류가 발생했습니다."),
+
+    // ===== Onboarding =====
+    INVALID_ONBOARDING_STATE("ONBOARDING-400-001", 400, "온보딩 필수 단계가 완료되지 않았습니다. 태그를 1개 이상 선택해주세요."),
+    ELASTICSEARCH_SYNC_ERROR("SYSTEM-500-004", 500, "Elasticsearch 문서 동기화 중 오류가 발생했습니다.");
 
     private final String code;
     private final int httpStatus;
