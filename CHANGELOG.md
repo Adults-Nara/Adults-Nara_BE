@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.9](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.8...v0.9.9) (2026-03-10)
+
+
+### Bug Fixes
+
+* 4vCPU, 8GB로 스펙 업 ([1809446](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1809446522afe947a0e9eb8357d3cc7aac376b27))
+* 4vCPU, 8GB로 스펙 업 ([5c8d801](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5c8d8013e1a495ff17e10ae437cbbd3749cc752a))
+
 ## [0.9.8](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.7...v0.9.8) (2026-03-10)
 
 
