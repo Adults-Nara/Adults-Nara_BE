@@ -6,11 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.stereotype.Component;
 
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,19 +67,19 @@ public class MonthlyReportWriter implements ItemWriter<MonthlyReportDto> {
                     ps.setLong(1, dto.getId());
                     ps.setLong(2, dto.getUserId());
                     ps.setString(3, dto.getReportYearMonth());
-                    ps.setLong(4, dto.getTotalWatchSeconds() != null ? dto.getTotalWatchSeconds() : 0L);
-                    ps.setInt(5, dto.getTotalWatchCount() != null ? dto.getTotalWatchCount() : 0);
-                    ps.setInt(6, dto.getCompletedCount() != null ? dto.getCompletedCount() : 0);
-                    ps.setBigDecimal(7, dto.getCompletionRate() != null ? dto.getCompletionRate() : java.math.BigDecimal.ZERO);
-                    ps.setInt(8, dto.getDawnCount() != null ? dto.getDawnCount() : 0);
-                    ps.setInt(9, dto.getMorningCount() != null ? dto.getMorningCount() : 0);
-                    ps.setInt(10, dto.getAfternoonCount() != null ? dto.getAfternoonCount() : 0);
-                    ps.setInt(11, dto.getEveningCount() != null ? dto.getEveningCount() : 0);
-                    ps.setInt(12, dto.getNightCount() != null ? dto.getNightCount() : 0);
+                    ps.setLong(4, dto.getTotalWatchSeconds());
+                    ps.setInt(5, dto.getTotalWatchCount());
+                    ps.setInt(6, dto.getCompletedCount());
+                    ps.setBigDecimal(7, dto.getCompletionRate());
+                    ps.setInt(8, dto.getDawnCount());
+                    ps.setInt(9, dto.getMorningCount());
+                    ps.setInt(10, dto.getAfternoonCount());
+                    ps.setInt(11, dto.getEveningCount());
+                    ps.setInt(12, dto.getNightCount());
                     ps.setString(13, dto.getPeakTimeSlot());
-                    ps.setInt(14, dto.getLongestSessionSeconds() != null ? dto.getLongestSessionSeconds() : 0);
+                    ps.setInt(14, dto.getLongestSessionSeconds());
                     ps.setString(15, dto.getMostWatchedTagName());
-                    ps.setInt(16, dto.getDiversityScore() != null ? dto.getDiversityScore() : 0);
+                    ps.setInt(16, dto.getDiversityScore());
                 }
         );
 

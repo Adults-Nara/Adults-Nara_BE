@@ -45,7 +45,6 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
         this.rangeFrom = OffsetDateTime.parse(rangeFromStr);
         this.rangeTo = OffsetDateTime.parse(rangeToStr);
 
-        // DateTimeFormatter formatter 줄 삭제됨
         LocalDate firstDayOfMonth = LocalDate.parse(yearMonth + "-01");
         this.startDate = firstDayOfMonth;
         this.endDate = firstDayOfMonth.withDayOfMonth(firstDayOfMonth.lengthOfMonth());
@@ -56,8 +55,8 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
 
     @Override
     public MonthlyReportDto process(Long userId) {
-        // 해당 사용자의 월간 태그 통계 조회
-        List<TagStats> tagStatsList = tagStatsRepository.findByUserIdAndStatsDateBetween(
+        // N+1 해결: Tag를 JOIN FETCH로 한 번에 로딩
+        List<TagStats> tagStatsList = tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 userId, startDate, endDate
         );
 
@@ -86,32 +85,22 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                 .filter(WatchHistory::isCompleted)
                 .count();
 
-        // 완주율 계산
-        BigDecimal completionRate = BigDecimal.ZERO;
-        if (!watchHistories.isEmpty()) {
-            completionRate = BigDecimal.valueOf(completedCount)
-                    .multiply(BigDecimal.valueOf(100))
-                    .divide(BigDecimal.valueOf(watchHistories.size()), 2, RoundingMode.HALF_UP);
-        }
+        // 완주율 계산 (빈 리스트는 이미 체크됨)
+        BigDecimal completionRate = BigDecimal.valueOf(completedCount)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(watchHistories.size()), 2, RoundingMode.HALF_UP);
 
-        // 시간대별 집계
-        Map<String, Integer> timeSlotCounts = new HashMap<>();
-        timeSlotCounts.put("DAWN", 0);
-        timeSlotCounts.put("MORNING", 0);
-        timeSlotCounts.put("AFTERNOON", 0);
-        timeSlotCounts.put("EVENING", 0);
-        timeSlotCounts.put("NIGHT", 0);
+        // 시간대별 집계 (Stream으로 개선)
+        Map<String, Long> timeSlotCounts = watchHistories.stream()
+                .collect(Collectors.groupingBy(
+                        wh -> getTimeSlot(wh.getCreatedAt().getHour()),
+                        Collectors.counting()
+                ));
 
-        for (WatchHistory wh : watchHistories) {
-            int hour = wh.getCreatedAt().getHour();
-            String timeSlot = getTimeSlot(hour);
-            timeSlotCounts.put(timeSlot, timeSlotCounts.get(timeSlot) + 1);
-        }
-
-        // 주 시청 시간대
+        // 주 시청 시간대 (명시적 람다)
         String peakTimeSlot = timeSlotCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
+                .map(entry -> entry.getKey())
                 .orElse("MORNING");
 
         // 최장 시청 세션
@@ -120,10 +109,15 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                 .max()
                 .orElse(0);
 
-        // 가장 많이 본 태그
+        // 가장 많이 본 태그 (월 전체 합산)
         String mostWatchedTagName = tagStatsList.stream()
-                .max(Comparator.comparing(TagStats::getTotalViewTime))
-                .map(ts -> ts.getTag().getTagName())
+                .collect(Collectors.groupingBy(
+                        TagStats::getTag,
+                        Collectors.summingLong(TagStats::getTotalViewTime)
+                ))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(entry -> entry.getKey().getTagName())
                 .orElse("없음");
 
         // 다양성 점수 (시청한 태그 수 * 20)
@@ -143,11 +137,11 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
                 .totalWatchCount(watchHistories.size())
                 .completedCount(completedCount)
                 .completionRate(completionRate)
-                .dawnCount(timeSlotCounts.get("DAWN"))
-                .morningCount(timeSlotCounts.get("MORNING"))
-                .afternoonCount(timeSlotCounts.get("AFTERNOON"))
-                .eveningCount(timeSlotCounts.get("EVENING"))
-                .nightCount(timeSlotCounts.get("NIGHT"))
+                .dawnCount(timeSlotCounts.getOrDefault("DAWN", 0L).intValue())
+                .morningCount(timeSlotCounts.getOrDefault("MORNING", 0L).intValue())
+                .afternoonCount(timeSlotCounts.getOrDefault("AFTERNOON", 0L).intValue())
+                .eveningCount(timeSlotCounts.getOrDefault("EVENING", 0L).intValue())
+                .nightCount(timeSlotCounts.getOrDefault("NIGHT", 0L).intValue())
                 .peakTimeSlot(peakTimeSlot)
                 .longestSessionSeconds(longestSessionSeconds)
                 .mostWatchedTagName(mostWatchedTagName)
