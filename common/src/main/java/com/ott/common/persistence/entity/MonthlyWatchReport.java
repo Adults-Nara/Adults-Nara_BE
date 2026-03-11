@@ -120,4 +120,20 @@ public class MonthlyWatchReport extends BaseEntity {
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
     }
+
+    public void update(MonthlyWatchReport source) {
+        this.totalWatchSeconds = source.totalWatchSeconds;
+        this.totalWatchCount = source.totalWatchCount;
+        this.completedCount = source.completedCount;
+        this.completionRate = source.completionRate;
+        this.dawnCount = source.dawnCount;
+        this.morningCount = source.morningCount;
+        this.afternoonCount = source.afternoonCount;
+        this.eveningCount = source.eveningCount;
+        this.nightCount = source.nightCount;
+        this.peakTimeSlot = source.peakTimeSlot;
+        this.longestSessionSeconds = source.longestSessionSeconds;
+        this.mostWatchedTagName = source.mostWatchedTagName;
+        this.diversityScore = source.diversityScore;
+    }
 }

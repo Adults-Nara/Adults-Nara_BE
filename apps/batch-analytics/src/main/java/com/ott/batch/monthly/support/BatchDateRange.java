@@ -8,9 +8,13 @@ import java.time.ZoneId;
  * 배치 작업에서 사용하는 날짜 범위 유틸리티
  * - KST 기준으로 통일
  */
-public class BatchDateRange {
+public final class BatchDateRange {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    private BatchDateRange() {
+        // 유틸리티 클래스는 인스턴스화할 수 없습니다.
+    }
 
     /**
      * 월의 첫날 00:00:00 (KST)

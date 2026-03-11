@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -11,6 +12,7 @@ import java.time.LocalDate;
  * Step 1: 태그별 통계 DTO
  */
 @Getter
+@Setter  // 추가!
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

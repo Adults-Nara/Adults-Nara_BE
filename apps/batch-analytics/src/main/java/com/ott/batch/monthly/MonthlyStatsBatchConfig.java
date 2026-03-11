@@ -63,11 +63,18 @@ public class MonthlyStatsBatchConfig {
      */
     @Bean
     @JobScope
-    public Step monthlyTagStatsStep() {
+    public Step monthlyTagStatsStep(
+            @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
+            @Value("#{jobParameters['rangeTo']}") String rangeTo) {
+
         log.debug("[monthlyTagStatsStep] Step 빌드");
+
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
                 .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(tagStatItemReader(null, null))
+                .reader(tagStatReader.reader(
+                        OffsetDateTime.parse(rangeFrom),
+                        OffsetDateTime.parse(rangeTo)
+                ))
                 .processor(tagStatProcessor)
                 .writer(tagStatWriter)
                 .build();
@@ -78,41 +85,16 @@ public class MonthlyStatsBatchConfig {
      */
     @Bean
     @JobScope
-    public Step monthlyReportStep() {
+    public Step monthlyReportStep(
+            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
+
         log.debug("[monthlyReportStep] Step 빌드");
+
         return new StepBuilder("monthlyReportStep", jobRepository)
                 .<Long, MonthlyReportDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(monthlyReportItemReader(null))
+                .reader(monthlyReportReader.reader(yearMonth))
                 .processor(monthlyReportProcessor)
                 .writer(monthlyReportWriter)
                 .build();
-    }
-
-    /**
-     * TagStat Reader
-     */
-    @Bean
-    @StepScope
-    public ItemReader<TagStatDto> tagStatItemReader(
-            @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
-            @Value("#{jobParameters['rangeTo']}") String rangeTo) {
-        log.info("[tagStatItemReader] Reader 생성: {} ~ {}", rangeFrom, rangeTo);
-
-        OffsetDateTime from = OffsetDateTime.parse(rangeFrom);
-        OffsetDateTime to = OffsetDateTime.parse(rangeTo);
-
-        return tagStatReader.reader(from, to);
-    }
-
-    /**
-     * MonthlyReport Reader
-     */
-    @Bean
-    @StepScope
-    public ItemReader<Long> monthlyReportItemReader(
-            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
-        log.info("[monthlyReportItemReader] Reader 생성: yearMonth={}", yearMonth);
-
-        return monthlyReportReader.reader(yearMonth);
     }
 }

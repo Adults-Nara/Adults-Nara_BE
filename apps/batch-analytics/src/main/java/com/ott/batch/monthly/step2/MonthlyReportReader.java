@@ -1,5 +1,6 @@
 package com.ott.batch.monthly.step2;
 
+import com.ott.batch.monthly.support.BatchDateRange;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
@@ -7,7 +8,6 @@ import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuild
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
-import java.time.LocalDate;
 import java.time.YearMonth;
 
 @Slf4j
@@ -18,10 +18,9 @@ public class MonthlyReportReader {
     private final DataSource dataSource;
 
     public JdbcCursorItemReader<Long> reader(String yearMonth) {
-        LocalDate firstDayOfMonth = YearMonth.parse(yearMonth).atDay(1);
-        LocalDate lastDayOfMonth = YearMonth.parse(yearMonth).atEndOfMonth();
+        YearMonth ym = YearMonth.parse(yearMonth);
 
-        log.debug("[MonthlyReportReader] SQL 준비 완료. 기간: {} ~ {}", firstDayOfMonth, lastDayOfMonth);
+        log.debug("[MonthlyReportReader] SQL 준비 완료. 기간: {}", yearMonth);
 
         return new JdbcCursorItemReaderBuilder<Long>()
                 .name("monthlyReportItemReader")
@@ -35,8 +34,8 @@ public class MonthlyReportReader {
                     ORDER BY wh.user_id
                     """)
                 .preparedStatementSetter(ps -> {
-                    ps.setObject(1, firstDayOfMonth.atStartOfDay().toString() + "+09:00");
-                    ps.setObject(2, lastDayOfMonth.plusDays(1).atStartOfDay().toString() + "+09:00");
+                    ps.setObject(1, BatchDateRange.rangeFrom(ym));
+                    ps.setObject(2, BatchDateRange.rangeTo(ym));
                 })
                 .rowMapper((rs, rowNum) -> rs.getLong("user_id"))
                 .build();

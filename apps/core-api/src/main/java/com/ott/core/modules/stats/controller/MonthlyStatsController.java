@@ -2,6 +2,7 @@ package com.ott.core.modules.stats.controller;
 
 import com.ott.core.modules.stats.dto.MonthlyStatsResponse;
 import com.ott.core.modules.stats.service.MonthlyStatsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.util.regex.Pattern;
 /**
  * 월간 통계 API Controller
  */
+@Tag(name = "월간 통계 배치", description = "월간 시청 통계 배치 작업 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/statistics/monthly")

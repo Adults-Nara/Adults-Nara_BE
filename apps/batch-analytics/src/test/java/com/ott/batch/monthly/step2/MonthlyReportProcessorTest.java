@@ -70,7 +70,7 @@ class MonthlyReportProcessorTest {
                 createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 900, 1, 0)
         );
 
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
@@ -96,7 +96,7 @@ class MonthlyReportProcessorTest {
     void returnNullForNoTagStats() throws Exception {
         // Given
         Long userId = 1L;
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(Collections.emptyList());
 
@@ -123,7 +123,7 @@ class MonthlyReportProcessorTest {
                 createTagStats(user, tag3, LocalDate.of(2026, 3, 3), 900, 1, 0)
         );
 
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
@@ -156,7 +156,7 @@ class MonthlyReportProcessorTest {
                 createTagStats(user, tag3, LocalDate.of(2026, 3, 3), 1800, 1, 1)
         );
 
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
@@ -185,7 +185,7 @@ class MonthlyReportProcessorTest {
                 createTagStats(user, tag2, LocalDate.of(2026, 3, 2), 5400, 1, 1)  // 최대
         );
 
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 
@@ -213,7 +213,7 @@ class MonthlyReportProcessorTest {
                 createTagStats(user, tag, LocalDate.of(2026, 3, 2), 1800, 3, 2)   // 3회 중 2회 완주
         );
 
-        when(tagStatsRepository.findByUserIdAndStatsDateBetween(
+        when(tagStatsRepository.findByUserIdAndStatsDateBetweenWithTag(
                 eq(userId), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(tagStatsList);
 

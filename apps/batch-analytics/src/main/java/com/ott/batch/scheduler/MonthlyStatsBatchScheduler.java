@@ -58,7 +58,9 @@ public class MonthlyStatsBatchScheduler {
     /**
      * 수동 실행용 메서드
      */
-    public void runManually(String yearMonth) throws Exception {
+    public void runManually(String yearMonth) throws JobInstanceAlreadyCompleteException,
+            JobExecutionAlreadyRunningException, JobParametersInvalidException, JobRestartException {
+
         YearMonth ym = YearMonth.parse(yearMonth);
 
         OffsetDateTime rangeFrom = BatchDateRange.rangeFrom(ym);

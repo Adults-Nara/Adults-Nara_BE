@@ -2,25 +2,37 @@ package com.ott.batch.monthly.step1;
 
 import com.ott.batch.monthly.dto.TagStatDto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.annotation.BeforeStep;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-/**
- * Step 1: 태그별 통계 Processor
- * (현재는 pass-through만 수행)
- */
+import java.time.LocalDate;
+import java.time.YearMonth;
+
 @Slf4j
 @Component
 public class TagStatProcessor implements ItemProcessor<TagStatDto, TagStatDto> {
 
+    private LocalDate statsDate;
+
+    @BeforeStep
+    public void beforeStep(StepExecution stepExecution) {
+        String yearMonth = stepExecution.getJobParameters().getString("yearMonth");
+        this.statsDate = YearMonth.parse(yearMonth).atDay(1);
+        log.debug("[TagStatProcessor] statsDate 설정: {}", statsDate);
+    }
+
     @Override
     public TagStatDto process(TagStatDto item) {
-        // 필요시 검증 로직 추가
         if (item.getViewCount() == null || item.getViewCount() <= 0) {
             log.warn("[TagStatProcessor] 유효하지 않은 데이터 스킵: {}", item);
-            return null;  // null 반환 시 해당 아이템 skip
+            return null;
         }
 
-        return item;  // pass-through
+        // statsDate 설정
+        item.setStatsDate(statsDate);
+
+        return item;
     }
 }

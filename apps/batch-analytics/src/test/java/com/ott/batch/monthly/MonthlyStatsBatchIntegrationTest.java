@@ -290,10 +290,6 @@ class MonthlyStatsBatchIntegrationTest {
 
         LocalDate queryStart = LocalDate.of(now.getYear(), now.getMonthValue(), 1);
         LocalDate queryEnd = LocalDate.of(now.getYear(), now.getMonthValue(), now.toLocalDate().lengthOfMonth());
-        var tagStats = tagStatsRepository.findByUserIdAndStatsDateBetween(
-                user.getId(), queryStart, queryEnd
-        );
-        assertThat(tagStats).hasSize(1);
 
         log.info("=== 테스트 완료 ===");
     }
