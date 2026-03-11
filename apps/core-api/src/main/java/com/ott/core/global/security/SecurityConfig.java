@@ -61,7 +61,7 @@ public class SecurityConfig {
                                 // --- Cache Warmup / Search Sync: BackofficeController로 통합 ---
                                 .requestMatchers(HttpMethod.POST, "/api/v1/backoffice/bookmarks/warmup").hasRole("ADMIN")
                                 .requestMatchers(HttpMethod.POST, "/api/v1/backoffice/interactions/warmup").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/backoffice/search/sync").hasRole("ADMIN")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/**").hasRole("ADMIN")
 
                                 // ===================================================================
                                 // 1. 완전 공개 (Public)
