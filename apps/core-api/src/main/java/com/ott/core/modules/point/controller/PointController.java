@@ -7,6 +7,10 @@ import com.ott.core.modules.point.dto.ProductPurchaseRequest;
 import com.ott.core.modules.point.dto.UserPointBalanceResponse;
 import com.ott.core.modules.point.service.PointService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,12 +34,14 @@ public class PointController {
         return ApiResponse.success(pointService.findUserCurrentPoint(Long.parseLong(userId)));
     }
 
-    @Operation(summary = "사용자 포인트 이력 조회", description = "사용자의 지난 포인트 적립/차감/사용 내역을 최신순으로 조회합니다.")
+    @Operation(summary = "사용자 포인트 이력 조회", description = "사용자의 지난 포인트 적립/차감/사용 내역을 최신순으로 페이징하여 조회합니다.")
     @GetMapping("/history")
-    public ApiResponse<List<PointTransactionHistoryResponse>> getMyPointTransactionHistory(
+    public ApiResponse<Page<PointTransactionHistoryResponse>> getMyPointTransactionHistory(
             @AuthenticationPrincipal String userId,
-            PointTransactionHistoryRequest req) {
-        return ApiResponse.success(pointService.findUserPointHistory(Long.parseLong(userId), req));
+            PointTransactionHistoryRequest req,
+            @PageableDefault(size = 20) Pageable pageable) { // Pageable 파라미터 추가
+
+        return ApiResponse.success(pointService.findUserPointHistory(Long.parseLong(userId), req, pageable));
     }
 
     @Operation(summary = "상품 구매 보상 포인트 적립 (보너스 지급)", description = "상품을 구매한 사용자에게 거래 내역에 따른 보상 포인트를 즉시 적립합니다.")

@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,14 +126,14 @@ public class PointService {
     }
 
     @Transactional(readOnly = true)
-    public List<PointTransactionHistoryResponse> findUserPointHistory(Long userId, PointTransactionHistoryRequest req) {
-        ZoneId kstZone = ZoneId.of("Asia/Seoul");
+    public Page<PointTransactionHistoryResponse> findUserPointHistory(
+            Long userId, PointTransactionHistoryRequest req, Pageable pageable) {
 
+        ZoneId kstZone = ZoneId.of("Asia/Seoul");
         OffsetDateTime start = LocalDate.parse(req.getStartDate())
                 .atStartOfDay(kstZone)
                 .withZoneSameInstant(ZoneOffset.UTC)
                 .toOffsetDateTime();
-
         OffsetDateTime end = LocalDate.parse(req.getEndDate())
                 .plusDays(1)
                 .atStartOfDay(kstZone)
@@ -139,10 +141,9 @@ public class PointService {
                 .toOffsetDateTime()
                 .minusNanos(1);
 
-        List<PointTransaction> transactions = pointTransactionRepository
-                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
-        return transactions.stream()
-                .map(PointTransactionHistoryResponse::from)
-                .toList();
+        Page<PointTransaction> transactions = pointTransactionRepository
+                .findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end, pageable);
+
+        return transactions.map(PointTransactionHistoryResponse::from);
     }
 }

@@ -23,6 +23,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -242,16 +246,19 @@ class PointServiceTest {
                 .type(PointTransaction.TransactionType.PURCHASE_BONUS)
                 .build();
 
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<PointTransaction> page = new PageImpl<>(List.of(tx1, tx2), pageable, 2);
+
         given(pointTransactionRepository.findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-                userId, startOfDay, endOfDay
-        )).willReturn(List.of(tx1, tx2));
+                userId, startOfDay, endOfDay, pageable
+        )).willReturn(page);
 
         // when
-        List<PointTransactionHistoryResponse> history = pointService.findUserPointHistory(userId, request);
+        Page<PointTransactionHistoryResponse> history = pointService.findUserPointHistory(userId, request, pageable);
 
         // then
-        assertThat(history).hasSize(2);
-        assertThat(history.get(0).getTransactionId()).isEqualTo(1L);
-        assertThat(history.get(1).getTransactionId()).isEqualTo(2L);
+        assertThat(history.getContent()).hasSize(2);
+        assertThat(history.getContent().get(0).getTransactionId()).isEqualTo(1L);
+        assertThat(history.getContent().get(1).getTransactionId()).isEqualTo(2L);
     }
 }
