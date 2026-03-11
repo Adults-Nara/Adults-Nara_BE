@@ -28,7 +28,10 @@ public class UPlusSubscriptionDto {
         }
 
         private static String maskPhoneNumber(String phone) {
-            if (phone == null || phone.length() < 11) return phone;
+            if (phone == null || phone.length() < 10) return phone;
+            if (phone.length() == 10) {
+                return phone.substring(0, 3) + "-***-" + phone.substring(6);
+            }
             return phone.substring(0, 3) + "-****-" + phone.substring(7);
         }
     }
