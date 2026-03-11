@@ -71,7 +71,7 @@ public class RankingService {
         // 시청 기록일괄 조회
         Map<Long, Integer> progressMap = new HashMap<>();
         if (currentUserId != null) {
-            List<WatchHistory> histories = watchHistoryRepository.findByUserIdAndVideoMetadata_VideoIdIn(currentUserId, rankedVideoIds);
+            List<WatchHistory> histories = watchHistoryRepository.findWithVideoMetadataByUserIdAndVideoIdIn(currentUserId, rankedVideoIds);
             for (WatchHistory wh : histories) {
                 Integer duration = wh.getVideoMetadata().getDuration();
                 Integer lastPos = wh.getLastPosition();

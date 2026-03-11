@@ -18,6 +18,7 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class VideoSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
@@ -91,7 +93,7 @@ public class VideoSearchService {
         Map<Long, Integer> progressMap = new HashMap<>();
         if (currentUserId != null) {
             // (주의: repository에 findByUserIdAndVideoIdIn 메서드가 있다고 가정)
-            List<WatchHistory> histories = watchHistoryRepository.findByUserIdAndVideoMetadata_VideoIdIn(currentUserId, videoIds);
+            List<WatchHistory> histories = watchHistoryRepository.findWithVideoMetadataByUserIdAndVideoIdIn(currentUserId, videoIds);
             for (WatchHistory wh : histories) {
                 Integer duration = wh.getVideoMetadata().getDuration();
                 Integer lastPos = wh.getLastPosition();
