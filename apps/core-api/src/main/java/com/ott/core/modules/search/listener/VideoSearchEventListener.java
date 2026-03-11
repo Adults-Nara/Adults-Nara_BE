@@ -86,4 +86,8 @@ public class VideoSearchEventListener {
             throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR);
         }
     }
+    @Recover
+    public void recover(Exception e, VideoIndexRequestedEvent event) {
+        log.error("🚨 [Search] ES 검색 문서 동기화 최종 실패! 수동 복구(배치 동기화)가 필요합니다. - videoId: {}, 원인: {}", event.videoId(), e.getMessage());
+    }
 }
