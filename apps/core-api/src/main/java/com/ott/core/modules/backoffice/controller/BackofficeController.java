@@ -60,18 +60,21 @@ public class BackofficeController {
         return ApiResponse.success(PageResponse.from(result));
     }
 
-    @Operation(summary = "콘텐츠 상세 조회", description = "업로더가 특정 콘텐츠의 상세 정보를 조회합니다.")
+    @Operation(summary = "콘텐츠 상세 조회", description = "업로더는 본인 컨텐츠만, 어드민은 모든 콘텐츠의 상세 정보를 조회합니다.")
     @GetMapping("/contents/{videoId}")
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasAnyRole('UPLOADER', 'ADMIN')")
     public ApiResponse<ContentDetailResponse> getContentDetail(
+            Authentication authentication,
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId
     ) {
-        ContentDetailResponse response = backofficeService.getContentDetail(Long.parseLong(userId), videoId);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        ContentDetailResponse response = backofficeService.getContentDetail(Long.parseLong(userId), isAdmin, videoId);
         return ApiResponse.success(response);
     }
 
-    @Operation(summary = "콘텐츠 수정", description = "업로더가 콘텐츠의 썸네일 이미지 및 메타데이터를 수정합니다.")
+    @Operation(summary = "콘텐츠 수정", description = "업로더는 본인 컨텐츠만, 어드민은 모든 콘텐츠의 썸네일 이미지 및 메타데이터를 수정합니다.")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             required = true,
             content = @Content(
@@ -84,14 +87,17 @@ public class BackofficeController {
             )
     )
     @PatchMapping(value = "/contents/{videoId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasAnyRole('UPLOADER', 'ADMIN')")
     public ApiResponse<ContentUpdateResponse> updateContent(
+            Authentication authentication,
             @AuthenticationPrincipal String userId,
             @PathVariable("videoId") Long videoId,
             @RequestPart(value = "image", required = false) MultipartFile image,
             @RequestPart("data") ContentUpdateRequest request
     ) {
-        ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), videoId, image, request);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        ContentUpdateResponse response = backofficeService.updateContent(Long.parseLong(userId), isAdmin, videoId, image, request);
         return ApiResponse.success(response);
     }
 
