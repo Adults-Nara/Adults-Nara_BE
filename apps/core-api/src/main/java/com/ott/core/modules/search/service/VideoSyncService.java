@@ -48,7 +48,7 @@ public class VideoSyncService {
 
         while (hasNext) {
             // findAll 대신 새로 만든 findSliceBy 호출 (Page -> Slice로 변경)
-            Slice<VideoMetadata> videoSlice = videoMetadataRepository.findSliceBy(PageRequest.of(page, chunkSize));
+            Slice<VideoMetadata> videoSlice = videoMetadataRepository.findAllSliceBy(PageRequest.of(page, chunkSize));
 
             if (videoSlice.isEmpty()) break;
 

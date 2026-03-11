@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -52,7 +54,7 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     // =========================================================================
 
     // COUNT 쿼리 없이 딱 (요청한 사이즈 + 1)개만 가져와서 다음 페이지 여부만 판단하는 Slice
-    org.springframework.data.domain.Slice<VideoMetadata> findSliceBy(org.springframework.data.domain.Pageable pageable);
+    Slice<VideoMetadata> findAllSliceBy(Pageable pageable);
 
     // ADMIN 전용 삭제
     @Modifying(clearAutomatically = true, flushAutomatically = true)
