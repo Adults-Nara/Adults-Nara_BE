@@ -14,8 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/backoffice/auth")
-@RequiredArgsConstructor
 @Tag(name = "백오피스 인증 API", description = "업로더/관리자 로그인 및 회원가입")
 public class BackofficeAuthController {
 
@@ -35,6 +34,27 @@ public class BackofficeAuthController {
     private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = (int) TimeUnit.DAYS.toSeconds(90);
 
     private final BackofficeAuthService backofficeAuthService;
+
+    /**
+     * secureCookie: 배포 환경(HTTPS)에서는 true, 로컬(HTTP)에서는 false
+     *
+     * application.yml 설정:
+     *   oauth2:
+     *     state:
+     *       cookie-secure: true   # prod
+     *       cookie-secure: false  # local
+     *
+     * AuthController와 동일한 프로퍼티를 공유합니다.
+     */
+    private final boolean secureCookie;
+
+    public BackofficeAuthController(
+            BackofficeAuthService backofficeAuthService,
+            @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie
+    ) {
+        this.backofficeAuthService = backofficeAuthService;
+        this.secureCookie = secureCookie;
+    }
 
     /**
      * 백오피스 로그인 (이메일 + 비밀번호)
@@ -164,10 +184,10 @@ public class BackofficeAuthController {
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
-                .secure(true)
-                .path("/api/v1/backoffice/auth/token/refresh")  // 최소 권한 원칙: 필요한 경로에만 전송
+                .secure(secureCookie)
+                .path("/api/v1/backoffice/auth/token/refresh")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
     }
@@ -175,10 +195,10 @@ public class BackofficeAuthController {
     private void expireRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
-                .secure(true)
-                .path("/api/v1/backoffice/auth/token/refresh")  // 생성 시 path와 동일하게 맞춰야 쿠키가 정상 삭제됨
+                .secure(secureCookie)
+                .path("/api/v1/backoffice/auth/token/refresh")
                 .maxAge(0)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
     }

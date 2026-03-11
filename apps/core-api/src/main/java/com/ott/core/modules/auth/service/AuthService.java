@@ -29,8 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private static final String REFRESH_TOKEN_PREFIX = "refresh:token:";
-    // 90일 (초 단위)
-    private static final long REFRESH_TOKEN_TTL_SECONDS = 90L * 24 * 60 * 60;
+    private static final long REFRESH_TOKEN_TTL_SECONDS = TimeUnit.DAYS.toSeconds(90);
 
     private final KakaoOAuthService kakaoOAuthService;
     private final UserRepository userRepository;
@@ -40,6 +39,11 @@ public class AuthService {
 
     /**
      * 카카오 로그인 처리
+     *
+     * 탈퇴 후 재가입 시나리오:
+     * - oauth_id로 조회 시 deleted=true 레코드가 있으면 → 재활성화
+     * - email로 조회 시 deleted=true 레코드가 있으면 → oauth 연동 후 재활성화
+     * - 둘 다 없으면 → 신규 INSERT
      */
     @Transactional
     public LoginResponse kakaoLogin(String authorizationCode, String state) {
@@ -49,55 +53,63 @@ public class AuthService {
         // 2. 카카오 사용자 정보 조회
         KakaoUserInfoResponse kakaoUser = kakaoOAuthService.getUserInfo(tokenResponse.accessToken());
 
-        // 3. Find or Create
         String oauthProvider = "KAKAO";
         String oauthId = kakaoUser.oauthId();
 
-        Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(oauthProvider, oauthId);
+        // 3. oauth_id로 조회 (활성 + 탈퇴 포함)
+        Optional<User> byOauth = userRepository.findByOauthProviderAndOauthIdIncludingDeleted(oauthProvider, oauthId);
 
         boolean isNewUser;
         User user;
 
-        if (existingUser.isPresent()) {
-            user = existingUser.get();
-            isNewUser = false;
-            log.info("[카카오 로그인] 기존 사용자 로그인 - userId: {}, email: {}", user.getId(), user.getEmail());
-            updateProfileIfChanged(user, kakaoUser);
-        } else {
-            Optional<User> emailUser = Optional.empty();
-            if (kakaoUser.isEmailVerified()) {
-                emailUser = userRepository.findByEmailAndNotDeleted(kakaoUser.email());
+        if (byOauth.isPresent()) {
+            user = byOauth.get();
+            if (user.isDeleted()) {
+                // [재가입] 탈퇴했던 카카오 유저 → 재활성화
+                user.restore();
+                isNewUser = true; // 온보딩 다시 진행
+                log.info("[카카오 로그인] 탈퇴 후 재가입 (oauth) - userId: {}", user.getId());
             } else {
-                log.warn("[카카오 로그인] 미검증 이메일 - 이메일 기반 계정 연동 건너뜀. kakaoId: {}, email: {}",
-                        kakaoUser.oauthId(), kakaoUser.email());
-            }
-
-            if (emailUser.isPresent()) {
-                user = emailUser.get();
-                user.setOAuth(oauthProvider, oauthId);
                 isNewUser = false;
-                log.info("[카카오 로그인] 기존 이메일 사용자에 카카오 연동 - userId: {}", user.getId());
+                log.info("[카카오 로그인] 기존 사용자 로그인 - userId: {}", user.getId());
+            }
+            updateProfileIfChanged(user, kakaoUser);
+
+        } else {
+            // oauth_id 미존재 → email로 재시도
+            Optional<User> byEmail = findByEmailIncludingDeleted(kakaoUser, oauthProvider, oauthId);
+
+            if (byEmail.isPresent()) {
+                user = byEmail.get();
+                user.setOAuth(oauthProvider, oauthId);
+                if (user.isDeleted()) {
+                    // [재가입] 탈퇴했던 이메일 유저 → 재활성화
+                    user.restore();
+                    isNewUser = true;
+                    log.info("[카카오 로그인] 탈퇴 후 재가입 (email) - userId: {}", user.getId());
+                } else {
+                    isNewUser = false;
+                    log.info("[카카오 로그인] 이메일 기존 사용자에 카카오 연동 - userId: {}", user.getId());
+                }
             } else {
+                // 완전 신규
                 user = new User(
                         kakaoUser.email(),
                         kakaoUser.nickname(),
                         oauthProvider,
                         oauthId
                 );
-
                 if (kakaoUser.profileImageUrl() != null) {
                     user.changeProfileImage(kakaoUser.profileImageUrl());
                 }
-
                 userRepository.save(user);
                 pointRepository.save(UserPointBalance.builder()
                         .userId(user.getId())
                         .currentBalance(0)
                         .lastUpdatedAt(OffsetDateTime.now())
                         .build());
-
                 isNewUser = true;
-                log.info("[카카오 로그인] 신규 사용자 자동 회원가입 - userId: {}, email: {}", user.getId(), user.getEmail());
+                log.info("[카카오 로그인] 신규 사용자 회원가입 - userId: {}", user.getId());
             }
         }
 
@@ -158,7 +170,7 @@ public class AuthService {
         }
 
         if (!storedToken.equals(refreshToken)) {
-            log.warn("[토큰 갱신] Redis 저장 토큰 불일치 - 탈취 의심 - userId: {}", userId);
+            log.warn("[토큰 갱신] 토큰 불일치 - 탈취 의심 → 강제 로그아웃 - userId: {}", userId);
             // 탈취 의심 시 Redis 토큰 즉시 삭제 (강제 로그아웃)
             stringRedisTemplate.delete(redisKey);
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -172,7 +184,6 @@ public class AuthService {
 
         // 5. 새 AccessToken 발급
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole().name());
-
         log.info("[토큰 갱신] 새 AccessToken 발급 완료 - userId: {}", userId);
         return new TokenRefreshResponse(newAccessToken);
     }
@@ -192,6 +203,18 @@ public class AuthService {
     }
 
     // ====== Private Methods ======
+
+    /**
+     * 이메일로 유저 조회 (미검증 이메일은 연동 건너뜀, 탈퇴 유저 포함)
+     */
+    private Optional<User> findByEmailIncludingDeleted(KakaoUserInfoResponse kakaoUser,
+                                                       String oauthProvider, String oauthId) {
+        if (!kakaoUser.isEmailVerified()) {
+            log.warn("[카카오 로그인] 미검증 이메일 - 이메일 기반 계정 연동 건너뜀. kakaoId: {}", oauthId);
+            return Optional.empty();
+        }
+        return userRepository.findByEmailIncludingDeleted(kakaoUser.email());
+    }
 
     private void validateLoginStatus(User user) {
         if (!user.canLogin()) {

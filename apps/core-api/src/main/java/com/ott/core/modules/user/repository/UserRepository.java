@@ -16,18 +16,42 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    // OAuth 사용자 조회 (카카오 로그인 시 기존 사용자 찾기)
+    // ====== 활성 유저 조회 (deleted=false) ======
+
     @Query("SELECT u FROM User u WHERE u.oauthProvider = :oauthProvider AND u.oauthId = :oauthId AND u.deleted = false")
     Optional<User> findByOauthProviderAndOauthId(
             @Param("oauthProvider") String oauthProvider,
             @Param("oauthId") String oauthId
     );
-    // ✅ deleted = false 조건으로 변경
+
     @Query("SELECT u FROM User u WHERE u.email = :email AND u.deleted = false")
     Optional<User> findByEmailAndNotDeleted(@Param("email") String email);
 
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email AND u.deleted = false")
     boolean existsByEmailAndNotDeleted(@Param("email") String email);
+
+    Optional<User> findByEmail(String email);
+
+    // ====== 탈퇴 유저 포함 조회 (재가입 처리용) ======
+
+    /**
+     * oauth_id로 유저 조회 - 탈퇴(deleted=true) 유저 포함
+     * 재가입 시 기존 레코드를 재활성화하기 위해 사용
+     */
+    @Query("SELECT u FROM User u WHERE u.oauthProvider = :oauthProvider AND u.oauthId = :oauthId")
+    Optional<User> findByOauthProviderAndOauthIdIncludingDeleted(
+            @Param("oauthProvider") String oauthProvider,
+            @Param("oauthId") String oauthId
+    );
+
+    /**
+     * 이메일로 유저 조회 - 탈퇴(deleted=true) 유저 포함
+     * 재가입 시 이메일 기반 계정 연동을 위해 사용
+     */
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    Optional<User> findByEmailIncludingDeleted(@Param("email") String email);
+
+    // ====== 관리 쿼리 ======
 
     @Query("SELECT u FROM User u WHERE u.banned = :banned")
     Page<User> findByBanned(@Param("banned") BanStatus banned, Pageable pageable);
@@ -35,8 +59,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByBanned(BanStatus banned);
 
     long countByRole(UserRole role);
-
-    Optional<User> findByEmail(String email);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE User u SET u.banned = :banStatus, u.banReason = :banReason, " +
