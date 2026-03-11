@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -46,7 +47,7 @@ public class AuthController {
     private static final long CLOCK_SKEW_TOLERANCE_SECONDS = 60;
     private static final String STATE_NONCE_COOKIE = "oauth_state_nonce";
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-    private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = 90 * 24 * 60 * 60;
+    private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = (int) TimeUnit.DAYS.toSeconds(90);
 
     private final AuthService authService;
     private final OnboardingService onboardingService;
@@ -97,10 +98,11 @@ public class AuthController {
 
         Cookie nonceCookie = new Cookie(STATE_NONCE_COOKIE, nonce);
         nonceCookie.setHttpOnly(true);
-        nonceCookie.setSecure(true);
+        nonceCookie.setSecure(secureCookie);
         nonceCookie.setPath("/api/v1/auth/kakao");
         nonceCookie.setMaxAge((int) STATE_EXPIRY_SECONDS);
-        nonceCookie.setAttribute("SameSite", "None");
+        // SameSite=None은 Secure 필수. 로컬(http)에서는 Lax 사용
+        nonceCookie.setAttribute("SameSite", secureCookie ? "None" : "Lax");
         response.addCookie(nonceCookie);
 
         String loginUrl = "https://kauth.kakao.com/oauth/authorize"
@@ -135,10 +137,10 @@ public class AuthController {
 
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, loginResponse.refreshToken())
                 .httpOnly(true)
-                .secure(true)
-                .path("/")
+                .secure(secureCookie)
+                .path("/api/v1/auth/token/refresh")
                 .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .build();
         response.addHeader("Set-Cookie", refreshCookie.toString());
 
@@ -200,10 +202,10 @@ public class AuthController {
 
         ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
                 .httpOnly(true)
-                .secure(true)
-                .path("/")   // 생성 시 path("/")와 동일하게 맞춰야 쿠키가 정상 삭제됨
+                .secure(secureCookie)
+                .path("/api/v1/auth/token/refresh")
                 .maxAge(0)
-                .sameSite("None")
+                .sameSite(secureCookie ? "None" : "Lax")
                 .build();
         response.addHeader("Set-Cookie", expiredCookie.toString());
 
@@ -300,10 +302,10 @@ public class AuthController {
     private void clearNonceCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie(STATE_NONCE_COOKIE, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(secureCookie);
         cookie.setPath("/api/v1/auth/kakao");
         cookie.setMaxAge(0);
-        cookie.setAttribute("SameSite", "None");
+        cookie.setAttribute("SameSite", secureCookie ? "None" : "Lax");
         response.addCookie(cookie);
     }
 }

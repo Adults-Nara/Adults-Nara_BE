@@ -63,10 +63,10 @@ public class BackofficeService {
 
 
     @Transactional
-    public ContentUpdateResponse updateContent(long userId, Long videoId, MultipartFile image, ContentUpdateRequest request) {
+    public ContentUpdateResponse updateContent(long userId, boolean isAdmin, Long videoId, MultipartFile image, ContentUpdateRequest request) {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
-        if (!videoMetadata.getUserId().equals(userId)) {
+        if (!isAdmin && !videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
@@ -189,10 +189,10 @@ public class BackofficeService {
         userRepository.softDeleteUserByAdmin(request.userIds(),BanStatus.DELETED, OffsetDateTime.now());
     }
 
-    public ContentDetailResponse getContentDetail(long userId, Long videoId) {
+    public ContentDetailResponse getContentDetail(long userId, boolean isAdmin, Long videoId) {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
-        if (!videoMetadata.getUserId().equals(userId)) {
+        if (!isAdmin && !videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 

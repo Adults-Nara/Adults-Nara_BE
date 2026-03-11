@@ -25,6 +25,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -47,12 +48,18 @@ public class VideoSearchEventListener {
     public void handleVideoIndexRequest(VideoIndexRequestedEvent event) {
         log.debug("[Search] ES 검색 문서 동기화 시작: videoId={}", event.videoId());
         try {
-            // 1. RDB에서 최신 메타데이터 조회
-            VideoMetadata metadata = videoMetadataRepository.findByVideoIdAndDeleted(event.videoId(), false)
-                    .orElseThrow(() -> {
-                        log.warn("[Search] 동기화 대상 비디오를 찾을 수 없습니다. - videoId: {}", event.videoId());
-                        return new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND);
-                    });
+            // 1. RDB에서 메타데이터 조회 (삭제 여부 따지지 않고 무조건 조회)
+            Optional<VideoMetadata> metadataOpt = videoMetadataRepository.findByVideoId(event.videoId());
+
+            // DB에 데이터가 아예 없는 경우 (물리적 삭제 발생 시)
+            if (metadataOpt.isEmpty()) {
+                log.warn("[Search] DB에서 비디오를 찾을 수 없어 ES 문서를 삭제합니다. - videoId: {}", event.videoId());
+                videoSearchRepository.deleteById(event.videoId());
+                return;
+            }
+
+            // DB에 데이터가 존재하면(정상 또는 Soft Delete 상태) 덮어쓰기 로직 수행
+            VideoMetadata metadata = metadataOpt.get();
 
             List<Tag> tags = videoTagRepository.findTagsWithParentByVideoMetadataId(metadata.getId());
 
@@ -79,30 +86,8 @@ public class VideoSearchEventListener {
             throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR);
         }
     }
-
-    /**
-     * 비디오 삭제 이벤트 처리
-     */
-    @Async
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
-    public void handleVideoIndexDelete(VideoIndexDeletedEvent event) {
-        try {
-            // ES의 문서를 완전히 삭제하여 검색에서 바로 내림
-            videoSearchRepository.deleteById(event.videoId());
-            log.debug("[Search] ES 검색 문서 삭제 완료: videoId={}", event.videoId());
-        } catch (Exception e) {
-            log.warn("[Search] Elasticsearch 삭제 중 오류 발생 (재시도 예정) - videoId: {}", event.videoId());
-            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR);
-        }
-    }
     @Recover
     public void recover(Exception e, VideoIndexRequestedEvent event) {
         log.error("🚨 [Search] ES 검색 문서 동기화 최종 실패! 수동 복구(배치 동기화)가 필요합니다. - videoId: {}, 원인: {}", event.videoId(), e.getMessage());
-    }
-
-    @Recover
-    public void recoverDelete(Exception e, VideoIndexDeletedEvent event) {
-        log.error("🚨 [Search] ES 검색 문서 삭제 최종 실패! 엘라스틱서치에 좀비 데이터가 남아있을 수 있습니다. - videoId: {}, 원인: {}", event.videoId(), e.getMessage());
     }
 }

@@ -54,18 +54,14 @@ public class SecurityConfig {
                                 // ADMIN 전용
                                 // ===================================================================
 
-                                // --- 사용자 관리 ---
-                                .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.GET, "/api/v1/users/role/**").hasRole("ADMIN")
-                                .requestMatchers("/api/v1/users/*/ban").hasRole("ADMIN")
-                                .requestMatchers("/api/v1/users/*/unban").hasRole("ADMIN")
-
-                                // --- 관리자 백오피스 ---
+                                // --- 사용자 관리: UserController 제거 후 BackofficeController로 통합 ---
                                 .requestMatchers("/api/v1/backoffice/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/api/v1/backoffice/users/**").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/admin/warmup").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/interactions/admin/warmup").hasRole("ADMIN")
-                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/sync").hasRole("ADMIN")
+
+                                // --- Cache Warmup / Search Sync: BackofficeController로 통합 ---
+                                .requestMatchers(HttpMethod.POST, "/api/v1/backoffice/bookmarks/warmup").hasRole("ADMIN")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/backoffice/interactions/warmup").hasRole("ADMIN")
+                                .requestMatchers(HttpMethod.POST, "/api/v1/search/admin/**").hasRole("ADMIN")
 
                                 // ===================================================================
                                 // 1. 완전 공개 (Public)
@@ -75,15 +71,11 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/auth/kakao/**").permitAll()
                                 .requestMatchers("/api/v1/auth/token/refresh").permitAll()
 
-                                .requestMatchers("/api/v1/auth/onboarding/complete").authenticated()
-
                                 // --- 백오피스 인증 (로그인/회원가입/이메일체크/토큰갱신) ---
-                                // 중복 설정 제거 후 아래 한 곳에서만 관리
                                 .requestMatchers("/api/v1/backoffice/auth/login").permitAll()
                                 .requestMatchers("/api/v1/backoffice/auth/signup/**").permitAll()
                                 .requestMatchers("/api/v1/backoffice/auth/check-email").permitAll()
                                 .requestMatchers("/api/v1/backoffice/auth/token/refresh").permitAll()
-                                .requestMatchers("/api/v1/backoffice/auth/logout").authenticated()
 
                                 // --- 비디오 ---
                                 .requestMatchers("/api/v1/videos/*/play").permitAll()
@@ -104,7 +96,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "/api/v1/bookmarks/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/ranking/**").permitAll()
 
-                                // --- 댓글 목록 조회 --- (순서 변경 금지)
+                                // --- 댓글 목록 조회 --- (순서 변경 금지: 본인 댓글 조회가 전체 목록보다 먼저)
                                 .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/*/me").authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/comment/videos/**").permitAll()
 
@@ -116,19 +108,25 @@ public class SecurityConfig {
 
                                 // --- UPlus ---
                                 .requestMatchers(HttpMethod.GET, "/api/v1/uplus/plans").permitAll()
-                                .requestMatchers("/api/v1/uplus/**").authenticated()
 
                                 // ===================================================================
-                                // 2. 인증 필요 (로그인 사용자)
+                                // 2. 인증 필요 (로그인 사용자 공통)
                                 // ===================================================================
 
+                                // --- 카카오 인증 후 처리 ---
                                 .requestMatchers("/api/v1/auth/me").authenticated()
+                                .requestMatchers("/api/v1/auth/onboarding/complete").authenticated()
 
+                                // --- 사용자 본인 정보 관리 (UserController /me) ---
+                                .requestMatchers("/api/v1/users/me/**").authenticated()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/users/me").authenticated()
+
+                                // --- 인터랙션/북마크 쓰기 ---
                                 .requestMatchers(HttpMethod.POST, "/api/v1/interactions/**").authenticated()
                                 .requestMatchers(HttpMethod.POST, "/api/v1/bookmarks/**").authenticated()
 
-                                .requestMatchers(HttpMethod.PATCH, "/api/v1/users/{userId}").authenticated()
-                                .requestMatchers("/api/v1/users/{userId}/deactivate").authenticated()
+                                // --- UPlus 인증 필요 ---
+                                .requestMatchers("/api/v1/uplus/**").authenticated()
 
                                 // ===================================================================
                                 // 3. UPLOADER 전용
@@ -144,7 +142,13 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/backoffice/contents/**").hasAnyRole("UPLOADER", "ADMIN")
 
                                 // ===================================================================
-                                // 5. 나머지는 인증 필요
+                                // 5. 백오피스 로그아웃: 인증 필요
+                                // ===================================================================
+
+                                .requestMatchers("/api/v1/backoffice/auth/logout").authenticated()
+
+                                // ===================================================================
+                                // 6. 나머지는 인증 필요
                                 // ===================================================================
                                 .anyRequest().authenticated());
 
