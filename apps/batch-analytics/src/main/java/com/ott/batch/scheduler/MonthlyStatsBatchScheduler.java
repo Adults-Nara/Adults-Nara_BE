@@ -1,10 +1,13 @@
 package com.ott.batch.scheduler;
 
+import com.ott.batch.monthly.support.BatchDateRange;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,89 +16,64 @@ import java.time.YearMonth;
 
 /**
  * 월간 통계 배치 스케줄러
- * 매월 1일 새벽 2시에 전월 통계 생성
+ * - 매월 1일 02:00에 전월 통계 집계
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MonthlyStatsBatchScheduler {
 
     private final JobLauncher jobLauncher;
     private final Job monthlyStatsJob;
 
-    public MonthlyStatsBatchScheduler(JobLauncher jobLauncher, Job monthlyStatsJob) {
-        this.jobLauncher = jobLauncher;
-        this.monthlyStatsJob = monthlyStatsJob;
-    }
-
     /**
-     * 매월 1일 새벽 2시에 전월 통계 생성
+     * 매월 1일 02:00 KST 자동 실행
      */
-    @Scheduled(cron = "0 0 2 1 * ?")
+    @Scheduled(cron = "0 0 2 1 * ?", zone = "Asia/Seoul")
     public void runMonthlyStatsBatch() {
-        log.info("=== 월간 통계 배치 스케줄러 시작 ===");
+        YearMonth lastMonth = YearMonth.now().minusMonths(1);
 
         try {
-            YearMonth lastMonth = YearMonth.now().minusMonths(1);
-            String yearMonth = lastMonth.toString();
-
-            OffsetDateTime rangeFrom = lastMonth.atDay(1)
-                    .atStartOfDay()
-                    .atOffset(OffsetDateTime.now().getOffset());
-
-            OffsetDateTime rangeTo = lastMonth.atEndOfMonth()
-                    .atTime(23, 59, 59)
-                    .atOffset(OffsetDateTime.now().getOffset());
+            OffsetDateTime rangeFrom = BatchDateRange.rangeFrom(lastMonth);
+            OffsetDateTime rangeTo = BatchDateRange.rangeTo(lastMonth);
 
             JobParameters jobParameters = new JobParametersBuilder()
-                    .addString("yearMonth", yearMonth)
+                    .addString("yearMonth", lastMonth.toString())
                     .addString("rangeFrom", rangeFrom.toString())
                     .addString("rangeTo", rangeTo.toString())
                     .addString("runAt", OffsetDateTime.now().toString())
                     .toJobParameters();
 
-            log.info("배치 실행: yearMonth={}, rangeFrom={}, rangeTo={}",
-                    yearMonth, rangeFrom, rangeTo);
+            JobExecution execution = jobLauncher.run(monthlyStatsJob, jobParameters);
 
-            jobLauncher.run(monthlyStatsJob, jobParameters);
+            log.info("[스케줄러] 월간 통계 배치 완료 - yearMonth: {}, status: {}",
+                    lastMonth, execution.getStatus());
 
-            log.info("=== 월간 통계 배치 스케줄러 완료 ===");
-
-        } catch (Exception e) {
-            log.error("월간 통계 배치 실행 실패", e);
+        } catch (JobExecutionAlreadyRunningException | JobRestartException |
+                 JobInstanceAlreadyCompleteException | JobParametersInvalidException e) {
+            log.error("[스케줄러] 월간 통계 배치 실행 실패 - yearMonth: {}", lastMonth, e);
         }
     }
 
     /**
      * 수동 실행용 메서드
      */
-    public void runManually(String yearMonth) {
-        log.info("=== 월간 통계 배치 수동 실행: {} ===", yearMonth);
+    public void runManually(String yearMonth) throws Exception {
+        YearMonth ym = YearMonth.parse(yearMonth);
 
-        try {
-            YearMonth ym = YearMonth.parse(yearMonth);
+        OffsetDateTime rangeFrom = BatchDateRange.rangeFrom(ym);
+        OffsetDateTime rangeTo = BatchDateRange.rangeTo(ym);
 
-            OffsetDateTime rangeFrom = ym.atDay(1)
-                    .atStartOfDay()
-                    .atOffset(OffsetDateTime.now().getOffset());
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addString("yearMonth", yearMonth)
+                .addString("rangeFrom", rangeFrom.toString())
+                .addString("rangeTo", rangeTo.toString())
+                .addString("runAt", OffsetDateTime.now().toString())
+                .toJobParameters();
 
-            OffsetDateTime rangeTo = ym.atEndOfMonth()
-                    .atTime(23, 59, 59)
-                    .atOffset(OffsetDateTime.now().getOffset());
+        JobExecution execution = jobLauncher.run(monthlyStatsJob, jobParameters);
 
-            JobParameters jobParameters = new JobParametersBuilder()
-                    .addString("yearMonth", yearMonth)
-                    .addString("rangeFrom", rangeFrom.toString())
-                    .addString("rangeTo", rangeTo.toString())
-                    .addString("runAt", OffsetDateTime.now().toString())
-                    .toJobParameters();
-
-            jobLauncher.run(monthlyStatsJob, jobParameters);
-
-            log.info("=== 월간 통계 배치 수동 실행 완료 ===");
-
-        } catch (Exception e) {
-            log.error("월간 통계 배치 수동 실행 실패: yearMonth={}", yearMonth, e);
-            throw new RuntimeException("배치 실행 실패", e);
-        }
+        log.info("[수동 실행] 월간 통계 배치 완료 - yearMonth: {}, status: {}",
+                yearMonth, execution.getStatus());
     }
 }

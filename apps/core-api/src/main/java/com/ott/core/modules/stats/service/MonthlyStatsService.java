@@ -18,6 +18,8 @@ public class MonthlyStatsService {
 
     /**
      * 월간 리포트 조회
+     *
+     * EntityNotFoundException은 Spring의 기본 ExceptionHandler에 의해 404로 변환됨
      */
     @Transactional(readOnly = true)
     public MonthlyStatsResponse getMonthlyReport(Long userId, String yearMonth) {
