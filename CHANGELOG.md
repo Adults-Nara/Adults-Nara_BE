@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.11](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.10...v0.9.11) (2026-03-11)
+
+
+### Bug Fixes
+
+* 유저 정보 수정 로직 변경 ([33359f4](https://github.com/Adults-Nara/Adults-Nara_BE/commit/33359f40f0ad16db54f500917818c4e252fc6a00))
+* 유플러스 로직 수정 ([d1749f5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d1749f55a620939b276f7af2a853af09d0d581a3))
+* 코드 리뷰 반영 ([059d2d7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/059d2d724dda1856ee93a2c9d41e48e8941ed390))
+* 코드리뷰 반영 ([7e71400](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7e7140097ecf1be0c07344fa91847e58d8862d84))
+
 ## [0.9.10](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.9...v0.9.10) (2026-03-10)
 
 
