@@ -1,5 +1,6 @@
 package com.ott.core.modules.search.consumer;
 
+import com.ott.core.modules.ai.dto.VideoAiAnalysisRequestedEvent;
 import com.ott.core.modules.search.event.VideoIndexRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,6 @@ public class VideoTranscodeCompletedConsumer {
         eventPublisher.publishEvent(new VideoIndexRequestedEvent(event.videoId()));
 
         // AI 분석 요청
-        kafkaTemplate.send("video-ai-analysis-requested",
-                new com.ott.core.modules.ai.dto.VideoAiAnalysisRequestedEvent(event.videoId()));
+        kafkaTemplate.send("video-ai-analysis-requested", String.valueOf(event.videoId()), new VideoAiAnalysisRequestedEvent(event.videoId()));
     }
 }

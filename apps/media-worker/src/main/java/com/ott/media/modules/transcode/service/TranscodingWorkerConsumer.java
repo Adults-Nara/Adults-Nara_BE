@@ -94,7 +94,7 @@ public class TranscodingWorkerConsumer {
             // 성공 기록
             videoUpdater.updateReady(evt.videoId(), ENCODE_VERSION);
 
-            kafkaTemplate.send(TRANSCODE_COMPLETED_TOPIC, new VideoTranscodeCompletedEvent(evt.videoId()))
+            kafkaTemplate.send(TRANSCODE_COMPLETED_TOPIC, String.valueOf(evt.videoId()), new VideoTranscodeCompletedEvent(evt.videoId()))
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
                             logger.error("[transcode] 완료 이벤트 발행 실패 videoId={}", evt.videoId(), ex);

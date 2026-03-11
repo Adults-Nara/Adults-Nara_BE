@@ -16,6 +16,6 @@ public class VideoTranscodeEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTranscodeRequest(VideoTranscodeRequestedEvent event) {
-        kafkaTemplate.send("video-transcode-requested", event);
+        kafkaTemplate.send("video-transcode-requested", String.valueOf(event.videoId()), event);
     }
 }

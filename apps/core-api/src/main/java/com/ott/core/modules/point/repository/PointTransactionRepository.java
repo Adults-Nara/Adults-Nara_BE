@@ -1,7 +1,9 @@
 package com.ott.core.modules.point.repository;
 
 import com.ott.common.persistence.entity.PointTransaction;
-import jakarta.persistence.LockModeType;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -17,6 +19,6 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
         int countByUserIdAndTypeAndCreatedAtAfter(Long userId, PointTransaction.TransactionType type,
                         OffsetDateTime startOfDay);
 
-        List<PointTransaction> findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long userId,
-                        OffsetDateTime startOfDay, OffsetDateTime endOfDay);
+        Page<PointTransaction> findAllByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(Long userId,
+                        OffsetDateTime startOfDay, OffsetDateTime endOfDay, Pageable pageable);
 }
