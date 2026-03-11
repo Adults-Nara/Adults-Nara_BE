@@ -50,3 +50,4 @@ oauth2:
   state:
     secret: ${OAUTH_STATE_SECRET}
     cookie-secure: true
+    validate: true

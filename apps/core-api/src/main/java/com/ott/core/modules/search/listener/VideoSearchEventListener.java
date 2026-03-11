@@ -46,7 +46,7 @@ public class VideoSearchEventListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public void handleVideoIndexRequest(VideoIndexRequestedEvent event) {
-        log.debug("[Search] ES 검색 문서 동기화 시작: videoId={}", event.videoId());
+        log.info("[Search] ES 검색 문서 동기화 시작: videoId={}", event.videoId());
         try {
             // 1. RDB에서 메타데이터 조회 (삭제 여부 따지지 않고 무조건 조회)
             Optional<VideoMetadata> metadataOpt = videoMetadataRepository.findByVideoId(event.videoId());
@@ -77,7 +77,7 @@ public class VideoSearchEventListener {
 
             // 4. ES에 저장 (동일한 ID면 알아서 덮어쓰기 됨)
             videoSearchRepository.save(document);
-            log.debug("[Search] ES 검색 문서 동기화 완료: videoId={}", event.videoId());
+            log.info("[Search] ES 검색 문서 동기화 완료: videoId={}", event.videoId());
 
         } catch (BusinessException e) {
             throw e;

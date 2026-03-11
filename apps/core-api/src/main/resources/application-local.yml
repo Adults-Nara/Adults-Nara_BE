@@ -38,7 +38,7 @@ oauth2:
     redirect-uri: https://localhost:3000/login/callback
   state:
     secret: ${OAUTH_STATE_SECRET}
-    cookie-secure: false
+    cookie-secure: true
     validate: true
 
 jwt:
