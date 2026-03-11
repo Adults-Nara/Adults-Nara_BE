@@ -67,7 +67,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
 
     @Query("SELECT wh FROM WatchHistory wh " +
             "JOIN FETCH wh.videoMetadata vm " +
-            "WHERE wh.user.id = :userId AND vm.videoId IN :videoIds")
+            "WHERE wh.user.id = :userId AND vm.videoId IN :videoIds AND wh.deleted = false AND vm.deleted = false")
     List<WatchHistory> findWithVideoMetadataByUserIdAndVideoIdIn(
             @Param("userId") Long userId,
             @Param("videoIds") List<Long> videoIds
