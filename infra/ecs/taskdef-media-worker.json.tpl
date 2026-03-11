@@ -4,9 +4,29 @@
   "executionRoleArn": "${AWS_EXE_ROLE_ARN}",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
+  "cpu": "2048",
+  "memory": "4096",
   "containerDefinitions": [
+    {
+      "name": "log_router",
+      "image": "grafana/fluent-bit-plugin-loki:latest",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": {
+          "enable-ecs-log-metadata": "true"
+        }
+      },
+      "memoryReservation": 50,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/log_router",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    },
     {
       "name": "media-worker",
       "image": "${MEDIA_WORKER_IMAGE_URI}",
@@ -28,11 +48,12 @@
         { "name": "S3_BUCKET",                       "value": "${S3_BUCKET}" }
       ],
       "logConfiguration": {
-        "logDriver": "awslogs",
+        "logDriver": "awsfirelens",
         "options": {
-          "awslogs-group": "/ecs/media-worker",
-          "awslogs-region": "${AWS_REGION}",
-          "awslogs-stream-prefix": "ecs"
+          "Name": "loki",
+          "Host": "10.0.1.101",
+          "Port": "3100",
+          "Labels": "job=ecs-fargate, app=media-worker, env=prod"
         }
       }
     }

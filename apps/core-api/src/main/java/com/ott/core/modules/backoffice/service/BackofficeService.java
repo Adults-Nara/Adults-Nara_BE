@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,6 +43,9 @@ public class BackofficeService {
     private final UserQueryRepository userQueryRepository;
     private final UserRepository userRepository;
     private final S3ObjectStorage s3ObjectStorage;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String KEY_RANKING = "video:ranking";
 
     @Value("${aws.s3.source-bucket}")
     private String bucket;
@@ -60,7 +64,7 @@ public class BackofficeService {
 
     @Transactional
     public ContentUpdateResponse updateContent(long userId, Long videoId, MultipartFile image, ContentUpdateRequest request) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -69,7 +73,7 @@ public class BackofficeService {
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -105,14 +109,16 @@ public class BackofficeService {
         if (isAdmin) {
             videoMetadataRepository.softDeleteByAdmin(request.videoIds());
         } else {
-            List<VideoMetadata> videoMetadataList = videoMetadataRepository.findAllByVideoIdIsIn(request.videoIds());
-            videoMetadataList.stream()
-                    .forEach(videoMetadata -> {
-                        if (!videoMetadata.getUserId().equals(userId)) {
-                            throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
-                        }
-                    });
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_DELETION_FORBIDDEN);
+            }
             videoMetadataRepository.softDeleteByUploader(request.videoIds(), userId);
+
+            // Redis 랭킹에서 삭제된 비디오 일괄 삭제
+            Object[] videoIdsToRemove = request.videoIds().stream()
+                    .map(String::valueOf)
+                    .toArray();
+            stringRedisTemplate.opsForZSet().remove(KEY_RANKING, videoIdsToRemove);
         }
 
         videoRepository.softDeleteByIds(request.videoIds());
@@ -129,6 +135,27 @@ public class BackofficeService {
                     }
                 }
         );
+    }
+
+    @Transactional
+    public ContentStatusUpdateResponse updateContentStatus(Long userId, boolean isAdmin, ContentStatusUpdateRequest request) {
+        if (request.videoIds() == null || request.videoIds().isEmpty()) {
+            return new ContentStatusUpdateResponse(List.of());
+        }
+
+        if (request.visibility() == null) {
+            throw new BusinessException(ErrorCode.VIDEO_STATUS_INVALID_VISIBILITY);
+        }
+
+        if (!isAdmin) {
+            if (videoMetadataRepository.countByVideoIdInAndUserIdAndDeletedFalse(request.videoIds(), userId) != request.videoIds().size()) {
+                throw new BusinessException(ErrorCode.VIDEO_STATUS_UPDATE_FORBIDDEN);
+            }
+        }
+
+        videoRepository.updateVisibilityByIds(request.visibility(), OffsetDateTime.now(), request.videoIds());
+
+        return new ContentStatusUpdateResponse(request.videoIds().stream().map(String::valueOf).toList());
     }
 
     public Page<AdminUserResponse> getAllUsers(UserRole userRole, String keyword, Pageable pageable) {
@@ -163,13 +190,13 @@ public class BackofficeService {
     }
 
     public ContentDetailResponse getContentDetail(long userId, Long videoId) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
         if (!videoMetadata.getUserId().equals(userId)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
         List<Tag> tagList = videoTagRepository.findTagsByVideoMetadataId(videoMetadata.getId());
         List<String> tagIds = tagList.stream().map(tag -> String.valueOf(tag.getId())).toList();
 
@@ -181,7 +208,8 @@ public class BackofficeService {
                 video.getVisibility(),
                 tagIds,
                 videoMetadata.getCreatedAt(),
-                videoMetadata.getOtherVideoUrl()
+                videoMetadata.getOtherVideoUrl(),
+                videoMetadata.getVideoType()
         );
     }
 }

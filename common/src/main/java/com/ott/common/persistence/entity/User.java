@@ -64,6 +64,9 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
     @Column(name = "banned_at")
     private OffsetDateTime bannedAt;
 
+    @Column(name = "onboarding_completed", nullable = false)
+    private boolean onboardingCompleted = false;
+
     // ===== 생성자 =====
 
     public User(String email, String nickname, String passwordHash, UserRole userRole) {
@@ -144,6 +147,11 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
         this.bannedAt = OffsetDateTime.now();
     }
 
+    // 온보딩 완료 처리
+    public void completeOnboarding() {
+        this.onboardingCompleted = true;
+    }
+
     // ===== 헬퍼 메서드 =====
 
     public boolean isOAuthUser() {
@@ -178,5 +186,22 @@ public class User extends BaseEntity {  // ✅ BaseEntity 상속
         }
 
         return banned == BanStatus.ACTIVE;
+    }
+    /**
+     * 탈퇴 후 재가입 처리 - 계정 복구
+     *
+     * 카카오 재로그인 시 deleted=true인 기존 레코드를 재활성화합니다.
+     * - deleted → false
+     * - banned  → ACTIVE
+     * - 정지 관련 필드 초기화
+     * - onboardingCompleted → false (온보딩 재진행)
+     */
+    public void restore() {
+        this.deleted = false;
+        this.banned = BanStatus.ACTIVE;
+        this.banReason = null;
+        this.bannedAt = null;
+        this.bannedUntil = null;
+        this.onboardingCompleted = false;
     }
 }

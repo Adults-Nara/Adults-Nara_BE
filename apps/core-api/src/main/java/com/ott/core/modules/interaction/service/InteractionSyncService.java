@@ -1,13 +1,17 @@
 package com.ott.core.modules.interaction.service;
 
-import com.ott.common.error.ErrorCode;
+import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.enums.InteractionType;
+import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
+import com.ott.core.modules.interaction.repository.InteractionRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
+
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -15,42 +19,50 @@ import java.util.function.BiConsumer;
 @Slf4j
 @Service
 public class InteractionSyncService {
-
     private final StringRedisTemplate stringRedisTemplate;
+    private final InteractionRepository interactionRepository;
+
+    // OCP(개방-폐쇄 원칙) 준수: 좋아요, 싫어요 등 타입별 DB 업데이트 메서드 매핑
     private final Map<String, BiConsumer<Long, Integer>> syncActionMap;
 
-    public InteractionSyncService(StringRedisTemplate stringRedisTemplate, VideoMetadataRepository videoMetadataRepository) {
+    private static final String KEY_COUNT_LIKE = "video:count:like";
+    private static final String KEY_COUNT_DISLIKE = "video:count:dislike";
+    private static final String KEY_COUNT_SUPERLIKE = "video:count:superlike";
+
+    public InteractionSyncService(
+            StringRedisTemplate stringRedisTemplate,
+            VideoMetadataRepository videoMetadataRepository,
+            InteractionRepository interactionRepository) {
         this.stringRedisTemplate = stringRedisTemplate;
+        this.interactionRepository = interactionRepository;
+
         this.syncActionMap = Map.of(
-                "bookmark", videoMetadataRepository::updateBookmarkCount,
                 "like", videoMetadataRepository::updateLikeCount,
                 "dislike", videoMetadataRepository::updateDislikeCount,
                 "superlike", videoMetadataRepository::updateSuperLikeCount
         );
     }
 
-    /**
-     * Scheduler에서 단건씩 호출하도록 public
-     */
-    @Transactional
-    public void syncForType(String targetType) {
+    public void syncAllStats() {
+        syncActionMap.keySet().forEach(this::processSyncForType);
+    }
+
+    protected void processSyncForType(String targetType) {
         String dirtyKey = "video:dirty:" + targetType;
         String processingKey = "video:processing:" + targetType;
         String countKey = "video:count:" + targetType;
 
-        // 1. 이전 작업 실패 감지 및 복구
+        // 1. [장애 복구] 이전 작업 중 서버가 뻗었다면 다시 합침
         if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(processingKey))) {
-            log.warn("[Scheduler] 이전 작업 실패 감지. 복구를 시작합니다. (Type: {})", targetType);
             stringRedisTemplate.opsForSet().unionAndStore(dirtyKey, processingKey, dirtyKey);
             stringRedisTemplate.delete(processingKey);
         }
 
-        // 2. 동기화할 데이터가 없으면 즉시 종료
         if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(dirtyKey))) {
-            return;
+            return; // 동기화할 데이터가 없으면 조용히 종료
         }
 
-        // 3. Key Rotation (실시간 요청과 분리)
+        // 2. [동시성 방어] 대기열을 작업장(processing)으로 원자적 이동
         try {
             stringRedisTemplate.rename(dirtyKey, processingKey);
         } catch (Exception e) {
@@ -64,34 +76,75 @@ public class InteractionSyncService {
             return;
         }
 
+        log.info("[SyncService] {} 카운트 DB 동기화 시작 (대상: {}건)", targetType, videoIdsToProcess.size());
         int successCount = 0;
 
-        // 4. DB 업데이트
         for (String videoIdStr : videoIdsToProcess) {
             try {
                 Long videoId = Long.valueOf(videoIdStr);
+
+                // 3. Redis Hash에서 현재 이 비디오의 인터랙션(좋아요 등) 카운트를 가져옵니다. (ZSet이 아님!)
                 Object countObj = stringRedisTemplate.opsForHash().get(countKey, videoIdStr);
 
                 if (countObj != null) {
                     int latestCount = Integer.parseInt(countObj.toString());
-                    syncActionMap.get(targetType).accept(videoId, latestCount); // 정상적으로 트랜잭션 적용됨
+
+                    // 4. Repository에 이미 @Transactional이 있으므로 안전하게 업데이트 됨
+                    syncActionMap.get(targetType).accept(videoId, latestCount);
                     successCount++;
                 }
-            } catch (NumberFormatException e) {
-                log.error("[{}] 파싱 에러 (Type: {}, videoId: {})", ErrorCode.REDIS_DATA_PARSING_ERROR.getCode(), targetType, videoIdStr);
-            } catch (DataAccessException e) {
-                log.error("[{}] DB 업데이트 에러 (Type: {}, videoId: {})", ErrorCode.DB_SYNC_ERROR.getCode(), targetType, videoIdStr);
-                stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
+
             } catch (Exception e) {
-                log.error("[Scheduler] 알 수 없는 에러 (Type: {}, videoId: {}): {}", targetType, videoIdStr, e.getMessage());
+                log.error("[SyncService] 비디오 {} {} 동기화 중 에러 발생: {}", videoIdStr, targetType, e.getMessage());
+                // DLQ 대신 BookmarkSyncService처럼 실패 건을 dirty에 다시 넣어 다음 턴에 재시도
+                stringRedisTemplate.opsForSet().add(dirtyKey, videoIdStr);
             }
         }
 
-        // 5. 완료 후 캐시 정리
+        // 5. 완료된 큐 삭제
         stringRedisTemplate.delete(processingKey);
 
         if (successCount > 0) {
-            log.info("[Scheduler] {} 통계 {}건 DB 완벽 동기화 완료", targetType, successCount);
+            log.info("[SyncService] {} 카운트 {}건 DB 완벽 동기화 완료!", targetType, successCount);
         }
+    }
+    @Transactional(readOnly = true)
+    public void warmUpInteractionFromDB() {
+        log.info("[Sync] DB 데이터를 기반으로 Redis 인터랙션 카운트 초기화를 시작합니다...");
+
+        stringRedisTemplate.delete(KEY_COUNT_LIKE);
+        stringRedisTemplate.delete(KEY_COUNT_DISLIKE);
+        stringRedisTemplate.delete(KEY_COUNT_SUPERLIKE);
+
+        // DB 딱 1번 찌름!
+        List<Object[]> results = interactionRepository.countTotalInteractionsGroupedByVideoAndType();
+
+        int count = 0;
+        for (Object[] row : results) {
+            Long videoId = (Long) row[0];
+            InteractionType type = (InteractionType) row[1];
+            Long interactionCount = (Long) row[2];
+
+            if (interactionCount > 0) {
+                String hashKey;
+                switch (type) {
+                    case LIKE:
+                        hashKey = KEY_COUNT_LIKE;
+                        break;
+                    case DISLIKE:
+                        hashKey = KEY_COUNT_DISLIKE;
+                        break;
+                    case SUPERLIKE:
+                        hashKey = KEY_COUNT_SUPERLIKE;
+                        break;
+                    default:
+                        continue;
+                }
+
+                stringRedisTemplate.opsForHash().put(hashKey, String.valueOf(videoId), String.valueOf(interactionCount));
+                count++;
+            }
+        }
+        log.info("[Sync] 총 {}건의 인터랙션 그룹 데이터가 복구되었습니다!", count);
     }
 }

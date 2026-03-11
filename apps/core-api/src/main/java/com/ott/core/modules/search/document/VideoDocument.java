@@ -1,72 +1,89 @@
 package com.ott.core.modules.search.document;
 
-import lombok.Builder;
-import lombok.Getter;
+import com.ott.common.persistence.entity.VideoAiAnalysis;
+import com.ott.common.persistence.entity.VideoMetadata;
+import com.ott.common.persistence.enums.VideoType;
+import com.ott.core.modules.search.util.ChosungUtils;
+import lombok.*;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.Document;
-import org.springframework.data.elasticsearch.annotations.Field;
-import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
+@Document(indexName = "video_search", createIndex = false)
 @Getter
 @Builder
-@Document(indexName = "videos")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class VideoDocument {
-    @Id // ES의 문서 ID (DB의 video_metadata_id와 동일하게 맞춤)
-    private Long id;
+
+    @Id
+    private Long videoId;
 
     @Field(type = FieldType.Long)
-    private Long videoId;
+    private Long metadataId;
 
     @Field(type = FieldType.Long)
     private Long userId;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
+    @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
     private String title;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
+    @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
     private String description;
 
-    @Field(type = FieldType.Keyword)
-    private String thumbnailUrl;
+    @Field(type = FieldType.Text, analyzer = "korean_nori_analyzer")
+    private String summary;
 
-    @Field(type = FieldType.Integer)
-    private Integer duration;
+    @Field(type = FieldType.Keyword)
+    private String titleChosung;
+
+    @Field(type = FieldType.Keyword)
+    private VideoType videoType;
 
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 
-    @Field(type = FieldType.Integer)
-    private Integer viewCount;
+    @Field(type = FieldType.Dense_Vector, dims = 384, similarity = "cosine", index = true)
+    private float[] embedding;
 
     @Field(type = FieldType.Integer)
-    private Integer likeCount;
+    private int viewCount;
 
-    @Field(type = FieldType.Keyword)
-    private String createdAt;
-
-    @Field(type = FieldType.Keyword)
-    private String videoType;
+    @Field(type = FieldType.Integer)
+    private int likeCount;
 
     @Field(type = FieldType.Boolean)
     private boolean deleted;
 
-    public static VideoDocument of(com.ott.common.persistence.entity.VideoMetadata video, List<String> tags) {
+    @Field(type = FieldType.Keyword, index = false)
+    private String thumbnailUrl;
+
+    @Field(type = FieldType.Integer, index = false)
+    private Integer duration;
+
+    @Field(type = FieldType.Date, format = DateFormat.date_time, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime createdAt;
+
+    public static VideoDocument from(VideoMetadata metadata, List<String> tagNames, VideoAiAnalysis aiAnalysis) {
         return VideoDocument.builder()
-                .id(video.getId())
-                .videoId(video.getVideoId())
-                .userId(video.getUserId())
-                .title(video.getTitle())
-                .description(video.getDescription())
-                .thumbnailUrl(video.getThumbnailUrl())
-                .duration(video.getDuration())
-                .tags(tags)
-                .viewCount(video.getViewCount())
-                .likeCount(video.getLikeCount())
-                .createdAt(video.getCreatedAt().toString())
-                .videoType(video.getVideoType() != null ? video.getVideoType().name() : "NONE")
-                .deleted(video.isDeleted())
+                .videoId(metadata.getVideoId())
+                .metadataId(metadata.getId())
+                .userId(metadata.getUserId())
+                .title(metadata.getTitle())
+                .titleChosung(ChosungUtils.extract(metadata.getTitle()))
+                .description(metadata.getDescription())
+                .videoType(metadata.getVideoType())
+                .tags(tagNames)
+                .summary(aiAnalysis != null ? aiAnalysis.getSummary() : null)
+                .embedding(aiAnalysis != null ? aiAnalysis.getEmbedding() : null)
+                .viewCount(metadata.getViewCount())
+                .likeCount(metadata.getLikeCount())
+                .deleted(metadata.isDeleted())
+                .thumbnailUrl(metadata.getThumbnailUrl())
+                .duration(metadata.getDuration())
+                .createdAt(metadata.getCreatedAt())
                 .build();
     }
 }

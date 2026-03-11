@@ -5,5 +5,4 @@ import lombok.Getter;
 @Getter
 public class WatchPositionRequest {
     private Integer lastPosition;
-    private Integer duration;
 }

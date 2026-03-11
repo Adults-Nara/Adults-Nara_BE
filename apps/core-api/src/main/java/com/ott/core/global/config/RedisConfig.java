@@ -9,7 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.util.List;
 
 @Configuration
 public class RedisConfig {
@@ -35,6 +38,25 @@ public class RedisConfig {
         template.setValueSerializer(jsonSerializer);
         template.setHashKeySerializer(new StringRedisSerializer());
         template.setHashValueSerializer(jsonSerializer);
+
+        return template;
+    }
+
+    // =========================================================================
+    // 384차원 AI 임베딩 벡터 전용 RedisTemplate
+    // =========================================================================
+    @Bean
+    public RedisTemplate<String, List<Double>> redisVectorTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, List<Double>> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        template.afterPropertiesSet();
 
         return template;
     }

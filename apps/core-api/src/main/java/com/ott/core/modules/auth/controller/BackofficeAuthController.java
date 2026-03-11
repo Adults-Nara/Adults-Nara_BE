@@ -1,6 +1,9 @@
 package com.ott.core.modules.auth.controller;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
+import com.ott.core.global.util.CookieUtils;
 import com.ott.core.modules.auth.dto.BackofficeLoginRequest;
 import com.ott.core.modules.auth.dto.BackofficeLoginResponse;
 import com.ott.core.modules.auth.dto.BackofficeSignupRequest;
@@ -8,40 +11,127 @@ import com.ott.core.modules.auth.service.BackofficeAuthService;
 import com.ott.core.modules.user.dto.response.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.concurrent.TimeUnit;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/backoffice/auth")
-@RequiredArgsConstructor
 @Tag(name = "백오피스 인증 API", description = "업로더/관리자 로그인 및 회원가입")
 public class BackofficeAuthController {
+
+    private static final String REFRESH_TOKEN_COOKIE = "backoffice_refresh_token";
+    private static final int REFRESH_TOKEN_COOKIE_MAX_AGE = (int) TimeUnit.DAYS.toSeconds(90);
 
     private final BackofficeAuthService backofficeAuthService;
 
     /**
+     * secureCookie: 배포 환경(HTTPS)에서는 true, 로컬(HTTP)에서는 false
+     *
+     * application.yml 설정:
+     *   oauth2:
+     *     state:
+     *       cookie-secure: true   # prod
+     *       cookie-secure: false  # local
+     *
+     * AuthController와 동일한 프로퍼티를 공유합니다.
+     */
+    private final boolean secureCookie;
+
+    public BackofficeAuthController(
+            BackofficeAuthService backofficeAuthService,
+            @Value("${oauth2.state.cookie-secure:true}") boolean secureCookie
+    ) {
+        this.backofficeAuthService = backofficeAuthService;
+        this.secureCookie = secureCookie;
+    }
+
+    /**
      * 백오피스 로그인 (이메일 + 비밀번호)
-     * UPLOADER 또는 ADMIN 계정만 가능
+     *
+     * 토큰 정책:
+     * - Access Token  → Response body (@JsonIgnore로 refreshToken 필드 직렬화 제외)
+     * - Refresh Token → HttpOnly 쿠키 (backoffice_refresh_token)
      */
     @Operation(
             summary = "백오피스 로그인",
-            description = "이메일과 비밀번호로 백오피스에 로그인합니다. UPLOADER 또는 ADMIN 계정만 가능합니다."
+            description = "이메일과 비밀번호로 백오피스에 로그인합니다. UPLOADER 또는 ADMIN 계정만 가능합니다. " +
+                    "AccessToken은 body에, RefreshToken은 HttpOnly 쿠키(backoffice_refresh_token)로 전달됩니다."
     )
     @PostMapping("/login")
     public ApiResponse<BackofficeLoginResponse> login(
-            @Valid @RequestBody BackofficeLoginRequest request
+            @Valid @RequestBody BackofficeLoginRequest request,
+            HttpServletResponse response
     ) {
-        BackofficeLoginResponse response = backofficeAuthService.login(request);
-        return ApiResponse.success(response);
+        BackofficeLoginResponse loginResponse = backofficeAuthService.login(request);
+        setRefreshTokenCookie(response, loginResponse.refreshToken());
+
+        log.info("[백오피스 로그인] 쿠키 발급 완료 - userId: {}, role: {}", loginResponse.userId(), loginResponse.role());
+
+        return ApiResponse.success(loginResponse); // refreshToken은 @JsonIgnore로 자동 제외
+    }
+
+    /**
+     * Access Token 재발급 + Refresh Token Rotation (RTR)
+     *
+     * RTR 정책:
+     * - 갱신 시마다 새 Refresh Token 발급 → Redis 갱신 → 쿠키 재세팅
+     * - 기존 Refresh Token 즉시 무효화
+     * - 이전 토큰으로 재시도 시 탈취 의심 → Redis 삭제 후 강제 로그아웃
+     */
+    @Operation(
+            summary = "Access Token 재발급 (RTR)",
+            description = "쿠키의 backoffice_refresh_token으로 새로운 AccessToken과 RotatedRefreshToken을 발급합니다. " +
+                    "기존 RefreshToken은 즉시 무효화되며, 새 RefreshToken이 쿠키로 재세팅됩니다."
+    )
+    @PostMapping("/token/refresh")
+    public ApiResponse<BackofficeLoginResponse> refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = CookieUtils.extractValue(request, REFRESH_TOKEN_COOKIE);
+
+        if (refreshToken == null) {
+            log.warn("[백오피스 토큰 갱신] backoffice_refresh_token 쿠키가 없거나 비어있습니다.");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        BackofficeLoginResponse refreshed = backofficeAuthService.refreshAccessToken(refreshToken);
+
+        // [RTR] 새 Refresh Token으로 쿠키 재세팅
+        setRefreshTokenCookie(response, refreshed.refreshToken());
+
+        return ApiResponse.success(refreshed);
+    }
+
+    /**
+     * 백오피스 로그아웃
+     * Redis의 Refresh Token 삭제 + 쿠키 만료 처리
+     */
+    @Operation(
+            summary = "로그아웃",
+            description = "서버의 RefreshToken을 무효화하고 쿠키를 삭제합니다."
+    )
+    @PostMapping("/logout")
+    public ApiResponse<?> logout(Authentication authentication, HttpServletResponse response) {
+        Long userId = Long.parseLong(authentication.getName());
+        backofficeAuthService.logout(userId);
+        expireRefreshTokenCookie(response);
+        return ApiResponse.success();
     }
 
     /**
      * 업로더 회원가입
-     * 이메일 + 비밀번호 + 닉네임으로 자체 가입
      */
     @Operation(
             summary = "업로더 회원가입",
@@ -58,16 +148,21 @@ public class BackofficeAuthController {
 
     /**
      * 업로더 계정 탈퇴 (Soft Delete)
+     * 탈퇴 시 Redis Refresh Token도 함께 삭제
      */
     @Operation(
             summary = "업로더 계정 탈퇴",
-            description = "업로더 본인이 계정을 탈퇴합니다. Soft Delete로 처리됩니다."
+            description = "업로더 본인이 계정을 탈퇴합니다. Soft Delete로 처리되며, RefreshToken도 즉시 무효화됩니다."
     )
     @DeleteMapping("/account")
     @PreAuthorize("hasRole('UPLOADER')")
-    public ApiResponse<?> deleteAccount(Authentication authentication) {
+    public ApiResponse<?> deleteAccount(
+            Authentication authentication,
+            HttpServletResponse response
+    ) {
         Long userId = Long.parseLong(authentication.getName());
         backofficeAuthService.deleteUploaderAccount(userId);
+        expireRefreshTokenCookie(response);
         return ApiResponse.success();
     }
 
@@ -82,5 +177,29 @@ public class BackofficeAuthController {
     public ApiResponse<Boolean> checkEmailAvailable(@RequestParam String email) {
         boolean available = !backofficeAuthService.isEmailExists(email);
         return ApiResponse.success(available);
+    }
+
+    // ====== Private Methods ======
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .path("/api/v1/backoffice/auth/token/refresh")
+                .maxAge(REFRESH_TOKEN_COOKIE_MAX_AGE)
+                .sameSite(secureCookie ? "None" : "Lax")
+                .build();
+        response.addHeader("Set-Cookie", cookie.toString());
+    }
+
+    private void expireRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie expiredCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .path("/api/v1/backoffice/auth/token/refresh")
+                .maxAge(0)
+                .sameSite(secureCookie ? "None" : "Lax")
+                .build();
+        response.addHeader("Set-Cookie", expiredCookie.toString());
     }
 }
