@@ -65,7 +65,7 @@ public class UPlusSubscriptionController {
         try {
             return Long.parseLong(userId);
         } catch (NumberFormatException e) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e);
         }
     }
 }

@@ -11,7 +11,7 @@ public interface UPlusSubscriptionRepository extends JpaRepository<UPlusSubscrip
 
     Optional<UPlusSubscription> findByUserId(Long userId);
 
-    Optional<UPlusSubscription> findByPhoneNumber(String phoneNumber);
+    Optional<UPlusSubscription> findByPhoneNumberAndUserId(String phoneNumber, Long userId);
 
     /**
      * 스케줄러용: 활성 가입자의 userId 목록만 조회 (메모리 절약)
