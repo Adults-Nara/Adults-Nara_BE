@@ -265,7 +265,7 @@ public class VideoService {
 
     @Transactional
     public VideoInfoResult getVideoInfo(Long userId, Long videoId) {
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeletedWithLock(videoId, false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
 
         Video video = videoRepository.findById(videoId)
@@ -288,7 +288,7 @@ public class VideoService {
         User uploader = userRepository.findById(videoMetadata.getUserId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        videoMetadata.setViewCount(videoMetadata.getViewCount() + 1);
+        videoMetadata.incrementViewCount();
 
         return new VideoInfoResult(
                 String.valueOf(videoId),

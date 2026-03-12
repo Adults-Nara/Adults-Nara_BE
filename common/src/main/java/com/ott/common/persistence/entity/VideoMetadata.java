@@ -99,8 +99,8 @@ public class VideoMetadata extends BaseEntity {
         this.deleted = true;
     }
 
-    public void setViewCount(int viewCount) {
-        this.viewCount = viewCount;
+    public void incrementViewCount() {
+        this.viewCount++;
     }
 
     @PrePersist
