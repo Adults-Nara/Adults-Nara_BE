@@ -26,7 +26,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
                             CASE
                                 WHEN :lastPosition >= watch_history.last_position
                                 THEN :lastPosition - watch_history.last_position
-                                ELSE watch_history.last_position
+                                ELSE 0
                             END,
                         completed = CASE
                                     WHEN watch_history.completed = true THEN true

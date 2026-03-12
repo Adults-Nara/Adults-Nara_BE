@@ -64,11 +64,9 @@ public class WatchHistoryService {
         }
 
         // DB에 시청 이력이 존재하는지 확인
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
-        WatchHistory watchHistory = watchHistoryRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId)
-                .orElse(null);
+        WatchHistory watchHistory = watchHistoryRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).orElse(null);
 
         if (watchHistory != null) {
             // DB에 시청이력이 존재하면 Redis에 캐싱 및 반환
@@ -107,8 +105,7 @@ public class WatchHistoryService {
         watchHistoryRedisService.saveWatchHistory(userId, videoId, lastPosition, duration);
         boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoId);
 
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
         if (canSaveToDb || isCompleted) {
             watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted);
@@ -127,12 +124,10 @@ public class WatchHistoryService {
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
 
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
 
-        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition,
-                isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
+        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
         userPreferenceService.reflectWatchScore(userId, videoId, lastPosition, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
         eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, lastPosition, isCompleted));
@@ -142,8 +137,7 @@ public class WatchHistoryService {
             try {
                 pointService.rewardAdPoint(userId, videoMetadata);
             } catch (BusinessException e) {
-                log.info("포인트 적립 실패 (정상적인 비즈니스 룰 예외): userId={}, videoMetadataId={}, reason={}", userId,
-                        videoMetadata.getId(), e.getErrorCode());
+                log.info("포인트 적립 실패 (정상적인 비즈니스 룰 예외): userId={}, videoMetadataId={}, reason={}", userId, videoMetadata.getId(), e.getErrorCode());
             } catch (Exception e) {
                 log.error("포인트 적립 중 시스템 에러 발생: userId={}, videoMetadataId={}", userId, videoMetadata.getId(), e);
             }
