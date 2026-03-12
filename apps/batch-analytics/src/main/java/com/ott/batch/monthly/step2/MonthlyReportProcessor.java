@@ -104,7 +104,7 @@ public class MonthlyReportProcessor implements ItemProcessor<Long, MonthlyReport
         // 주 시청 시간대 (기본값 NONE)
         String peakTimeSlot = timeSlotCounts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(entry -> entry.getKey())
+                .map(Map.Entry::getKey)
                 .orElse("NONE");
 
         // 최장 시청 세션

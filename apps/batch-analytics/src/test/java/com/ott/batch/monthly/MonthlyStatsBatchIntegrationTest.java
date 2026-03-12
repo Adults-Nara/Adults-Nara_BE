@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
+import com.ott.batch.monthly.support.BatchDateRange;
+import java.time.YearMonth;
 
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -107,9 +109,10 @@ class MonthlyStatsBatchIntegrationTest {
 
         // When: 배치 실행
         OffsetDateTime now = OffsetDateTime.now();
+        YearMonth currentMonth = YearMonth.from(now);
         String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
-        OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        OffsetDateTime monthEnd = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(0);
+        OffsetDateTime monthStart = BatchDateRange.rangeFrom(currentMonth);
+        OffsetDateTime monthEnd = BatchDateRange.rangeTo(currentMonth);
 
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("yearMonth", currentYearMonth)
@@ -187,8 +190,9 @@ class MonthlyStatsBatchIntegrationTest {
 
         // When: 배치 실행
         String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
-        OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        OffsetDateTime monthEnd = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(0);
+        YearMonth currentMonth = YearMonth.from(now);
+        OffsetDateTime monthStart = BatchDateRange.rangeFrom(currentMonth);
+        OffsetDateTime monthEnd = BatchDateRange.rangeTo(currentMonth);
 
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("yearMonth", currentYearMonth)
@@ -260,8 +264,9 @@ class MonthlyStatsBatchIntegrationTest {
         // When: 2번 실행
         OffsetDateTime now = OffsetDateTime.now();
         String currentYearMonth = String.format("%04d-%02d", now.getYear(), now.getMonthValue());
-        OffsetDateTime monthStart = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        OffsetDateTime monthEnd = now.withDayOfMonth(now.toLocalDate().lengthOfMonth()).withHour(23).withMinute(59).withSecond(59).withNano(0);
+        YearMonth currentMonth = YearMonth.from(now);
+        OffsetDateTime monthStart = BatchDateRange.rangeFrom(currentMonth);
+        OffsetDateTime monthEnd = BatchDateRange.rangeTo(currentMonth);
 
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("yearMonth", currentYearMonth)
