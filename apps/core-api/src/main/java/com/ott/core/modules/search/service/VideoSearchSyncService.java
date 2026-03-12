@@ -68,7 +68,7 @@ public class VideoSearchSyncService {
             throw e;
         } catch (Exception e) {
             log.error("ES 동기화 알 수 없는 에러", e);
-            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR);
+            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR, e);
         }
     }
 
