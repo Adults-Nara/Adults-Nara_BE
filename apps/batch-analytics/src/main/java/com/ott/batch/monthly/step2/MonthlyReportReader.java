@@ -1,6 +1,5 @@
 package com.ott.batch.monthly.step2;
 
-import com.ott.batch.monthly.support.BatchDateRange;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
@@ -10,6 +9,8 @@ import org.springframework.stereotype.Component;
 import javax.sql.DataSource;
 import java.time.YearMonth;
 
+import com.ott.batch.monthly.support.BatchDateRange;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -17,12 +18,8 @@ public class MonthlyReportReader {
 
     private final DataSource dataSource;
 
-    public JdbcCursorItemReader<Long> reader(String yearMonth) {
-        YearMonth ym = YearMonth.parse(yearMonth);
-
-        log.debug("[MonthlyReportReader] SQL 준비 완료. 기간: {}", yearMonth);
-
-        return new JdbcCursorItemReaderBuilder<Long>()
+    public JdbcCursorItemReader<Long> reader(YearMonth ym) throws Exception {
+        JdbcCursorItemReader<Long> reader = new JdbcCursorItemReaderBuilder<Long>()
                 .name("monthlyReportItemReader")
                 .dataSource(dataSource)
                 .sql("""
@@ -39,5 +36,8 @@ public class MonthlyReportReader {
                 })
                 .rowMapper((rs, rowNum) -> rs.getLong("user_id"))
                 .build();
+        
+        reader.afterPropertiesSet();  // CRITICAL: 추가!
+        return reader;
     }
 }

@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,27 +24,41 @@ public class MonthlyReportWriter implements ItemWriter<MonthlyReportDto> {
 
     @Override
     public void write(Chunk<? extends MonthlyReportDto> chunk) {
-        chunk.getItems().forEach(dto -> {
-            MonthlyWatchReport entity = dto.toEntity();
+        if (chunk.getItems().isEmpty()) {
+            return;
+        }
 
-            // Upsert 로직
-            MonthlyWatchReport existing = entityManager
-                    .createQuery("SELECT m FROM MonthlyWatchReport m WHERE m.userId = :userId AND m.reportYearMonth = :yearMonth", MonthlyWatchReport.class)
-                    .setParameter("userId", entity.getUserId())
-                    .setParameter("yearMonth", entity.getReportYearMonth())
-                    .getResultStream()
-                    .findFirst()
-                    .orElse(null);
+        // 1. 한 번에 기존 데이터 조회 (N+1 방지)
+        List<Long> userIds = chunk.getItems().stream()
+                .map(MonthlyReportDto::getUserId)
+                .toList();
+        
+        String yearMonth = chunk.getItems().get(0).getReportYearMonth();
+
+        List<MonthlyWatchReport> existingReports = entityManager
+                .createQuery(
+                    "SELECT m FROM MonthlyWatchReport m WHERE m.userId IN :userIds AND m.reportYearMonth = :yearMonth", 
+                    MonthlyWatchReport.class
+                )
+                .setParameter("userIds", userIds)
+                .setParameter("yearMonth", yearMonth)
+                .getResultList();
+
+        Map<Long, MonthlyWatchReport> existingMap = existingReports.stream()
+                .collect(Collectors.toMap(MonthlyWatchReport::getUserId, report -> report));
+
+        // 2. Upsert 처리
+        for (MonthlyReportDto dto : chunk.getItems()) {
+            MonthlyWatchReport existing = existingMap.get(dto.getUserId());
+            MonthlyWatchReport entity = dto.toEntity();
 
             if (existing != null) {
                 existing.update(entity);
-                entityManager.merge(existing);  // 추가!
+                // merge() 불필요 - 이미 영속성 컨텍스트가 관리 중
             } else {
                 entityManager.persist(entity);
             }
-        });
-
-        entityManager.flush();  // 추가!
+        }
 
         log.debug("[MonthlyReportWriter] {}건 처리 완료", chunk.size());
     }

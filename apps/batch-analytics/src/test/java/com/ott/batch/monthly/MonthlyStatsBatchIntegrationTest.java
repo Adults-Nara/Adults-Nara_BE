@@ -1,6 +1,7 @@
 package com.ott.batch.monthly;
 
 import com.ott.batch.repository.*;
+import com.ott.core.modules.stats.repository.MonthlyWatchReportRepository;
 import com.ott.common.persistence.entity.*;
 import com.ott.common.persistence.enums.VideoType;
 import org.junit.jupiter.api.BeforeEach;

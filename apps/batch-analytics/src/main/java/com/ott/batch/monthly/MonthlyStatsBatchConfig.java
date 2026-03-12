@@ -13,17 +13,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobScope;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 
 /**
  * 월간 통계 배치 Job 설정
@@ -66,9 +65,9 @@ public class MonthlyStatsBatchConfig {
     public Step monthlyTagStatsStep(
             @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
             @Value("#{jobParameters['rangeTo']}") String rangeTo) {
-
+        
         log.debug("[monthlyTagStatsStep] Step 빌드");
-
+        
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
                 .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
                 .reader(tagStatReader.reader(
@@ -86,13 +85,13 @@ public class MonthlyStatsBatchConfig {
     @Bean
     @JobScope
     public Step monthlyReportStep(
-            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
-
+            @Value("#{jobParameters['yearMonth']}") String yearMonth) throws Exception {
+        
         log.debug("[monthlyReportStep] Step 빌드");
-
+        
         return new StepBuilder("monthlyReportStep", jobRepository)
                 .<Long, MonthlyReportDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(monthlyReportReader.reader(yearMonth))
+                .reader(monthlyReportReader.reader(YearMonth.parse(yearMonth)))  // YearMonth.parse() 추가!
                 .processor(monthlyReportProcessor)
                 .writer(monthlyReportWriter)
                 .build();
