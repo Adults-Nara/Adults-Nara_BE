@@ -213,15 +213,22 @@ class MonthlyStatsBatchIntegrationTest {
 
         var reportData = report.get();
 
-        // 총 시청 횟수가 6개인지만 확인 (시간대 상관없이)
+        // 총 시청 횟수 확인
         assertThat(reportData.getTotalWatchCount()).isEqualTo(6);
+
+        // 각 시간대별로 정확한 값 검증
+        assertThat(reportData.getDawnCount()).isEqualTo(1);
+        assertThat(reportData.getMorningCount()).isEqualTo(1);
+        assertThat(reportData.getAfternoonCount()).isEqualTo(2);
+        assertThat(reportData.getEveningCount()).isEqualTo(1);
+        assertThat(reportData.getNightCount()).isEqualTo(1);
+        assertThat(reportData.getPeakTimeSlot()).isEqualTo("AFTERNOON");
 
         // 모든 시간대 합이 6인지 확인
         int totalTimeSlots = reportData.getDawnCount() + reportData.getMorningCount() +
                 reportData.getAfternoonCount() + reportData.getEveningCount() +
                 reportData.getNightCount();
         assertThat(totalTimeSlots).isEqualTo(6);
-
         log.info("=== 시간대별 통계 테스트 완료 ===");
     }
 
