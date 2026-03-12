@@ -33,13 +33,7 @@ public class UPlusSubscriptionController {
     public ApiResponse<UPlusSubscriptionDto.LinkResponse> verify(
             @AuthenticationPrincipal String userId,
             @RequestBody @Valid UPlusSubscriptionDto.LinkRequest request) {
-        long parsedUserId;
-        try {
-            parsedUserId = Long.parseLong(userId);
-        } catch (NumberFormatException e) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-        return ApiResponse.success(subscriptionService.verify(parsedUserId, request));
+        return ApiResponse.success(subscriptionService.verify(parseUserId(userId), request));
     }
 
     @Operation(
@@ -49,13 +43,7 @@ public class UPlusSubscriptionController {
     @GetMapping("/subscription")
     public ApiResponse<UPlusSubscriptionDto.SubscriptionResponse> getMySubscription(
             @AuthenticationPrincipal String userId) {
-        long parsedUserId;
-        try {
-            parsedUserId = Long.parseLong(userId);
-        } catch (NumberFormatException e) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-        return ApiResponse.success(subscriptionService.getMySubscription(parsedUserId));
+        return ApiResponse.success(subscriptionService.getMySubscription(parseUserId(userId)));
     }
 
     @Operation(
@@ -65,12 +53,16 @@ public class UPlusSubscriptionController {
     @GetMapping("/discount/history")
     public ApiResponse<List<UPlusSubscriptionDto.DiscountHistoryResponse>> getDiscountHistory(
             @AuthenticationPrincipal String userId) {
-        long parsedUserId;
+        return ApiResponse.success(billDiscountService.getHistory(parseUserId(userId)));
+    }
+
+    // ====== Private Methods ======
+
+    private long parseUserId(String userId) {
         try {
-            parsedUserId = Long.parseLong(userId);
+            return Long.parseLong(userId);
         } catch (NumberFormatException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
-        return ApiResponse.success(billDiscountService.getHistory(parsedUserId));
     }
 }

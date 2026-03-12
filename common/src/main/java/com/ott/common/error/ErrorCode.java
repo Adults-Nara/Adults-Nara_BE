@@ -79,7 +79,6 @@ public enum ErrorCode {
     VIDEO_METADATA_NOT_FOUND("VIDEO-METADATA-404-001", 404, "비디오 메타데이터를 찾을 수 없습니다."),
 
     // ===== U+ =====
-    // ===== U+ =====
     UPLUS_NOT_REGISTERED("UPLUS-404-001", 404, "U+ 가입 정보가 없습니다."),
     UPLUS_ALREADY_REGISTERED("UPLUS-409-001", 409, "이미 U+ 가입 정보가 등록되어 있습니다."),
     UPLUS_SUBSCRIPTION_INACTIVE("UPLUS-400-001", 400, "해지된 U+ 가입 정보입니다. 재가입 후 이용해주세요."),
