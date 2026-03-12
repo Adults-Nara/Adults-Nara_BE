@@ -16,14 +16,14 @@ public class UPlusSubscriptionService {
     private final UPlusSubscriptionRepository subscriptionRepository;
 
     /**
-     * 전화번호로 U+ 연동
-     * 1. 전화번호로 uplus_subscription 조회 → 없으면 "가입되지 않은 번호"
-     * 2. userId 일치 여부 확인 → 불일치 시 "가입 정보를 찾을 수 없습니다"
-     * 3. active 여부 확인 → 해지 상태면 에러
+     * 전화번호로 U+ 가입 정보 확인
+     * 1. 전화번호로 uplus_subscription 조회 → 없으면 UPLUS_PHONE_NOT_FOUND
+     * 2. userId 일치 여부 확인 → 불일치 시 UPLUS_PHONE_USER_MISMATCH
+     * 3. active 여부 확인 → 해지 상태면 UPLUS_SUBSCRIPTION_INACTIVE
      * 4. 성공 → 연동 완료 응답
      */
     @Transactional(readOnly = true)
-    public UPlusSubscriptionDto.LinkResponse link(Long userId, UPlusSubscriptionDto.LinkRequest request) {
+    public UPlusSubscriptionDto.LinkResponse verify(Long userId, UPlusSubscriptionDto.LinkRequest request) {
         String phoneNumber = normalize(request.getPhoneNumber());
 
         UPlusSubscription subscription = subscriptionRepository.findByPhoneNumber(phoneNumber)

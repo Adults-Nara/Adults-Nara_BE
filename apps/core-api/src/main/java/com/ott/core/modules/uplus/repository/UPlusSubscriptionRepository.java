@@ -11,7 +11,7 @@ public interface UPlusSubscriptionRepository extends JpaRepository<UPlusSubscrip
 
     Optional<UPlusSubscription> findByUserId(Long userId);
 
-    Optional<UPlusSubscription> findByPhoneNumber(String phoneNumber);  // 추가
+    Optional<UPlusSubscription> findByPhoneNumber(String phoneNumber);
 
     @Query("SELECT u.userId FROM UPlusSubscription u WHERE u.active = true")
     List<Long> findActiveUserIds();

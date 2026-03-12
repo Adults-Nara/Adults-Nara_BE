@@ -1,5 +1,7 @@
 package com.ott.core.modules.uplus.controller;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.uplus.dto.UPlusSubscriptionDto;
 import com.ott.core.modules.uplus.service.UPlusBillDiscountService;
@@ -23,15 +25,21 @@ public class UPlusSubscriptionController {
     private final UPlusBillDiscountService billDiscountService;
 
     @Operation(
-            summary = "U+ 가입 정보 연동",
-            description = "전화번호를 입력하면 U+ 가입 여부를 확인하여 연동합니다. " +
+            summary = "U+ 가입 정보 확인",
+            description = "전화번호를 입력하면 U+ 가입 여부를 확인합니다. " +
                     "가입되지 않은 번호이거나 본인 명의가 아닌 경우 오류가 반환됩니다."
     )
-    @PostMapping("/link")
-    public ApiResponse<UPlusSubscriptionDto.LinkResponse> link(
+    @PostMapping("/verify")
+    public ApiResponse<UPlusSubscriptionDto.LinkResponse> verify(
             @AuthenticationPrincipal String userId,
             @RequestBody @Valid UPlusSubscriptionDto.LinkRequest request) {
-        return ApiResponse.success(subscriptionService.link(Long.parseLong(userId), request));
+        long parsedUserId;
+        try {
+            parsedUserId = Long.parseLong(userId);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return ApiResponse.success(subscriptionService.verify(parsedUserId, request));
     }
 
     @Operation(
@@ -41,7 +49,13 @@ public class UPlusSubscriptionController {
     @GetMapping("/subscription")
     public ApiResponse<UPlusSubscriptionDto.SubscriptionResponse> getMySubscription(
             @AuthenticationPrincipal String userId) {
-        return ApiResponse.success(subscriptionService.getMySubscription(Long.parseLong(userId)));
+        long parsedUserId;
+        try {
+            parsedUserId = Long.parseLong(userId);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return ApiResponse.success(subscriptionService.getMySubscription(parsedUserId));
     }
 
     @Operation(
@@ -51,6 +65,12 @@ public class UPlusSubscriptionController {
     @GetMapping("/discount/history")
     public ApiResponse<List<UPlusSubscriptionDto.DiscountHistoryResponse>> getDiscountHistory(
             @AuthenticationPrincipal String userId) {
-        return ApiResponse.success(billDiscountService.getHistory(Long.parseLong(userId)));
+        long parsedUserId;
+        try {
+            parsedUserId = Long.parseLong(userId);
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return ApiResponse.success(billDiscountService.getHistory(parsedUserId));
     }
 }
