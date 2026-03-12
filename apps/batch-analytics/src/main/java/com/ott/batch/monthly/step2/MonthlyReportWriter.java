@@ -3,19 +3,17 @@ package com.ott.batch.monthly.step2;
 import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.repository.TagStatsRepository;
 import com.ott.batch.repository.WatchHistoryRepository;
-import com.ott.common.persistence.entity.MonthlyWatchReport;
 import com.ott.common.persistence.entity.Tag;
 import com.ott.common.persistence.entity.TagStats;
 import com.ott.common.persistence.entity.WatchHistory;
 import com.ott.common.util.IdGenerator;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.annotation.BeforeStep;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -30,7 +28,7 @@ import java.util.stream.Collectors;
 /**
  * Step 2: 사용자별 월간 리포트 Writer
  *
- * N+1 문제 해결: 청크 단위로 데이터 일괄 조회 → 집계 → Upsert
+ * N+1 문제 해결: 청크 단위로 데이터 일괄 조회 → 집계 → Batch Upsert
  */
 @Slf4j
 @Component
@@ -39,9 +37,7 @@ public class MonthlyReportWriter implements ItemWriter<Long> {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
+    private final JdbcTemplate jdbcTemplate;
     private final TagStatsRepository tagStatsRepository;
     private final WatchHistoryRepository watchHistoryRepository;
 
@@ -101,8 +97,8 @@ public class MonthlyReportWriter implements ItemWriter<Long> {
             reports.add(report);
         }
 
-        // 4. Upsert
-        upsertReports(reports);
+        // 4. Batch Upsert
+        batchUpsertReports(reports);
 
         log.debug("[MonthlyReportWriter] {}개 사용자 처리 완료 ({}개 리포트 생성)",
                 userIds.size(), reports.size());
@@ -190,36 +186,64 @@ public class MonthlyReportWriter implements ItemWriter<Long> {
     }
 
     /**
-     * 리포트 Upsert (일괄 처리)
+     * Batch Upsert (TagStatWriter와 동일한 방식)
      */
-    private void upsertReports(List<MonthlyReportDto> reports) {
+    private void batchUpsertReports(List<MonthlyReportDto> reports) {
         if (reports.isEmpty()) {
             return;
         }
 
-        // 기존 리포트 일괄 조회
-        List<Long> userIds = reports.stream()
-                .map(MonthlyReportDto::getUserId)
-                .toList();
+        String sql = """
+            INSERT INTO monthly_watch_report (
+                monthly_watch_report_id, user_id, report_year_month,
+                total_watch_seconds, total_watch_count, completed_count, completion_rate,
+                dawn_count, morning_count, afternoon_count, evening_count, night_count,
+                peak_time_slot, longest_session_seconds, most_watched_tag_name, diversity_score,
+                created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ON CONFLICT (user_id, report_year_month) DO UPDATE SET
+                total_watch_seconds = EXCLUDED.total_watch_seconds,
+                total_watch_count = EXCLUDED.total_watch_count,
+                completed_count = EXCLUDED.completed_count,
+                completion_rate = EXCLUDED.completion_rate,
+                dawn_count = EXCLUDED.dawn_count,
+                morning_count = EXCLUDED.morning_count,
+                afternoon_count = EXCLUDED.afternoon_count,
+                evening_count = EXCLUDED.evening_count,
+                night_count = EXCLUDED.night_count,
+                peak_time_slot = EXCLUDED.peak_time_slot,
+                longest_session_seconds = EXCLUDED.longest_session_seconds,
+                most_watched_tag_name = EXCLUDED.most_watched_tag_name,
+                diversity_score = EXCLUDED.diversity_score,
+                updated_at = NOW()
+        """;
 
-        Map<Long, MonthlyWatchReport> existingMap = entityManager
-                .createQuery("SELECT m FROM MonthlyWatchReport m WHERE m.userId IN :userIds AND m.reportYearMonth = :yearMonth", MonthlyWatchReport.class)
-                .setParameter("userIds", userIds)
-                .setParameter("yearMonth", yearMonth)
-                .getResultList().stream()
-                .collect(Collectors.toMap(MonthlyWatchReport::getUserId, m -> m));
+        jdbcTemplate.batchUpdate(
+                sql,
+                reports,
+                reports.size(),
+                (ps, dto) -> {
+                    ps.setLong(1, dto.getId());
+                    ps.setLong(2, dto.getUserId());
+                    ps.setString(3, dto.getReportYearMonth());
+                    ps.setLong(4, dto.getTotalWatchSeconds());
+                    ps.setInt(5, dto.getTotalWatchCount());
+                    ps.setInt(6, dto.getCompletedCount());
+                    ps.setBigDecimal(7, dto.getCompletionRate());
+                    ps.setInt(8, dto.getDawnCount());
+                    ps.setInt(9, dto.getMorningCount());
+                    ps.setInt(10, dto.getAfternoonCount());
+                    ps.setInt(11, dto.getEveningCount());
+                    ps.setInt(12, dto.getNightCount());
+                    ps.setString(13, dto.getPeakTimeSlot());
+                    ps.setInt(14, dto.getLongestSessionSeconds());
+                    ps.setString(15, dto.getMostWatchedTagName());
+                    ps.setInt(16, dto.getDiversityScore());
+                }
+        );
 
-        // Upsert
-        for (MonthlyReportDto dto : reports) {
-            MonthlyWatchReport existing = existingMap.get(dto.getUserId());
-            MonthlyWatchReport entity = dto.toEntity();
-
-            if (existing != null) {
-                existing.update(entity);
-            } else {
-                entityManager.persist(entity);
-            }
-        }
+        log.debug("[MonthlyReportWriter] {}건 batch upsert 완료", reports.size());
     }
 
     /**

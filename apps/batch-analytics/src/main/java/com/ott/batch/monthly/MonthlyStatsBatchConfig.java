@@ -1,6 +1,7 @@
 package com.ott.batch.monthly;
 
 import com.ott.batch.monthly.step1.TagStatProcessor;
+import com.ott.batch.monthly.dto.TagStatDto;
 import com.ott.batch.monthly.step1.TagStatReader;
 import com.ott.batch.monthly.step1.TagStatWriter;
 import com.ott.batch.monthly.step2.MonthlyReportReader;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import com.ott.batch.monthly.dto.TagStatDto;
 
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
@@ -67,7 +69,7 @@ public class MonthlyStatsBatchConfig {
         log.debug("[monthlyTagStatsStep] Step 빌드");
 
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
-                .<com.ott.batch.monthly.dto.TagStatDto, com.ott.batch.monthly.dto.TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
+                .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
                 .reader(tagStatReader.reader(
                         OffsetDateTime.parse(rangeFrom),
                         OffsetDateTime.parse(rangeTo)

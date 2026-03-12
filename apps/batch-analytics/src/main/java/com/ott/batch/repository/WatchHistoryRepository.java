@@ -17,7 +17,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
      */
     @Query("""
         SELECT wh FROM WatchHistory wh
-        JOIN wh.user u
+        JOIN FETCH wh.user u
         WHERE u.id = :userId
           AND wh.createdAt >= :rangeFrom 
           AND wh.createdAt < :rangeTo
