@@ -2,10 +2,45 @@ package com.ott.core.modules.uplus.dto;
 
 import com.ott.common.persistence.entity.UPlusBillDiscount;
 import com.ott.common.persistence.entity.UPlusSubscription;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 public class UPlusSubscriptionDto {
+
+    // ===== Request =====
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class LinkRequest {
+
+        @NotBlank(message = "전화번호는 필수입니다.")
+        @Pattern(
+                regexp = "^01[016789]-?\\d{3,4}-?\\d{4}$",
+                message = "올바르지 않은 전화번호 형식입니다."
+        )
+        private String phoneNumber;
+    }
+
+    // ===== Response =====
+
+    @Getter
+    @RequiredArgsConstructor
+    public static class LinkResponse {
+        private final String message;
+        private final SubscriptionResponse subscription;
+
+        public static LinkResponse success(UPlusSubscription s) {
+            return new LinkResponse(
+                    "U+ 가입 정보가 확인되어 연동되었습니다.",
+                    SubscriptionResponse.from(s)
+            );
+        }
+    }
 
     @Getter
     @RequiredArgsConstructor

@@ -6,6 +6,7 @@ import com.ott.core.modules.uplus.service.UPlusBillDiscountService;
 import com.ott.core.modules.uplus.service.UPlusSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +16,23 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/uplus")
 @RequiredArgsConstructor
-@Tag(name = "U+ 구독 API", description = "U+ 가입 정보 및 포인트 할인 이력 조회 API")
+@Tag(name = "U+ 구독 API", description = "U+ 가입 정보 연동 및 포인트 할인 이력 조회 API")
 public class UPlusSubscriptionController {
 
     private final UPlusSubscriptionService subscriptionService;
     private final UPlusBillDiscountService billDiscountService;
+
+    @Operation(
+            summary = "U+ 가입 정보 연동",
+            description = "전화번호를 입력하면 U+ 가입 여부를 확인하여 연동합니다. " +
+                    "가입되지 않은 번호이거나 본인 명의가 아닌 경우 오류가 반환됩니다."
+    )
+    @PostMapping("/link")
+    public ApiResponse<UPlusSubscriptionDto.LinkResponse> link(
+            @AuthenticationPrincipal String userId,
+            @RequestBody @Valid UPlusSubscriptionDto.LinkRequest request) {
+        return ApiResponse.success(subscriptionService.link(Long.parseLong(userId), request));
+    }
 
     @Operation(
             summary = "내 U+ 가입 정보 조회",
