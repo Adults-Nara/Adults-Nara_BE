@@ -59,10 +59,13 @@ public class UPlusSubscriptionController {
     // ====== Private Methods ======
 
     private long parseUserId(String userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
         try {
             return Long.parseLong(userId);
         } catch (NumberFormatException e) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, e);
         }
     }
 }
