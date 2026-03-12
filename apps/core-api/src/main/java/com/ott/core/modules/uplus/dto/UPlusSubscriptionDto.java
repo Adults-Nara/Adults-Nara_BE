@@ -36,7 +36,7 @@ public class UPlusSubscriptionDto {
 
         public static LinkResponse success(UPlusSubscription s) {
             return new LinkResponse(
-                    "U+ 가입 정보가 확인되어 연동되었습니다.",
+                    "U+ 가입 정보가 확인되었습니다.",
                     SubscriptionResponse.from(s)
             );
         }
