@@ -1,9 +1,7 @@
 package com.ott.batch.monthly;
 
-import com.ott.batch.monthly.dto.TagStatDto;
-import com.ott.batch.monthly.dto.MonthlyReportDto;
-import com.ott.batch.monthly.step1.TagStatReader;
 import com.ott.batch.monthly.step1.TagStatProcessor;
+import com.ott.batch.monthly.step1.TagStatReader;
 import com.ott.batch.monthly.step1.TagStatWriter;
 import com.ott.batch.monthly.step2.MonthlyReportReader;
 import com.ott.batch.monthly.step2.MonthlyReportProcessor;
@@ -65,11 +63,11 @@ public class MonthlyStatsBatchConfig {
     public Step monthlyTagStatsStep(
             @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
             @Value("#{jobParameters['rangeTo']}") String rangeTo) {
-        
+
         log.debug("[monthlyTagStatsStep] Step 빌드");
-        
+
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
-                .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
+                .<com.ott.batch.monthly.dto.TagStatDto, com.ott.batch.monthly.dto.TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
                 .reader(tagStatReader.reader(
                         OffsetDateTime.parse(rangeFrom),
                         OffsetDateTime.parse(rangeTo)
@@ -86,12 +84,12 @@ public class MonthlyStatsBatchConfig {
     @JobScope
     public Step monthlyReportStep(
             @Value("#{jobParameters['yearMonth']}") String yearMonth) throws Exception {
-        
+
         log.debug("[monthlyReportStep] Step 빌드");
-        
+
         return new StepBuilder("monthlyReportStep", jobRepository)
-                .<Long, MonthlyReportDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(monthlyReportReader.reader(YearMonth.parse(yearMonth)))  // YearMonth.parse() 추가!
+                .<Long, Long>chunk(CHUNK_SIZE, platformTransactionManager)
+                .reader(monthlyReportReader.reader(YearMonth.parse(yearMonth)))
                 .processor(monthlyReportProcessor)
                 .writer(monthlyReportWriter)
                 .build();

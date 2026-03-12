@@ -12,6 +12,9 @@ import java.util.List;
 @Repository
 public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long> {
 
+    /**
+     * 단일 사용자의 시청 기록 조회
+     */
     @Query("""
         SELECT wh FROM WatchHistory wh
         JOIN wh.user u
@@ -21,6 +24,22 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
     """)
     List<WatchHistory> findByUserIdAndCreatedAtBetween(
             @Param("userId") Long userId,
+            @Param("rangeFrom") OffsetDateTime rangeFrom,
+            @Param("rangeTo") OffsetDateTime rangeTo
+    );
+
+    /**
+     * 여러 사용자의 시청 기록 일괄 조회 (N+1 방지)
+     */
+    @Query("""
+        SELECT wh FROM WatchHistory wh
+        JOIN FETCH wh.user u
+        WHERE u.id IN :userIds
+          AND wh.createdAt >= :rangeFrom 
+          AND wh.createdAt < :rangeTo
+    """)
+    List<WatchHistory> findByUserIdInAndCreatedAtBetween(
+            @Param("userIds") List<Long> userIds,
             @Param("rangeFrom") OffsetDateTime rangeFrom,
             @Param("rangeTo") OffsetDateTime rangeTo
     );

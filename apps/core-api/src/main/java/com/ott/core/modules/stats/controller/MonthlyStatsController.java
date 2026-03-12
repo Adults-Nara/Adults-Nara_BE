@@ -48,7 +48,7 @@ public class MonthlyStatsController {
         try {
             userId = Long.parseLong(userIdStr);
         } catch (NumberFormatException e) {
-            log.warn("Invalid user ID format in principal: {}", userIdStr);
+            log.warn("Invalid user ID format in principal: {}", userIdStr.replaceAll("[\\r\\n]", ""));
             return ResponseEntity.badRequest().build();
         }
 
