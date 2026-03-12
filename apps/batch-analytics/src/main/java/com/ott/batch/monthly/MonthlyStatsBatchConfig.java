@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
-import com.ott.batch.monthly.dto.TagStatDto;
 
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
@@ -85,7 +84,7 @@ public class MonthlyStatsBatchConfig {
     @Bean
     @JobScope
     public Step monthlyReportStep(
-            @Value("#{jobParameters['yearMonth']}") String yearMonth) throws Exception {
+            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
 
         log.debug("[monthlyReportStep] Step 빌드");
 

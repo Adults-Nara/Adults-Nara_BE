@@ -33,7 +33,8 @@ public interface TagStatsRepository extends JpaRepository<TagStats, Long> {
      */
     @Query("""
         SELECT ts FROM TagStats ts
-        JOIN FETCH ts.tag
+        JOIN FETCH ts.tag t
+        LEFT JOIN FETCH t.parent
         JOIN FETCH ts.user
         WHERE ts.user.id IN :userIds
           AND ts.statsDate >= :startDate

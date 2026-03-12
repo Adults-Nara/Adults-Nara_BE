@@ -212,14 +212,6 @@ class MonthlyStatsBatchIntegrationTest {
         assertThat(report).isPresent();
 
         var reportData = report.get();
-        System.out.println("============ 시간대별 집계 결과 ============");
-        System.out.println("새벽 (0-5시): " + reportData.getDawnCount());
-        System.out.println("오전 (6-11시): " + reportData.getMorningCount());
-        System.out.println("오후 (12-17시): " + reportData.getAfternoonCount());
-        System.out.println("저녁 (18-21시): " + reportData.getEveningCount());
-        System.out.println("밤 (22-23시): " + reportData.getNightCount());
-        System.out.println("주시청시간대: " + reportData.getPeakTimeSlot());
-        System.out.println("총 시청 횟수: " + reportData.getTotalWatchCount());
 
         // 총 시청 횟수가 6개인지만 확인 (시간대 상관없이)
         assertThat(reportData.getTotalWatchCount()).isEqualTo(6);

@@ -18,7 +18,7 @@ public class MonthlyReportReader {
 
     private final DataSource dataSource;
 
-    public JdbcCursorItemReader<Long> reader(YearMonth ym) throws Exception {
+    public JdbcCursorItemReader<Long> reader(YearMonth ym) {
         JdbcCursorItemReader<Long> reader = new JdbcCursorItemReaderBuilder<Long>()
                 .name("monthlyReportItemReader")
                 .dataSource(dataSource)
@@ -36,8 +36,13 @@ public class MonthlyReportReader {
                 })
                 .rowMapper((rs, rowNum) -> rs.getLong("user_id"))
                 .build();
-        
-        reader.afterPropertiesSet();  // CRITICAL: 추가!
+
+        try {
+            reader.afterPropertiesSet();
+        } catch (Exception e) {
+            throw new RuntimeException("MonthlyReportReader 초기화 실패", e);
+        }
+
         return reader;
     }
 }
