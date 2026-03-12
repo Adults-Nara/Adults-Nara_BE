@@ -17,11 +17,17 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """                                                                                                                               
-            INSERT INTO watch_history (watch_history_id, user_id, video_metadata_id, last_position, completed, deleted, created_at, updated_at)          
-            VALUES (:id, :userId, :videoMetadataId, :lastPosition, :completed, false, :now, :now)
+            INSERT INTO watch_history (watch_history_id, user_id, video_metadata_id, last_position, total_watch_seconds, completed, deleted, created_at, updated_at)          
+            VALUES (:id, :userId, :videoMetadataId, :lastPosition, :lastPosition, :completed, false, :now, :now)
             ON CONFLICT (user_id, video_metadata_id)
             DO UPDATE SET 
                         last_position = :lastPosition,
+                        total_watch_seconds = watch_history.total_watch_seconds +
+                            CASE
+                                WHEN :lastPosition >= watch_history.last_position
+                                THEN :lastPosition - watch_history.last_position
+                                ELSE watch_history.last_position
+                            END,
                         completed = CASE
                                     WHEN watch_history.completed = true THEN true
                                     ELSE :completed
@@ -53,14 +59,14 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
                                                         @Param("videoMetadataIds") List<Long> videoMetadataIds);
 
     @Query(value = """
-             SELECT t.tag_id, t.tag_name, SUM(wh.last_position)
+             SELECT t.tag_id, t.tag_name, SUM(wh.total_watch_seconds)
              FROM watch_history wh
              JOIN video_tag vt ON wh.video_metadata_id = vt.video_metadata_id
              JOIN tag t ON vt.tag_id = t.tag_id
              WHERE wh.user_id = :userId
                AND wh.deleted = false
              GROUP BY t.tag_id, t.tag_name
-             ORDER BY SUM(wh.last_position) DESC 
+             ORDER BY SUM(wh.total_watch_seconds) DESC 
              LIMIT 8
             """, nativeQuery = true)
     List<Object[]> findTop8TagWatchStatsByUserId(@Param("userId") Long userId);
