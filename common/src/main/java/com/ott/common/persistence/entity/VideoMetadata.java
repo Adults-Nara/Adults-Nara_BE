@@ -99,6 +99,10 @@ public class VideoMetadata extends BaseEntity {
         this.deleted = true;
     }
 
+    public void setViewCount(int viewCount) {
+        this.viewCount = viewCount;
+    }
+
     @PrePersist
     private void prePersist() {
         if (id == null) id = IdGenerator.generate();
