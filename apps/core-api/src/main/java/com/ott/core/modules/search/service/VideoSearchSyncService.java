@@ -33,7 +33,6 @@ public class VideoSearchSyncService {
     private final VideoSearchRepository videoSearchRepository;
     private final VideoAiAnalysisRepository videoAiAnalysisRepository;
 
-    // 🚨 여기서 핵심 로직과 트랜잭션, 재시도를 모두 처리합니다.
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
     public void syncToElasticsearch(Long videoId) {
