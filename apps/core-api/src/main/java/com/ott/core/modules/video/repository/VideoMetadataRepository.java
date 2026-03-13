@@ -33,6 +33,10 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Query(value = "SELECT * FROM video_metadata WHERE is_ad = true AND deleted = false ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<VideoMetadata> findRandomAd();
 
+    @Query(value = "SELECT vm.* FROM video_metadata vm JOIN video_tag vt ON vt.video_metadata_id = vm.video_metadata_id " +
+            "WHERE is_ad = true AND deleted = false AND vt.tag_id = :tagId ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<VideoMetadata> findRelatedRandomAd(@Param("tagId") Long tagId);
+
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
     @Transactional
     @Modifying(clearAutomatically = true)
