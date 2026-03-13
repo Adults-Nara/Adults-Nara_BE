@@ -96,8 +96,8 @@ public class WatchHistoryService {
      */
     public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition, Integer watchedSeconds) {
 
-        VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
-        Integer duration = vm.getDuration();
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
+        Integer duration = videoMetadata.getDuration();
 
         // 도메인 로직을 사용하여 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
@@ -105,7 +105,6 @@ public class WatchHistoryService {
         watchHistoryRedisService.saveWatchHistory(userId, videoId, lastPosition, duration);
         boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoId);
 
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
         if (canSaveToDb || isCompleted) {
             watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0);
@@ -118,14 +117,12 @@ public class WatchHistoryService {
     @Transactional
     public void stopWatching(Long userId, Long videoId, Integer lastPosition, Integer watchedSeconds) {
 
-        VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
-        Integer duration = vm.getDuration();
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
+        Integer duration = videoMetadata.getDuration();
+        Long videoMetadataId = videoMetadata.getId();
 
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
-
-        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-        Long videoMetadataId = videoMetadata.getId();
 
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0, OffsetDateTime.now(ZoneOffset.UTC));
         userPreferenceService.reflectWatchScore(userId, videoId, lastPosition, isCompleted);

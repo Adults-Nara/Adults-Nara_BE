@@ -23,6 +23,6 @@ public class WatchHistoryAsyncService {
     @Transactional
     public void saveWatchHistoryToDb(Long userId, Long videoMetadataId, Integer lastPosition, boolean isCompleted, Integer watchedSeconds) {
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds, OffsetDateTime.now(ZoneOffset.UTC));
-        log.info("DB Upserted - userId: {}, videoMetadataId: {}, position: {}, completed: {}", userId, videoMetadataId, lastPosition, isCompleted);
+        log.info("DB Upserted - userId: {}, videoMetadataId: {}, lastPosition: {}, watchedSeconds: {}, completed: {}", userId, videoMetadataId, lastPosition, watchedSeconds, isCompleted);
     }
 }
