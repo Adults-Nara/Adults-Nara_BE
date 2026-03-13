@@ -1,0 +1,61 @@
+package com.ott.core.modules.stats.controller;
+
+import com.ott.core.modules.stats.dto.MonthlyStatsResponse;
+import com.ott.core.modules.stats.service.MonthlyStatsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.regex.Pattern;
+
+/**
+ * 월간 통계 API Controller
+ */
+@Tag(name = "월간 통계 배치", description = "월간 시청 통계 배치 작업 API")
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/statistics/monthly")
+@RequiredArgsConstructor
+public class MonthlyStatsController {
+
+    private static final Pattern YEAR_MONTH_PATTERN = Pattern.compile("^\\d{4}-\\d{2}$");
+
+    private final MonthlyStatsService monthlyStatsService;
+
+    /**
+     * 월간 리포트 조회
+     *
+     * GET /api/v1/statistics/monthly/{yearMonth}
+     *
+     * @param userIdStr 인증된 사용자 ID (JWT에서 추출, String)
+     * @param yearMonth "2026-03" 형식
+     */
+    @GetMapping("/{yearMonth}")
+    public ResponseEntity<MonthlyStatsResponse> getMonthlyReport(
+            @AuthenticationPrincipal String userIdStr,
+            @PathVariable String yearMonth) {
+
+        // yearMonth 유효성 검증 (log injection, XSS 방지)
+        if (!YEAR_MONTH_PATTERN.matcher(yearMonth).matches()) {
+            log.warn("Invalid yearMonth format: {}", yearMonth.replaceAll("[\r\n]", ""));
+            return ResponseEntity.badRequest().build();
+        }
+
+        Long userId;
+        try {
+            userId = Long.parseLong(userIdStr);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid user ID format in principal: {}", userIdStr.replaceAll("[\\r\\n]", ""));
+            return ResponseEntity.badRequest().build();
+        }
+
+        log.info("월간 리포트 조회: userId={}, yearMonth={}", userId, yearMonth);
+
+        MonthlyStatsResponse response = monthlyStatsService.getMonthlyReport(userId, yearMonth);
+
+        return ResponseEntity.ok(response);
+    }
+}

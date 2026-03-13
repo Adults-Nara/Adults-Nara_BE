@@ -4,5 +4,18 @@ spring:
   profiles:
     active: local
 
+  batch:
+    # 배치 메타 테이블 자동 생성 여부
+    # schema: always → 최초 실행 시 Spring Batch 메타 테이블 생성
+    # schema: never  → 이미 생성된 경우 (마이그레이션으로 직접 관리 시)
+    jdbc:
+      initialize-schema: always
+    job:
+      # 애플리케이션 시작 시 자동 실행 방지 (스케줄러가 직접 실행)
+      enabled: false
+
+  scheduling:
+    enabled: true
+
 server:
   port: ${BATCH_ANALYTICS_PORT:8082}
