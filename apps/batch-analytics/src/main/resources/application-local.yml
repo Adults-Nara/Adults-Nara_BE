@@ -5,4 +5,22 @@ spring:
     password: ${DB_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: none   # 배치도 스키마 변경 주체는 core로 두는 걸 추천
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  batch:
+    jdbc:
+      initialize-schema: always  # Spring Batch 메타 테이블 자동 생성
+    job:
+      enabled: false             # 앱 시작 시 자동 실행 방지 (스케줄러가 실행)
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.springframework.batch: debug  # 배치 실행 흐름 확인용
