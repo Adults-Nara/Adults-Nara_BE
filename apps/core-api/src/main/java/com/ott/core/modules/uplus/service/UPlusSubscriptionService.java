@@ -6,12 +6,14 @@ import com.ott.common.persistence.entity.UPlusSubscription;
 import com.ott.core.modules.uplus.dto.UPlusSubscriptionDto;
 import com.ott.core.modules.uplus.repository.UPlusSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UPlusSubscriptionService {
@@ -57,6 +59,7 @@ public class UPlusSubscriptionService {
             return UPlusSubscriptionDto.LinkResponse.success(subscription);
 
         } catch (Exception e) {
+            log.error("U+ 가입 정보 확인 중 예외 발생. userId: {}, phoneNumber: {}", userId, request.getPhoneNumber(), e);
             return UPlusSubscriptionDto.LinkResponse.notFound();
         }
     }
