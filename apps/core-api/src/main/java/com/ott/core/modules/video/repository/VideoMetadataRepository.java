@@ -1,7 +1,9 @@
 package com.ott.core.modules.video.repository;
 
 import com.ott.common.persistence.entity.VideoMetadata;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +22,11 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     List<VideoMetadata> findAllByVideoIdIn(List<Long> videoIds);
 
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
+
+    // 조회할 때 Row에 Lock을 겁니다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM VideoMetadata v WHERE v.videoId = :videoId AND v.deleted = :deleted")
+    Optional<VideoMetadata> findByVideoIdAndDeletedWithLock(@Param("videoId") Long videoId, @Param("deleted") boolean deleted);
 
     List<VideoMetadata> findAllByTitleIsNullAndCreatedAtBeforeAndDeletedIsFalse(OffsetDateTime createdAtBefore);
 

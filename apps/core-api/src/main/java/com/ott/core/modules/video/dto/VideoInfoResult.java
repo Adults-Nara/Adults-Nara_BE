@@ -17,6 +17,8 @@ public record VideoInfoResult(
         String userProfile,
         String userNickname,
         List<String> aiTagIds,
-        String summary
+        String summary,
+        int viewCount,
+        int commentCount
 ) {
 }
