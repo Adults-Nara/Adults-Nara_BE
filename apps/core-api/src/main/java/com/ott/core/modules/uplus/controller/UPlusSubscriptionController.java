@@ -8,7 +8,6 @@ import com.ott.core.modules.uplus.service.UPlusBillDiscountService;
 import com.ott.core.modules.uplus.service.UPlusSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,12 +26,12 @@ public class UPlusSubscriptionController {
     @Operation(
             summary = "U+ 가입 정보 확인",
             description = "전화번호를 입력하면 U+ 가입 여부를 확인합니다. " +
-                    "가입되지 않은 번호이거나 본인 명의가 아닌 경우 오류가 반환됩니다."
+                    "모든 실패 케이스(형식 오류, 미존재, 본인 명의 불일치, 해지)는 verified=false로 반환됩니다."
     )
     @PostMapping("/verify")
     public ApiResponse<UPlusSubscriptionDto.LinkResponse> verify(
             @AuthenticationPrincipal String userId,
-            @RequestBody @Valid UPlusSubscriptionDto.LinkRequest request) {
+            @RequestBody UPlusSubscriptionDto.LinkRequest request) {  // @Valid 제거
         return ApiResponse.success(subscriptionService.verify(parseUserId(userId), request));
     }
 

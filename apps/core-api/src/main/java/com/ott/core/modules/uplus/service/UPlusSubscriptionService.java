@@ -9,30 +9,56 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 @Service
 @RequiredArgsConstructor
 public class UPlusSubscriptionService {
+
+    private static final Pattern PHONE_PATTERN =
+            Pattern.compile("^01[016789]-?\\d{3,4}-?\\d{4}$");
 
     private final UPlusSubscriptionRepository subscriptionRepository;
 
     /**
      * 전화번호로 U+ 가입 정보 확인
-     * 1. 전화번호 + userId DB 조회 → 미존재 시 UPLUS_PHONE_NOT_FOUND
-     * 2. active 여부 확인 → 해지 상태면 UPLUS_SUBSCRIPTION_INACTIVE
-     * 3. 성공 → 가입 정보 확인 응답
+     * - 모든 실패 케이스(형식 오류, 미존재, userId 불일치, 해지, 예외)는 verified=false로 반환
+     * - 예외를 던지지 않으므로 프론트는 verified 필드로만 분기
      */
     @Transactional(readOnly = true)
     public UPlusSubscriptionDto.LinkResponse verify(Long userId, UPlusSubscriptionDto.LinkRequest request) {
-        String phoneNumber = normalize(request.getPhoneNumber());
+        try {
+            String rawPhone = request.getPhoneNumber();
 
-        UPlusSubscription subscription = subscriptionRepository.findByPhoneNumberAndUserId(phoneNumber, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.UPLUS_PHONE_NOT_FOUND));
+            if (rawPhone == null || rawPhone.isBlank()) {
+                return UPlusSubscriptionDto.LinkResponse.notFound();
+            }
 
-        if (!subscription.isActive()) {
-            throw new BusinessException(ErrorCode.UPLUS_SUBSCRIPTION_INACTIVE);
+            if (!PHONE_PATTERN.matcher(rawPhone).matches()) {
+                return UPlusSubscriptionDto.LinkResponse.wrongNumber();
+            }
+
+            String phoneNumber = normalize(rawPhone);
+
+            Optional<UPlusSubscription> subscriptionOpt =
+                    subscriptionRepository.findByPhoneNumberAndUserId(phoneNumber, userId);
+
+            if (subscriptionOpt.isEmpty()) {
+                return UPlusSubscriptionDto.LinkResponse.notFound();
+            }
+
+            UPlusSubscription subscription = subscriptionOpt.get();
+
+            if (!subscription.isActive()) {
+                return UPlusSubscriptionDto.LinkResponse.inactive();
+            }
+
+            return UPlusSubscriptionDto.LinkResponse.success(subscription);
+
+        } catch (Exception e) {
+            return UPlusSubscriptionDto.LinkResponse.notFound();
         }
-
-        return UPlusSubscriptionDto.LinkResponse.success(subscription);
     }
 
     /**
@@ -51,6 +77,6 @@ public class UPlusSubscriptionService {
     // ====== Private Methods ======
 
     private String normalize(String phone) {
-        return phone == null ? null : phone.replaceAll("[^0-9]", "");
+        return phone.replaceAll("[^0-9]", "");
     }
 }
