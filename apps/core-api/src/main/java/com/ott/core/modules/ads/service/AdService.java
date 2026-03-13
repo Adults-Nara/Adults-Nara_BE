@@ -24,10 +24,10 @@ public class AdService {
     }
 
     public VideoMetadata getRelatedAd(Long videoId) {
-        videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
+        VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
-        List<VideoTag> videoTags = videoTagRepository.findWithTagByVideoMetadataIdIn(List.of(videoId));
+        List<VideoTag> videoTags = videoTagRepository.findWithTagByVideoMetadataIdIn(List.of(videoMetadata.getId()));
         if (videoTags.isEmpty()) {
             return getRandomAd();
         }
