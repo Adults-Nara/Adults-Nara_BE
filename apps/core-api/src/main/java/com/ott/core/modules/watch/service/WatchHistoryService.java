@@ -125,9 +125,13 @@ public class WatchHistoryService {
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
 
         watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0, OffsetDateTime.now(ZoneOffset.UTC));
-        userPreferenceService.reflectWatchScore(userId, videoId, watchedSeconds, isCompleted);
+
+        WatchHistory watchHistory = watchHistoryRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        Integer totalWatchedSeconds = watchHistory.getTotalWatchSeconds().intValue();
+
+        userPreferenceService.reflectWatchScore(userId, videoId, totalWatchedSeconds, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
-        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, watchedSeconds, isCompleted));
+        eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, totalWatchedSeconds, isCompleted));
 
         // 포인트 적립
         if (isCompleted && videoMetadata.isAd()) {
