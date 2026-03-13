@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -50,6 +51,9 @@ public class RecommendationService {
     private static final double FEED_RATIO_PERSONAL = 0.7;
     private static final double FEED_RATIO_POPULAR = 0.2;
     private static final int USER_PREFERENCE_TAG_LIMIT = 5;
+    private static final int MIN_FEED_SIZE_FOR_AD = 3;
+    private static final double AD_INJECTION_PROBABILITY = 0.4;
+    private static final int MAX_AD_INSERT_INDEX = 6;
 
     // =========================================================================
     // kNN 벡터 검색 적용
@@ -73,7 +77,8 @@ public class RecommendationService {
     // =========================================================================
     public List<VideoFeedResponseDto> getVerticalMixedFeed(Long userId, VideoType videoType, int size) {
         // 광고 편성 계산 (40% 확률, 사이즈가 최소 3개 이상일 때만)
-        boolean shouldInjectAd = size > 2 && Math.random() < 0.4;
+        boolean shouldInjectAd = size >= MIN_FEED_SIZE_FOR_AD &&
+                ThreadLocalRandom.current().nextDouble() < AD_INJECTION_PROBABILITY;
         int organicSize = shouldInjectAd ? size - 1 : size; // 일반 영상 개수 할당
         int personalSize = (int) Math.round(size * FEED_RATIO_PERSONAL);
         int popularSize = (int) Math.round(size * FEED_RATIO_POPULAR);
@@ -104,44 +109,49 @@ public class RecommendationService {
 
         // 비디오 ID를 기준으로 완벽하게 중복을 제거하면서 피드 병합 (Set<Long> 활용)
         Set<Long> seenVideoIds = new HashSet<>();
-        List<VideoDocument> mixedFeed = new ArrayList<>();
+        List<VideoDocument> organicFeed = new ArrayList<>();
 
         // 1. 취향 영상 담기
         for (VideoDocument doc : personalFuture.join()) {
-            if (seenVideoIds.add(doc.getVideoId())) {
-                mixedFeed.add(doc);
-            }
+            if (seenVideoIds.add(doc.getVideoId())) organicFeed.add(doc);
         }
 
         // 2. 인기 영상 담기 (목표 사이즈를 채울 때까지)
         int targetSizeAfterPopular = personalSize + popularSize;
         for (VideoDocument doc : popularFuture.join()) {
-            if (mixedFeed.size() < targetSizeAfterPopular && seenVideoIds.add(doc.getVideoId())) {
-                mixedFeed.add(doc);
+            if (organicFeed.size() < targetSizeAfterPopular && seenVideoIds.add(doc.getVideoId())) {
+                organicFeed.add(doc);
             }
         }
 
         // 3. 랜덤 영상 담기 (최종 목표 사이즈를 채울 때까지)
         for (VideoDocument doc : randomFuture.join()) {
-            if (mixedFeed.size() < size && seenVideoIds.add(doc.getVideoId())) {
-                mixedFeed.add(doc);
+            if (organicFeed.size() < organicSize && seenVideoIds.add(doc.getVideoId())) {
+                organicFeed.add(doc);
             }
         }
         // 4. 자연스러운 위치에 광고 주입
-        if (shouldInjectAd && !adFuture.join().isEmpty()) {
-            VideoDocument adDoc = adFuture.join().get(0);
+        if (shouldInjectAd) {
+            List<VideoDocument> adDocs = adFuture.join();
 
-            // 첫 번째 영상(인덱스 0)은 일반 영상으로 두고, 2~6번째 사이(인덱스 1~5) 랜덤 삽입
-            int maxInsertIndex = Math.min(mixedFeed.size(), 6);
-            int insertIndex = maxInsertIndex > 1 ? (int) (Math.random() * (maxInsertIndex - 1)) + 1 : 1;
+            if (!adDocs.isEmpty()) {
+                VideoDocument adDoc = adDocs.get(0);
 
-            if (insertIndex > mixedFeed.size()) {
-                insertIndex = mixedFeed.size();
+                int maxInsertIndex = Math.min(organicFeed.size(), MAX_AD_INSERT_INDEX);
+
+                // ThreadLocalRandom.current().nextInt(origin, bound) -> origin 이상 bound 미만
+                int insertIndex = maxInsertIndex > 1
+                        ? ThreadLocalRandom.current().nextInt(1, maxInsertIndex)
+                        : 1;
+
+                if (insertIndex > organicFeed.size()) {
+                    insertIndex = organicFeed.size();
+                }
+
+                organicFeed.add(insertIndex, adDoc);
             }
-
-            mixedFeed.add(insertIndex, adDoc); // 리스트 중간으로 광고가 쏙 밀고 들어갑니다!
         }
-        return feedEnricher.enrich(mixedFeed, userId);
+        return feedEnricher.enrich(organicFeed, userId);
     }
 
     // =========================================================================
