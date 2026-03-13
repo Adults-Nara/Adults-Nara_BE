@@ -103,11 +103,16 @@ public class WatchHistoryService {
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
 
         watchHistoryRedisService.saveWatchHistory(userId, videoId, lastPosition, duration);
+
+        // rate limit과 무관하게 항상 누적
+        watchHistoryRedisService.accumulateWatchedSeconds(userId, videoId, watchedSeconds != null ? watchedSeconds : 0);
+
         boolean canSaveToDb = watchHistoryRedisService.checkRateLimit(userId, videoId);
 
         Long videoMetadataId = videoMetadata.getId();
         if (canSaveToDb || isCompleted) {
-            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0);
+            int accumulatedSeconds = watchHistoryRedisService.getAndResetAccumulatedSeconds(userId, videoId);
+            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted, accumulatedSeconds);
         }
     }
 
@@ -124,7 +129,11 @@ public class WatchHistoryService {
         // 종료 시점에 완주 여부 계산
         boolean isCompleted = WatchHistory.isVideoCompleted(lastPosition, duration);
 
-        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0, OffsetDateTime.now(ZoneOffset.UTC));
+        // Redis에 남은 누적값 + 이번 마지막 구간 합산
+        int accumulatedSeconds = watchHistoryRedisService.getAndResetAccumulatedSeconds(userId, videoId);
+        int totalToSave = accumulatedSeconds + (watchedSeconds != null ? watchedSeconds : 0);
+
+        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, totalToSave, OffsetDateTime.now(ZoneOffset.UTC));
 
         WatchHistory watchHistory = watchHistoryRepository.findByUserIdAndVideoMetadataId(userId, videoMetadataId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Integer totalWatchedSeconds = watchHistory.getTotalWatchSeconds().intValue();
