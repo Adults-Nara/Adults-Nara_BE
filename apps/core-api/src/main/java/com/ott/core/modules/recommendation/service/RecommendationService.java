@@ -72,6 +72,9 @@ public class RecommendationService {
     // [세로 스와이프 피드] - 7(취향) : 2(인기) : 1(랜덤)
     // =========================================================================
     public List<VideoFeedResponseDto> getVerticalMixedFeed(Long userId, VideoType videoType, int size) {
+        // 광고 편성 계산 (40% 확률, 사이즈가 최소 3개 이상일 때만)
+        boolean shouldInjectAd = size > 2 && Math.random() < 0.4;
+        int organicSize = shouldInjectAd ? size - 1 : size; // 일반 영상 개수 할당
         int personalSize = (int) Math.round(size * FEED_RATIO_PERSONAL);
         int popularSize = (int) Math.round(size * FEED_RATIO_POPULAR);
         int randomSize = size - personalSize - popularSize;
@@ -92,7 +95,12 @@ public class RecommendationService {
                         executeSearch(queryBuilder.buildRandomQuery(videoType,randomSize + 5))
                 , executor);
 
-        CompletableFuture.allOf(personalFuture, popularFuture, randomFuture).join();
+        // 광고 영상
+        CompletableFuture<List<VideoDocument>> adFuture = shouldInjectAd
+                ? CompletableFuture.supplyAsync(() -> executeSearch(queryBuilder.buildPersonalizedAdQuery(userPreferences, videoType)), executor)
+                : CompletableFuture.completedFuture(Collections.emptyList());
+
+        CompletableFuture.allOf(personalFuture, popularFuture, randomFuture, adFuture).join();
 
         // 비디오 ID를 기준으로 완벽하게 중복을 제거하면서 피드 병합 (Set<Long> 활용)
         Set<Long> seenVideoIds = new HashSet<>();
@@ -119,7 +127,20 @@ public class RecommendationService {
                 mixedFeed.add(doc);
             }
         }
+        // 4. 자연스러운 위치에 광고 주입
+        if (shouldInjectAd && !adFuture.join().isEmpty()) {
+            VideoDocument adDoc = adFuture.join().get(0);
 
+            // 첫 번째 영상(인덱스 0)은 일반 영상으로 두고, 2~6번째 사이(인덱스 1~5) 랜덤 삽입
+            int maxInsertIndex = Math.min(mixedFeed.size(), 6);
+            int insertIndex = maxInsertIndex > 1 ? (int) (Math.random() * (maxInsertIndex - 1)) + 1 : 1;
+
+            if (insertIndex > mixedFeed.size()) {
+                insertIndex = mixedFeed.size();
+            }
+
+            mixedFeed.add(insertIndex, adDoc); // 리스트 중간으로 광고가 쏙 밀고 들어갑니다!
+        }
         return feedEnricher.enrich(mixedFeed, userId);
     }
 
