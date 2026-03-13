@@ -18,16 +18,11 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """                                                                                                                               
             INSERT INTO watch_history (watch_history_id, user_id, video_metadata_id, last_position, total_watch_seconds, completed, deleted, created_at, updated_at)          
-            VALUES (:id, :userId, :videoMetadataId, :lastPosition, :lastPosition, :completed, false, :now, :now)
+            VALUES (:id, :userId, :videoMetadataId, :lastPosition, :watchedSeconds, :completed, false, :now, :now)
             ON CONFLICT (user_id, video_metadata_id)
             DO UPDATE SET 
                         last_position = :lastPosition,
-                        total_watch_seconds = watch_history.total_watch_seconds +
-                            CASE
-                                WHEN :lastPosition >= watch_history.last_position
-                                THEN :lastPosition - watch_history.last_position
-                                ELSE 0
-                            END,
+                        total_watch_seconds = watch_history.total_watch_seconds + :watchedSeconds,
                         completed = CASE
                                     WHEN watch_history.completed = true THEN true
                                     ELSE :completed
@@ -39,6 +34,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
                             @Param("videoMetadataId") Long videoMetadataId,
                             @Param("lastPosition") Integer lastPosition,
                             @Param("completed") boolean completed,
+                            @Param("watchedSeconds") Integer watchedSeconds,
                             @Param("now") OffsetDateTime now);
 
     @Query("""

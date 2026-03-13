@@ -94,7 +94,7 @@ public class WatchHistoryService {
     /**
      * 시청 위치 업데이트 (10초마다 호출)
      */
-    public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition) {
+    public void updateWatchPosition(Long userId, Long videoId, Integer lastPosition, Integer watchedSeconds) {
 
         VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
         Integer duration = vm.getDuration();
@@ -108,7 +108,7 @@ public class WatchHistoryService {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
         if (canSaveToDb || isCompleted) {
-            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted);
+            watchHistoryAsyncService.saveWatchHistoryToDb(userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0);
         }
     }
 
@@ -116,7 +116,7 @@ public class WatchHistoryService {
      * 시청 종료 시 최종 위치 DB 저장 (Rate limit 무시)
      */
     @Transactional
-    public void stopWatching(Long userId, Long videoId, Integer lastPosition) {
+    public void stopWatching(Long userId, Long videoId, Integer lastPosition, Integer watchedSeconds) {
 
         VideoMetadata vm = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
         Integer duration = vm.getDuration();
@@ -127,7 +127,7 @@ public class WatchHistoryService {
         VideoMetadata videoMetadata = videoMetadataRepository.findByVideoIdAndDeleted(videoId, false).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         Long videoMetadataId = videoMetadata.getId();
 
-        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, OffsetDateTime.now(ZoneOffset.UTC));
+        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, isCompleted, watchedSeconds != null ? watchedSeconds : 0, OffsetDateTime.now(ZoneOffset.UTC));
         userPreferenceService.reflectWatchScore(userId, videoId, lastPosition, isCompleted);
         watchHistoryRedisService.deleteWatchHistory(userId, videoId);
         eventPublisher.publishEvent(new VideoWatchedEvent(userId, videoId, lastPosition, isCompleted));

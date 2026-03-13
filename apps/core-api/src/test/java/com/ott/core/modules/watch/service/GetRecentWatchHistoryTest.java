@@ -56,7 +56,7 @@ class GetRecentWatchHistoryTest {
 
     private void insertHistory(Long userId, Long videoMetadataId, int lastPosition, int duration, OffsetDateTime at) {
         boolean completed = WatchHistory.isVideoCompleted(lastPosition, duration);
-        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, completed, at);
+        watchHistoryRepository.upsertWatchHistory(IdGenerator.generate(), userId, videoMetadataId, lastPosition, completed, lastPosition, at);
     }
 
     @Test
