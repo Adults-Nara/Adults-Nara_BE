@@ -55,7 +55,7 @@ public class RecommendationQueryBuilder {
 
     }
     // ==========================================
-    // 2. [메인 피드용] 신규 유저 Fallback 쿼리
+    // 2. 사용자 선호도별 추천
     // ==========================================
     public NativeQuery buildMainPersonalizedQuery(List<TagScoreDto> userPreferences, VideoType videoType, int page, int size) {
         List<FunctionScore> functions = new ArrayList<>();
@@ -103,11 +103,11 @@ public class RecommendationQueryBuilder {
     }
 
     // 세로 피드 (20%): 인기순 쿼리
-    public NativeQuery buildPopularQuery(VideoType videoType, int limit) {
+    public NativeQuery buildPopularQuery(VideoType videoType, int page, int limit) {
         return NativeQuery.builder()
                 .withQuery(baseActiveVideoQuery(videoType))
                 .withSort(Sort.by(Sort.Direction.DESC, "viewCount"))
-                .withPageable(PageRequest.of(0, limit))
+                .withPageable(PageRequest.of(page, limit))
                 .build();
     }
 
@@ -131,7 +131,7 @@ public class RecommendationQueryBuilder {
 
 
     // [세로 피드: 랜덤] 엘라스틱서치 random_score 쿼리
-    public NativeQuery buildRandomQuery(VideoType videoType, int limit) {
+    public NativeQuery buildRandomQuery(VideoType videoType, int page, int limit) {
         Query randomQuery = FunctionScoreQuery.of(fsq -> fsq
                 .query(baseActiveVideoQuery(videoType))
                 .functions(FunctionScore.of(f -> f.randomScore(rs -> rs)))
@@ -139,7 +139,7 @@ public class RecommendationQueryBuilder {
 
         return NativeQuery.builder()
                 .withQuery(randomQuery)
-                .withPageable(PageRequest.of(0, limit))
+                .withPageable(PageRequest.of(page, limit))
                 .build();
     }
 
