@@ -57,6 +57,9 @@ public class VideoDocument {
     @Field(type = FieldType.Boolean)
     private boolean deleted;
 
+    @Field(type = FieldType.Boolean)
+    private boolean isAd;
+
     @Field(type = FieldType.Keyword, index = false)
     private String thumbnailUrl;
 
@@ -81,6 +84,7 @@ public class VideoDocument {
                 .viewCount(metadata.getViewCount())
                 .likeCount(metadata.getLikeCount())
                 .deleted(metadata.isDeleted())
+                .isAd(metadata.isAd())
                 .thumbnailUrl(metadata.getThumbnailUrl())
                 .duration(metadata.getDuration())
                 .createdAt(metadata.getCreatedAt())
