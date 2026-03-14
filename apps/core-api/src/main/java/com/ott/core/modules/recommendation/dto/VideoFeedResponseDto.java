@@ -17,7 +17,8 @@ public record VideoFeedResponseDto(
         int views,
         String date,
         Long userId,
-        VideoType videoType
+        VideoType videoType,
+        boolean isAd
 ) {
     public static VideoFeedResponseDto of(VideoDocument doc, String nickname, String profileUrl, int progress){
         return new VideoFeedResponseDto(
@@ -31,7 +32,8 @@ public record VideoFeedResponseDto(
                 doc.getViewCount(),
                 doc.getCreatedAt() != null ? doc.getCreatedAt().toString() : null, // date
                 doc.getUserId(),
-                doc.getVideoType()
+                doc.getVideoType(),
+                doc.isAd()
         );
     }
 }

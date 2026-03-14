@@ -20,6 +20,8 @@ public record VideoInfoResponse(
         String userNickname,
         List<String> aiTagIds,
         String summary,
+        int viewCount,
+        int commentCount,
         WatchHistoryResponse watchHistory
 ) {
     public static VideoInfoResponse of(VideoInfoResult result, WatchHistoryResponse watchHistory) {
@@ -36,6 +38,8 @@ public record VideoInfoResponse(
                 result.userNickname(),
                 result.aiTagIds(),
                 result.summary(),
+                result.viewCount(),
+                result.commentCount(),
                 watchHistory
         );
     }

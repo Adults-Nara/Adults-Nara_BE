@@ -35,6 +35,9 @@ public class WatchHistory extends BaseEntity {
     @Column(name = "last_position", nullable = false)
     private Integer lastPosition;
 
+    @Column(name = "total_watch_seconds", nullable = false)
+    private Long totalWatchSeconds = 0L;
+
     @Column(nullable = false)
     private boolean completed;
 

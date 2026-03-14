@@ -52,13 +52,13 @@ public class RecommendationController implements RecommendationApiDocs {
     public ApiResponse<SliceResponse<VideoFeedResponseDto>> getVerticalFeed(
             @AuthenticationPrincipal String userId,
             @RequestParam(required = true) VideoType videoType,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         Long parsedUserId = parseUserIdSafely(userId);
-        List<VideoFeedResponseDto> dtoList = recommendationService.getVerticalMixedFeed(parsedUserId, videoType, size);
-        boolean hasNext = !dtoList.isEmpty();
-        SliceResponse<VideoFeedResponseDto> sliceResponse = SliceResponse.of(dtoList, 0, size, hasNext);
-
+        List<VideoFeedResponseDto> dtoList = recommendationService.getVerticalMixedFeed(parsedUserId, videoType, page, size);
+        boolean hasNext = dtoList.size() == size;
+        SliceResponse<VideoFeedResponseDto> sliceResponse = SliceResponse.of(dtoList, page, size, hasNext);
         return ApiResponse.success(sliceResponse);
     }
 

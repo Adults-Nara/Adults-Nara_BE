@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.9.15](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.14...v0.9.15) (2026-03-13)
+
+
+### Bug Fixes
+
+* 광고 로직 오류 수정 ([adbf3c6](https://github.com/Adults-Nara/Adults-Nara_BE/commit/adbf3c60fb5f4364379315b859e8ae6c00b930f0))
+* 동시성 문제 코드리뷰 반영 ([57a0bd4](https://github.com/Adults-Nara/Adults-Nara_BE/commit/57a0bd4f00b6122cd56b4c55c87cc1a768a5b6ed))
+* 월간 통계 배치 N+1 문제 완전 해결 ([027c43f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/027c43f1c1b6a6d73ba8ef22203c5735bf7355b9))
+* 유플러스 가입 연동 response 변경 ([da85dcc](https://github.com/Adults-Nara/Adults-Nara_BE/commit/da85dcc919d8890efe6fc54884f075ec57ac4d85))
+* 유플러스 연동 로직 변경 ([79f98b7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/79f98b708bcb4c5292b105bed634a975cab27eae))
+* 코드 리뷰 반영 ([cfc5c3f](https://github.com/Adults-Nara/Adults-Nara_BE/commit/cfc5c3f16c0ef88067e23ef326beb41a64e7066c))
+* 코드 리뷰 반영 ([99453ff](https://github.com/Adults-Nara/Adults-Nara_BE/commit/99453ffce00a1a3b0969ddf72dff3d68dee9b437))
+* 코드 리뷰 반영 ([92acb7e](https://github.com/Adults-Nara/Adults-Nara_BE/commit/92acb7e6eef71e540019741fd03c2163b1163363))
+* 테스트 코드 시간대별 통계 검증 강화 ([f85c456](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f85c456f704172ff218e857702d99a4771df3f2e))
+
+## [0.9.14](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.13...v0.9.14) (2026-03-12)
+
+
+### Bug Fixes
+
+* release ([fb320c8](https://github.com/Adults-Nara/Adults-Nara_BE/commit/fb320c8a16f2faf7e0a266ed674bdb5cc1872752))
+
 ## [0.9.13](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.12...v0.9.13) (2026-03-11)
 
 

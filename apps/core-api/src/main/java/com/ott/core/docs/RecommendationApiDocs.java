@@ -42,7 +42,15 @@ public interface RecommendationApiDocs {
     );
 
     // 세로 스와이프 피드 (숏폼/릴스)
-    @Operation(summary = "세로 믹스 피드 조회 (7:2:1)", description = "취향(70%), 인기(20%), 랜덤(10%) 비율로 섞인 지루하지 않은 피드를 반환합니다.")
+    // ✅ 수정: 광고 주입 내용 명시 및 page 파라미터 추가
+    @Operation(
+            summary = "세로 믹스 피드 조회 (무한 스크롤 및 광고 포함)",
+            description = """
+                    취향(70%), 인기(20%), 랜덤(10%) 비율로 섞인 지루하지 않은 피드를 반환합니다.<br>
+                    - <b>무한 스크롤:</b> page 파라미터를 증가시키며 다음 피드를 요청할 수 있습니다.<br>
+                    - <b>광고 주입(Ad Injection):</b> 사용자의 태그 취향에 맞춘 타겟팅 광고가 피드 중간(랜덤 위치)에 100% 확률(개발 환경 기준)로 1개 삽입됩니다.
+                    """
+    )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
     })
@@ -50,8 +58,11 @@ public interface RecommendationApiDocs {
             @Parameter(description = "사용자 ID")
             String userId,
 
-            @Parameter(description = "영상 타입 필터링", example = "SHORT")
+            @Parameter(description = "영상 타입 필터링 (주로 SHORT 사용)", example = "SHORT")
             VideoType videoType,
+
+            @Parameter(description = "페이지 번호 (무한 스크롤용, 0부터 시작)", example = "0")
+            @Min(0) int page,
 
             @Parameter(description = "가져올 개수 (기본 10)")
             @Min(1) @Max(50) int size

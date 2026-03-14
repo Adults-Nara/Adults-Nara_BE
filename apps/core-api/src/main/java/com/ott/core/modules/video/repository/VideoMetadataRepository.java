@@ -1,7 +1,9 @@
 package com.ott.core.modules.video.repository;
 
 import com.ott.common.persistence.entity.VideoMetadata;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,10 +23,19 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
 
     Optional<VideoMetadata> findByVideoIdAndDeleted(Long videoId, boolean deleted);
 
+    // 조회할 때 Row에 Lock을 겁니다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM VideoMetadata v WHERE v.videoId = :videoId AND v.deleted = :deleted")
+    Optional<VideoMetadata> findByVideoIdAndDeletedWithLock(@Param("videoId") Long videoId, @Param("deleted") boolean deleted);
+
     List<VideoMetadata> findAllByTitleIsNullAndCreatedAtBeforeAndDeletedIsFalse(OffsetDateTime createdAtBefore);
 
     @Query(value = "SELECT * FROM video_metadata WHERE is_ad = true AND deleted = false ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
     Optional<VideoMetadata> findRandomAd();
+
+    @Query(value = "SELECT vm.* FROM video_metadata vm JOIN video_tag vt ON vt.video_metadata_id = vm.video_metadata_id " +
+            "WHERE is_ad = true AND deleted = false AND vt.tag_id = :tagId ORDER BY RANDOM() LIMIT 1", nativeQuery = true)
+    Optional<VideoMetadata> findRelatedRandomAd(@Param("tagId") Long tagId);
 
     // ================= [Redis -> DB 동기화 용도 (Write-Back)] =================
     @Transactional

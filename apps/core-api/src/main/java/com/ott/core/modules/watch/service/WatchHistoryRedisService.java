@@ -17,6 +17,7 @@ public class WatchHistoryRedisService {
 
     private static final String WATCH_HISTORY_PREFIX = "watch:";
     private static final String RATE_LIMIT_PREFIX = "rate:";
+    private static final String WATCH_SECONDS_ACC_PREFIX = "watch_acc";
 
     // TTL 설정
     private static final long WATCH_HISTORY_TTL_HOURS = 12; // 12시간
@@ -69,9 +70,27 @@ public class WatchHistoryRedisService {
         return Boolean.TRUE.equals(isFirstRequest);
     }
 
+    /**
+     * watchedSeconds를 Redis에 누적 (updateWatchPosition 호출 마다)
+     */
+    public void accumulateWatchedSeconds(Long userId, Long videoId, int watchedSeconds) {
+        String key = WATCH_SECONDS_ACC_PREFIX + userId + ":" + videoId;
+        redisTemplate.opsForValue().increment(key, watchedSeconds);
+        redisTemplate.expire(key, WATCH_HISTORY_TTL_HOURS, TimeUnit.HOURS);
+    }
+
+    /**
+     * 누적된 watchedSeconds 읽고 삭제 (원자적)
+     */
+    public int getAndResetAccumulatedSeconds(Long userId, Long videoId) {
+        String key = WATCH_SECONDS_ACC_PREFIX + userId + ":" + videoId;
+        Object value = redisTemplate.opsForValue().getAndDelete(key);
+        return value != null ? Integer.parseInt(value.toString()) : 0;
+    }
+
     public void deleteWatchHistory(Long userId, Long videoId) {
-        String key = generateWatchKey(userId, videoId);
-        redisTemplate.delete(key);
+        redisTemplate.delete(generateWatchKey(userId, videoId));
+        redisTemplate.delete(WATCH_SECONDS_ACC_PREFIX + userId + ":" + videoId);
     }
 
     private String generateWatchKey(Long userId, Long videoId) {

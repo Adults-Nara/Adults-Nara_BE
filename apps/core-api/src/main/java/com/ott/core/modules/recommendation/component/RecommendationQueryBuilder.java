@@ -19,6 +19,7 @@ public class RecommendationQueryBuilder {
         return Query.of(q -> q.bool(b -> b
             .filter(f -> f.term(t -> t.field("deleted").value(false)))
             .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
+            .filter(f -> f.term(t -> t.field("isAd").value(false)))
         ));
     }
 
@@ -54,7 +55,7 @@ public class RecommendationQueryBuilder {
 
     }
     // ==========================================
-    // 2. [메인 피드용] 신규 유저 Fallback 쿼리
+    // 2. 사용자 선호도별 추천
     // ==========================================
     public NativeQuery buildMainPersonalizedQuery(List<TagScoreDto> userPreferences, VideoType videoType, int page, int size) {
         List<FunctionScore> functions = new ArrayList<>();
@@ -102,11 +103,11 @@ public class RecommendationQueryBuilder {
     }
 
     // 세로 피드 (20%): 인기순 쿼리
-    public NativeQuery buildPopularQuery(VideoType videoType, int limit) {
+    public NativeQuery buildPopularQuery(VideoType videoType, int page, int limit) {
         return NativeQuery.builder()
                 .withQuery(baseActiveVideoQuery(videoType))
                 .withSort(Sort.by(Sort.Direction.DESC, "viewCount"))
-                .withPageable(PageRequest.of(0, limit))
+                .withPageable(PageRequest.of(page, limit))
                 .build();
     }
 
@@ -130,7 +131,7 @@ public class RecommendationQueryBuilder {
 
 
     // [세로 피드: 랜덤] 엘라스틱서치 random_score 쿼리
-    public NativeQuery buildRandomQuery(VideoType videoType, int limit) {
+    public NativeQuery buildRandomQuery(VideoType videoType, int page, int limit) {
         Query randomQuery = FunctionScoreQuery.of(fsq -> fsq
                 .query(baseActiveVideoQuery(videoType))
                 .functions(FunctionScore.of(f -> f.randomScore(rs -> rs)))
@@ -138,7 +139,49 @@ public class RecommendationQueryBuilder {
 
         return NativeQuery.builder()
                 .withQuery(randomQuery)
-                .withPageable(PageRequest.of(0, limit))
+                .withPageable(PageRequest.of(page, limit))
+                .build();
+    }
+
+    // ==========================================
+    // [세로 피드] 유저 취향(태그) 맞춤형 타겟팅 광고 쿼리
+    // ==========================================
+    public NativeQuery buildPersonalizedAdQuery(List<TagScoreDto> userPreferences, VideoType videoType) {
+
+        // 1. 베이스 조건: 삭제 안 됨 + 해당 비디오 타입 + 광고(isAd = true)
+        Query baseAdQuery = Query.of(q -> q.bool(b -> b
+                .filter(f -> f.term(t -> t.field("deleted").value(false)))
+                .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
+                .filter(f -> f.term(t -> t.field("isAd").value(true)))
+        ));
+
+        List<FunctionScore> functions = new ArrayList<>();
+
+        // 2. 가중치 1: 유저의 태그 선호도 점수 반영 (타겟팅 핵심 로직)
+        if (userPreferences != null && !userPreferences.isEmpty()) {
+            for (TagScoreDto pref : userPreferences) {
+                if (pref.score() <= 0) continue;
+                functions.add(FunctionScore.of(f -> f
+                        .filter(fq -> fq.term(t -> t.field("tags").value(pref.tagName())))
+                        .weight(pref.score()) // 취향 점수가 높을수록 해당 태그를 가진 광고가 위로 올라옴
+                ));
+            }
+        }
+
+        // 3. 가중치 2: 광고 피로도 방지를 위한 약간의 랜덤 스코어 추가
+        functions.add(FunctionScore.of(f -> f.randomScore(rs -> rs).weight(0.5)));
+
+        // 4. 스코어 조합
+        Query targetedAdQuery = FunctionScoreQuery.of(fsq -> fsq
+                .query(baseAdQuery)
+                .functions(functions)
+                .scoreMode(FunctionScoreMode.Sum) // 태그 점수들을 합산
+                .boostMode(FunctionBoostMode.Multiply) // 베이스 스코어에 곱함
+        )._toQuery();
+
+        return NativeQuery.builder()
+                .withQuery(targetedAdQuery)
+                .withPageable(PageRequest.of(0, 1)) // 가장 점수가 높은 타겟팅 광고 딱 1개만 추출
                 .build();
     }
 }
