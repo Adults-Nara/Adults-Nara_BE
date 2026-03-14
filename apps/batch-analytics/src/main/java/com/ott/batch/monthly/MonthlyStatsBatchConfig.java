@@ -1,12 +1,10 @@
 package com.ott.batch.monthly;
 
-import com.ott.batch.monthly.step1.TagStatProcessor;
+import com.ott.batch.monthly.dto.MonthlyReportDto;
 import com.ott.batch.monthly.dto.TagStatDto;
-import com.ott.batch.monthly.step1.TagStatReader;
-import com.ott.batch.monthly.step1.TagStatWriter;
-import com.ott.batch.monthly.step2.MonthlyReportReader;
-import com.ott.batch.monthly.step2.MonthlyReportProcessor;
-import com.ott.batch.monthly.step2.MonthlyReportWriter;
+import com.ott.batch.monthly.step1.MonthlyTagStatsProcessor;
+import com.ott.batch.monthly.step1.MonthlyTagStatsReader;
+import com.ott.batch.monthly.step1.MonthlyTagStatsWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -20,11 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.time.OffsetDateTime;
 import java.time.YearMonth;
 
 /**
- * 월간 통계 배치 Job 설정
+ * 월간 태그별 통계 배치 Job 설정
  */
 @Slf4j
 @Configuration
@@ -34,13 +31,9 @@ public class MonthlyStatsBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager platformTransactionManager;
 
-    private final TagStatReader tagStatReader;
-    private final TagStatProcessor tagStatProcessor;
-    private final TagStatWriter tagStatWriter;
-
-    private final MonthlyReportReader monthlyReportReader;
-    private final MonthlyReportProcessor monthlyReportProcessor;
-    private final MonthlyReportWriter monthlyReportWriter;
+    private final MonthlyTagStatsReader monthlyTagStatsReader;
+    private final MonthlyTagStatsProcessor monthlyTagStatsProcessor;
+    private final MonthlyTagStatsWriter monthlyTagStatsWriter;
 
     private static final int CHUNK_SIZE = 100;
 
@@ -48,51 +41,26 @@ public class MonthlyStatsBatchConfig {
      * 월간 통계 Job
      */
     @Bean
-    public Job monthlyStatsJob(Step monthlyTagStatsStep, Step monthlyReportStep) {
+    public Job monthlyStatsJob(Step monthlyTagStatsStep) {
         log.info("[monthlyStatsJob] Job 빌드");
         return new JobBuilder("monthlyStatsJob", jobRepository)
                 .start(monthlyTagStatsStep)
-                .next(monthlyReportStep)
                 .build();
     }
 
     /**
-     * Step 1: 태그별 통계 집계
+     * Step: 월간 태그별 통계 집계
      */
     @Bean
     @JobScope
-    public Step monthlyTagStatsStep(
-            @Value("#{jobParameters['rangeFrom']}") String rangeFrom,
-            @Value("#{jobParameters['rangeTo']}") String rangeTo) {
-
-        log.debug("[monthlyTagStatsStep] Step 빌드");
-
+    public Step monthlyTagStatsStep(@Value("#{jobParameters['yearMonth']}") String yearMonth) {
+        log.debug("[monthlyTagStatsStep] Step 빌드: yearMonth={}", yearMonth);
+        
         return new StepBuilder("monthlyTagStatsStep", jobRepository)
-                .<TagStatDto, TagStatDto>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(tagStatReader.reader(
-                        OffsetDateTime.parse(rangeFrom),
-                        OffsetDateTime.parse(rangeTo)
-                ))
-                .processor(tagStatProcessor)
-                .writer(tagStatWriter)
-                .build();
-    }
-
-    /**
-     * Step 2: 사용자별 월간 리포트 생성
-     */
-    @Bean
-    @JobScope
-    public Step monthlyReportStep(
-            @Value("#{jobParameters['yearMonth']}") String yearMonth) {
-
-        log.debug("[monthlyReportStep] Step 빌드");
-
-        return new StepBuilder("monthlyReportStep", jobRepository)
-                .<Long, Long>chunk(CHUNK_SIZE, platformTransactionManager)
-                .reader(monthlyReportReader.reader(YearMonth.parse(yearMonth)))
-                .processor(monthlyReportProcessor)
-                .writer(monthlyReportWriter)
+                .<TagStatDto, MonthlyReportDto>chunk(CHUNK_SIZE, platformTransactionManager)
+                .reader(monthlyTagStatsReader.reader(YearMonth.parse(yearMonth)))
+                .processor(monthlyTagStatsProcessor)
+                .writer(monthlyTagStatsWriter)
                 .build();
     }
 }

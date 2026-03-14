@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface MonthlyWatchReportRepository extends JpaRepository<MonthlyWatchReport, Long> {
+public interface MonthlyTagWatchStatsRepository extends JpaRepository<MonthlyWatchReport, Long> {
 
     /**
      * 사용자의 월간 태그별 통계 조회 (시청 시간 내림차순)
@@ -31,9 +31,4 @@ public interface MonthlyWatchReportRepository extends JpaRepository<MonthlyWatch
      * 특정 월의 통계가 존재하는지 확인
      */
     boolean existsByUserIdAndStatsYearAndStatsMonth(Long userId, Integer statsYear, Integer statsMonth);
-
-    /**
-     * 배치용: 특정 월의 모든 통계 조회
-     */
-    List<MonthlyWatchReport> findByStatsYearAndStatsMonth(Integer statsYear, Integer statsMonth);
 }
