@@ -18,17 +18,17 @@ import java.util.concurrent.TimeUnit;
 public class UserVectorService {
 
     private final ElasticsearchOperations elasticsearchOperations;
-    private final RedisTemplate<String, List<Double>> redisVectorTemplate;
+    private final RedisTemplate<String, List<Float>> redisVectorTemplate;
 
     private static final String REDIS_USER_VECTOR_KEY_PREFIX = "user:vector:";
     private static final int VECTOR_DIMENSION = 384;
     private static final long USER_VECTOR_TTL_DAYS = 30L;
-    private static final double ALPHA_WATCH_NORMAL = 0.05;    // 일반 시청: 5% 반영
-    private static final double ALPHA_WATCH_COMPLETE = 0.10;  // 완료: 10% 반영
-    private static final double ALPHA_LIKE = 0.20;            // 좋아요: 20% 반영
-    private static final double ALPHA_SUPERLIKE = 0.35;       // 왕따봉: 35% 반영
+    private static final float ALPHA_WATCH_NORMAL = 0.05f;// 일반 시청: 5% 반영
+    private static final float ALPHA_WATCH_COMPLETE = 0.10f; // 완료: 10% 반영
+    private static final float ALPHA_LIKE = 0.20f; // 좋아요: 20% 반영
+    private static final float ALPHA_SUPERLIKE = 0.35f;  // 왕따봉: 35% 반영
 
-    public List<Double> getUserVector(Long userId) {
+    public List<Float> getUserVector(Long userId) {
         String redisKey = REDIS_USER_VECTOR_KEY_PREFIX + userId;
         try {
             return redisVectorTemplate.opsForValue().get(redisKey);
@@ -39,40 +39,34 @@ public class UserVectorService {
     }
 
     public void updateVectorFromWatch(Long userId, Long videoId, boolean isCompleted) {
-        double alpha = isCompleted ? ALPHA_WATCH_COMPLETE : ALPHA_WATCH_NORMAL;
+        float alpha = isCompleted ? ALPHA_WATCH_COMPLETE : ALPHA_WATCH_NORMAL;
         processVectorUpdate(userId, videoId, alpha);
     }
 
     public void updateVectorFromInteraction(Long userId, Long videoId, InteractionType type) {
-        double alpha = (type == InteractionType.SUPERLIKE) ? ALPHA_SUPERLIKE : ALPHA_LIKE;
+        float alpha = (type == InteractionType.SUPERLIKE) ? ALPHA_SUPERLIKE : ALPHA_LIKE;
         processVectorUpdate(userId, videoId, alpha);
     }
 
-    private void processVectorUpdate(Long userId, Long videoId, double alpha) {
+    private void processVectorUpdate(Long userId, Long videoId, float alpha) {
         try {
             // 1. ES에서 시청/인터랙션 한 영상의 벡터를 조회
             VideoDocument videoDoc = elasticsearchOperations.get(videoId.toString(), VideoDocument.class);
-            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().length == 0) {
+            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().isEmpty()) {
                 log.warn("[UserVector] 영상의 벡터 데이터가 없어 업데이트 취소 - videoId: {}", videoId);
                 return;
             }
-            float[] rawEmbedding = videoDoc.getEmbedding();
-            List<Double> videoVector = new ArrayList<>(VECTOR_DIMENSION);
-            for (float v : rawEmbedding) {
-                videoVector.add((double) v);
-            }
 
-            // 2. Redis에서 유저의 기존 벡터를 조회
+            List<Float> videoVector = videoDoc.getEmbedding();
+
             String redisKey = REDIS_USER_VECTOR_KEY_PREFIX + userId;
-            List<Double> currentUserVector = redisVectorTemplate.opsForValue().get(redisKey);
+            List<Float> currentUserVector = redisVectorTemplate.opsForValue().get(redisKey);
 
-            List<Double> newVector;
+            List<Float> newVector;
             if (currentUserVector == null || currentUserVector.isEmpty()) {
-                // 신규 유저의 첫 상호작용인 경우: 현재 영상 벡터가 곧 유저의 취향 벡터가 됨
                 newVector = videoVector;
                 log.info("[UserVector] 신규 유저 취향 벡터 최초 생성 - userId: {}", userId);
             } else {
-                // 기존 취향이 있는 경우: EMA(지수 이동 평균) 방식으로 벡터 융합
                 newVector = calculateEMA(currentUserVector, videoVector, alpha);
             }
 
@@ -89,17 +83,17 @@ public class UserVectorService {
      * 지수 이동 평균(EMA)을 활용한 벡터 융합 계산
      * V_new = (1 - alpha) * V_old + (alpha) * V_video
      */
-    private List<Double> calculateEMA(List<Double> currentUserVector, List<Double> videoVector, double alpha) {
+    private List<Float> calculateEMA(List<Float> currentUserVector, List<Float> videoVector, float alpha) {
         if (currentUserVector.size() != VECTOR_DIMENSION || videoVector.size() != VECTOR_DIMENSION) {
             throw new IllegalArgumentException("벡터의 차원이 일치하지 않습니다. 기대값: " + VECTOR_DIMENSION);
         }
-        List<Double> updatedVector = new ArrayList<>(VECTOR_DIMENSION);
+        List<Float> updatedVector = new ArrayList<>(VECTOR_DIMENSION);
         for (int i = 0;i < VECTOR_DIMENSION; i++) {
-            double oldVal = currentUserVector.get(i);
-            double newVal = videoVector.get(i);
+            float oldVal = currentUserVector.get(i);
+            float newVal = videoVector.get(i);
 
             // 수학 공식 적용
-            double blendedVal = ((1.0 - alpha) * oldVal) + (alpha * newVal);
+            float blendedVal = ((1.0f - alpha) * oldVal) + (alpha * newVal);
             updatedVector.add(blendedVal);
         }
         return updatedVector;
