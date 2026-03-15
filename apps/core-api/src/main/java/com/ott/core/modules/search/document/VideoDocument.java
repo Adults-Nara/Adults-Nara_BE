@@ -9,6 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Document(indexName = "video_search", createIndex = false)
@@ -46,7 +47,7 @@ public class VideoDocument {
     private List<String> tags;
 
     @Field(type = FieldType.Dense_Vector, dims = 384, similarity = "cosine", index = true)
-    private float[] embedding;
+    private List<Float> embedding;
 
     @Field(type = FieldType.Integer)
     private int viewCount;
@@ -70,6 +71,13 @@ public class VideoDocument {
     private OffsetDateTime createdAt;
 
     public static VideoDocument from(VideoMetadata metadata, List<String> tagNames, VideoAiAnalysis aiAnalysis) {
+        List<Float> embeddingList = null;
+        if (aiAnalysis != null && aiAnalysis.getEmbedding() != null) {
+            embeddingList = new ArrayList<>(aiAnalysis.getEmbedding().length);
+            for (float v : aiAnalysis.getEmbedding()) {
+                embeddingList.add(v);
+            }
+        }
         return VideoDocument.builder()
                 .videoId(metadata.getVideoId())
                 .metadataId(metadata.getId())
@@ -80,7 +88,7 @@ public class VideoDocument {
                 .videoType(metadata.getVideoType())
                 .tags(tagNames)
                 .summary(aiAnalysis != null ? aiAnalysis.getSummary() : null)
-                .embedding(aiAnalysis != null ? aiAnalysis.getEmbedding() : null)
+                .embedding(embeddingList)
                 .viewCount(metadata.getViewCount())
                 .likeCount(metadata.getLikeCount())
                 .deleted(metadata.isDeleted())

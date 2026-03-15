@@ -52,14 +52,14 @@ public class UserVectorService {
         try {
             // 1. ES에서 시청/인터랙션 한 영상의 벡터를 조회
             VideoDocument videoDoc = elasticsearchOperations.get(videoId.toString(), VideoDocument.class);
-            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().length == 0) {
+            if (videoDoc == null || videoDoc.getEmbedding() == null || videoDoc.getEmbedding().isEmpty()) {
                 log.warn("[UserVector] 영상의 벡터 데이터가 없어 업데이트 취소 - videoId: {}", videoId);
                 return;
             }
-            float[] rawEmbedding = videoDoc.getEmbedding();
+            List<Float> rawEmbedding = videoDoc.getEmbedding();
             List<Double> videoVector = new ArrayList<>(VECTOR_DIMENSION);
-            for (float v : rawEmbedding) {
-                videoVector.add((double) v);
+            for (Float v : rawEmbedding) {
+                videoVector.add(v.doubleValue());
             }
 
             // 2. Redis에서 유저의 기존 벡터를 조회
