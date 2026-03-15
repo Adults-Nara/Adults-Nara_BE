@@ -1,61 +1,62 @@
 package com.ott.core.modules.stats.controller;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
+import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.stats.dto.MonthlyStatsResponse;
 import com.ott.core.modules.stats.service.MonthlyStatsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.regex.Pattern;
+import java.time.YearMonth;
 
-/**
- * 월간 통계 API Controller
- */
-@Tag(name = "월간 통계 배치", description = "월간 시청 통계 배치 작업 API")
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/statistics/monthly")
+@RequestMapping("/api/v1/statistics")
 @RequiredArgsConstructor
+@Tag(name = "통계 API", description = "사용자 시청 통계 조회")
 public class MonthlyStatsController {
-
-    private static final Pattern YEAR_MONTH_PATTERN = Pattern.compile("^\\d{4}-\\d{2}$");
 
     private final MonthlyStatsService monthlyStatsService;
 
-    /**
-     * 월간 리포트 조회
-     *
-     * GET /api/v1/statistics/monthly/{yearMonth}
-     *
-     * @param userIdStr 인증된 사용자 ID (JWT에서 추출, String)
-     * @param yearMonth "2026-03" 형식
-     */
-    @GetMapping("/{yearMonth}")
-    public ResponseEntity<MonthlyStatsResponse> getMonthlyReport(
-            @AuthenticationPrincipal String userIdStr,
-            @PathVariable String yearMonth) {
+    @Operation(
+        summary = "월간 태그별 시청 통계 조회",
+        description = "사용자의 월간 태그별 시청 통계를 조회합니다. year, month 미제공 시 현재 월 기준으로 조회됩니다."
+    )
+    @GetMapping("/monthly")
+    public ApiResponse<MonthlyStatsResponse> getMonthlyStats(
+            Authentication authentication,
+            @Parameter(description = "연도 (예: 2026)") @RequestParam(required = false) Integer year,
+            @Parameter(description = "월 (1-12)") @RequestParam(required = false) Integer month) {
 
-        // yearMonth 유효성 검증 (log injection, XSS 방지)
-        if (!YEAR_MONTH_PATTERN.matcher(yearMonth).matches()) {
-            log.warn("Invalid yearMonth format: {}", yearMonth.replaceAll("[\r\n]", ""));
-            return ResponseEntity.badRequest().build();
+        Long userId = Long.parseLong(authentication.getName());
+
+        // 파라미터 유효성 검사
+        if ((year != null && month == null) || (year == null && month != null)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
-        Long userId;
-        try {
-            userId = Long.parseLong(userIdStr);
-        } catch (NumberFormatException e) {
-            log.warn("Invalid user ID format in principal: {}", userIdStr.replaceAll("[\\r\\n]", ""));
-            return ResponseEntity.badRequest().build();
-        }
+        YearMonth targetMonth = (year != null)
+                ? YearMonth.of(year, month)
+                : YearMonth.now();
 
-        log.info("월간 리포트 조회: userId={}, yearMonth={}", userId, yearMonth);
+        log.info("[getMonthlyStats] userId={}, year={}, month={}", 
+                userId, targetMonth.getYear(), targetMonth.getMonthValue());
 
-        MonthlyStatsResponse response = monthlyStatsService.getMonthlyReport(userId, yearMonth);
+        MonthlyStatsResponse response = monthlyStatsService.getMonthlyStats(
+                userId, 
+                targetMonth.getYear(), 
+                targetMonth.getMonthValue()
+        );
 
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(response);
     }
 }

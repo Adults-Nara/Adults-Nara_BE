@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -38,21 +40,26 @@ public class VideoAiAnalysisService {
         VideoMetadata metadata = videoMetadataRepository.findByVideoId(event.videoId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_METADATA_NOT_FOUND));
 
-        // 1. AI 태그 저장 (Tag 테이블에 없으면 생성, source = AI)
+        // 1. AI 태그 저장
         List<String> aiTagNames = event.aiTags();
         if (aiTagNames != null && !aiTagNames.isEmpty()) {
-            // 필요한 태그만 DB에서 1번에 조회 (OOM 방지)
-            List<Tag> existingTags = tagRepository.findByTagNameIn(aiTagNames);
+            // 해당 비디오에 이미 등록된 AI 소스 태그들을 조회 (멱등성 보장)
+            List<VideoTag> existingAiVideoTags = videoTagRepository.findAllByVideoMetadataIdAndSource(metadata.getId(), TagSource.AI);
+            Set<Long> existingAiTagIds = existingAiVideoTags.stream()
+                    .map(vt -> vt.getTag().getId())
+                    .collect(Collectors.toSet());
 
-            for (String tagName : aiTagNames) {
-                Tag tag = existingTags.stream()
-                        .filter(t -> t.getTagName().equals(tagName))
-                        .findFirst()
-                        .orElseThrow(() -> new BusinessException(ErrorCode.TAG_NOT_FOUND));
+            List<Tag> tagsToAssign = tagRepository.findByTagNameIn(aiTagNames);
 
-                // VideoTag 생성 (source = AI)
-                VideoTag videoTag = new VideoTag(metadata, tag, TagSource.AI);
-                videoTagRepository.save(videoTag);
+            for (Tag tag : tagsToAssign) {
+                // 이미 AI 소스로 등록된 태그인 경우 스킵
+                if (existingAiTagIds.contains(tag.getId())) {
+                    log.info("이미 등록된 AI 태그이므로 스킵합니다: videoId={}, tagName={}", event.videoId(), tag.getTagName());
+                    continue;
+                }
+
+                // VideoTag 생성 및 저장 (source = AI)
+                videoTagRepository.save(new VideoTag(metadata, tag, TagSource.AI));
             }
         }
 

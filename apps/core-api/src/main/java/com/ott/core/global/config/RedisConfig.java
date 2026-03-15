@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.type.CollectionType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -46,18 +47,16 @@ public class RedisConfig {
     // 384차원 AI 임베딩 벡터 전용 RedisTemplate
     // =========================================================================
     @Bean
-    public RedisTemplate<String, List<Double>> redisVectorTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, List<Double>> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-
+    public RedisTemplate<String, List<Float>> redisVectorTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, List<Float>> template = new RedisTemplate<>();
+        template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
 
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        ObjectMapper mapper = new ObjectMapper();
+        CollectionType listType = mapper.getTypeFactory().constructCollectionType(List.class, Float.class);
+        Jackson2JsonRedisSerializer<List<Float>> serializer = new Jackson2JsonRedisSerializer<>(mapper, listType);
 
-        template.afterPropertiesSet();
-
+        template.setValueSerializer(serializer);
         return template;
     }
 }
