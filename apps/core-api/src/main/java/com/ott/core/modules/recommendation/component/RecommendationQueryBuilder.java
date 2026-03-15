@@ -119,6 +119,7 @@ public class RecommendationQueryBuilder {
             .mustNot(mn -> mn.term(t -> t.field("_id").value(currentVideoId.toString())))
             .filter(f -> f.term(t -> t.field("deleted").value(false)))
             .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
+            .filter(f -> f.term(t -> t.field("isAd").value(false)))
         ));
 
         return NativeQuery.builder()
