@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "video_tag", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_video_tag", columnNames = { "video_metadata_id", "tag_id" })
+        @UniqueConstraint(name = "uk_video_tag", columnNames = { "video_metadata_id", "tag_id", "source" })
 })
 public class VideoTag {
 
