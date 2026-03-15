@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.17](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.16...v0.9.17) (2026-03-15)
+
+
+### Bug Fixes
+
+* release ([a9c7f18](https://github.com/Adults-Nara/Adults-Nara_BE/commit/a9c7f18887254770a12db493fc2b768d905e133d))
+* 배치 트리거 추가 및 response 변경 ([7d530a1](https://github.com/Adults-Nara/Adults-Nara_BE/commit/7d530a1f78ffbd6193feacce7127d50663a4935b))
+* 코드 리뷰 반영 ([d1b0a83](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d1b0a839baa7f44ff4aad5c1cf777ba54cfbf5aa))
+
 ## [0.9.16](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.15...v0.9.16) (2026-03-14)
 
 
