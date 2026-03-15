@@ -1,5 +1,7 @@
 package com.ott.core.modules.stats.controller;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
 import com.ott.core.modules.stats.dto.MonthlyStatsResponse;
 import com.ott.core.modules.stats.service.MonthlyStatsService;
@@ -39,7 +41,7 @@ public class MonthlyStatsController {
 
         // 파라미터 유효성 검사
         if ((year != null && month == null) || (year == null && month != null)) {
-            throw new IllegalArgumentException("year와 month는 함께 제공되거나 모두 생략되어야 합니다.");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
         YearMonth targetMonth = (year != null)

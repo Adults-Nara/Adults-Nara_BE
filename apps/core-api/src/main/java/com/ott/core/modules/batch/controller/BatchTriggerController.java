@@ -75,18 +75,14 @@ public class BatchTriggerController {
         }
     }
 
-    /**
-     * 배치 서버 응답 DTO
-     */
-    public record BatchExecutionResponse(
+    // batch-analytics의 응답 DTO (역직렬화용)
+    record BatchExecutionResponse(
             Long jobExecutionId,
             String status,
             String yearMonth
     ) {}
 
-    /**
-     * API 응답 DTO
-     */
+    // API 응답 DTO
     public record BatchTriggerResult(
             String status,
             Integer year,
