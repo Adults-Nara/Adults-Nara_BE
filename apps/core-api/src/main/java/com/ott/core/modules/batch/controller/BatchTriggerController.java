@@ -36,7 +36,12 @@ public class BatchTriggerController {
             @Parameter(description = "연도 (예: 2026)") @RequestParam(required = false) Integer year,
             @Parameter(description = "월 (1-12)") @RequestParam(required = false) Integer month) {
 
-        YearMonth targetMonth = (year != null && month != null)
+        // 파라미터 유효성 검사
+        if ((year != null && month == null) || (year == null && month != null)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+
+        YearMonth targetMonth = (year != null)
                 ? YearMonth.of(year, month)
                 : YearMonth.now().minusMonths(1);
 
