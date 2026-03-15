@@ -1,5 +1,6 @@
 package com.ott.core.modules.search.document;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.ott.common.persistence.entity.VideoAiAnalysis;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.VideoType;
@@ -12,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Document(indexName = "video_search", createIndex = false)
 @Getter
 @Builder

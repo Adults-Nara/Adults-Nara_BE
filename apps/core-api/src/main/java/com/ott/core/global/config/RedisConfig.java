@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.type.CollectionType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -46,17 +47,24 @@ public class RedisConfig {
     // 384차원 AI 임베딩 벡터 전용 RedisTemplate
     // =========================================================================
     @Bean
-    public RedisTemplate<String, List<Double>> redisVectorTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, List<Double>> redisVectorTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, List<Double>> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
+        template.setConnectionFactory(factory);
 
+        // Key는 단순 문자열 직렬화
         template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
 
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        // 1. ObjectMapper 생성
+        ObjectMapper mapper = new ObjectMapper();
 
-        template.afterPropertiesSet();
+        // 2. [주의] Jackson의 CollectionType을 사용하여 List<Double> 타입 정의
+        CollectionType listType = mapper.getTypeFactory().constructCollectionType(List.class, Double.class);
+
+        // 3. Spring Boot 3.x 방식: 생성자에서 ObjectMapper와 Type을 한 번에 주입 (setObjectMapper 안 씀!)
+        Jackson2JsonRedisSerializer<List<Double>> serializer = new Jackson2JsonRedisSerializer<>(mapper, listType);
+
+        // Value 직렬화 설정
+        template.setValueSerializer(serializer);
 
         return template;
     }
