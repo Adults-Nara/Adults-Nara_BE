@@ -1,5 +1,7 @@
 package com.ott.core.modules.batch.controller;
 
+import com.ott.common.error.BusinessException;
+import com.ott.common.error.ErrorCode;
 import com.ott.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.YearMonth;
@@ -59,27 +62,9 @@ public class BatchTriggerController {
 
             return ApiResponse.success(result);
             
-        } catch (Exception e) {
-            log.error("[triggerMonthlyStatsBatch] 배치 실행 실패", e);
-            
-            String message = String.format(
-                    "배치 실행 요청이 등록되었습니다: %d년 %d월\n" +
-                    "터미널에서 다음 명령어로 배치를 실행하세요:\n" +
-                    "./gradlew :apps:batch-analytics:bootRun --args='--yearMonth=%s'",
-                    targetMonth.getYear(), 
-                    targetMonth.getMonthValue(),
-                    targetMonth.toString()
-            );
-            
-            BatchTriggerResult result = new BatchTriggerResult(
-                    "REQUESTED",
-                    targetMonth.getYear(),
-                    targetMonth.getMonthValue(),
-                    targetMonth.toString(),
-                    message
-            );
-
-            return ApiResponse.success(result);
+        } catch (RestClientException e) {
+            log.error("[triggerMonthlyStatsBatch] 배치 서버 호출 실패", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, e);
         }
     }
 
