@@ -1,6 +1,5 @@
 package com.ott.batch.monthly.dto;
 
-import com.ott.common.persistence.entity.MonthlyWatchReport;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,16 +17,4 @@ public class MonthlyReportDto {
     private String tagName;
     private Long totalWatchSeconds;
     private Integer watchCount;
-
-    public MonthlyWatchReport toEntity() {
-        return MonthlyWatchReport.builder()
-                .userId(userId)
-                .statsYear(statsYear)
-                .statsMonth(statsMonth)
-                .tagId(tagId)
-                .tagName(tagName)
-                .totalWatchSeconds(totalWatchSeconds)
-                .watchCount(watchCount)
-                .build();
-    }
 }
