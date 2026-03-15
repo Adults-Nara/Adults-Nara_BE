@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -57,12 +58,11 @@ class VideoAiAnalysisServiceTest {
         given(metadata.getVideoId()).willReturn(videoId);
 
         Tag tag1 = mock(Tag.class);
-        given(tag1.getTagName()).willReturn("액션");
         Tag tag2 = mock(Tag.class);
-        given(tag2.getTagName()).willReturn("SF");
 
         given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
         given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of(tag1, tag2));
+        given(videoTagRepository.findAllByVideoMetadataIdAndSource(any(), eq(com.ott.common.persistence.enums.TagSource.AI))).willReturn(List.of());
         given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.empty());
 
         // when
@@ -98,24 +98,31 @@ class VideoAiAnalysisServiceTest {
     }
 
     @Test
-    @DisplayName("DB에 존재하지 않는 AI 태그가 반환될 경우 예외 발생")
-    void processAnalysisResult_ThrowsException_WhenTagNotFound() {
+    @DisplayName("DB에 존재하지 않는 AI 태그가 반환될 경우 해당 태그는 무시하고 진행한다")
+    void processAnalysisResult_Ignore_WhenTagNotFound() {
         // given
         Long videoId = 100L;
         VideoAiAnalysisCompletedEvent event = new VideoAiAnalysisCompletedEvent(
                 videoId, "COMPLETED", List.of("없는태그"), "요약문", null, new float[] { 0.1f }, null);
 
         VideoMetadata metadata = mock(VideoMetadata.class);
+        given(metadata.getVideoId()).willReturn(videoId);
 
         given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
         given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of()); // DB에 태그 없음
+        given(videoTagRepository.findAllByVideoMetadataIdAndSource(any(), any())).willReturn(List.of());
+        given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> videoAiAnalysisService.processAnalysisResult(event))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.TAG_NOT_FOUND);
+        // when
+        videoAiAnalysisService.processAnalysisResult(event);
 
-        verifyNoInteractions(videoTagRepository, videoAiAnalysisRepository, eventPublisher);
+        // then
+        // 태그 저장은 호출되지 않음
+        verify(videoTagRepository, never()).save(any(VideoTag.class));
+        
+        // 나머지 과정은 정상 진행
+        verify(videoAiAnalysisRepository).save(any(VideoAiAnalysis.class));
+        verify(eventPublisher).publishEvent(any(VideoIndexRequestedEvent.class));
     }
 
     @Test
@@ -130,12 +137,11 @@ class VideoAiAnalysisServiceTest {
         given(metadata.getVideoId()).willReturn(videoId);
 
         Tag tag1 = mock(Tag.class);
-        given(tag1.getTagName()).willReturn("액션");
-
         VideoAiAnalysis existingAnalysis = mock(VideoAiAnalysis.class);
 
         given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
         given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of(tag1));
+        given(videoTagRepository.findAllByVideoMetadataIdAndSource(any(), eq(com.ott.common.persistence.enums.TagSource.AI))).willReturn(List.of());
         // 이미 분석 결과가 존재하는 상황
         given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.of(existingAnalysis));
 
@@ -150,6 +156,44 @@ class VideoAiAnalysisServiceTest {
         verify(videoAiAnalysisRepository, never()).save(any(VideoAiAnalysis.class));
 
         // 이벤트는 발행됨
+        verify(eventPublisher).publishEvent(any(VideoIndexRequestedEvent.class));
+    }
+
+    @Test
+    @DisplayName("이미 동일한 AI 태그가 존재할 경우 저장을 스킵한다 (멱등성)")
+    void processAnalysisResult_SkipTagSave_WhenTagAlreadyExists() {
+        // given
+        Long videoId = 100L;
+        VideoAiAnalysisCompletedEvent event = new VideoAiAnalysisCompletedEvent(
+                videoId, "COMPLETED", List.of("액션"), "요약", null, new float[] { 0.1f }, null);
+
+        VideoMetadata metadata = mock(VideoMetadata.class);
+        given(metadata.getId()).willReturn(1L);
+        given(metadata.getVideoId()).willReturn(videoId);
+
+        Tag tag1 = mock(Tag.class);
+        given(tag1.getId()).willReturn(500L);
+        given(tag1.getTagName()).willReturn("액션");
+
+        // 이미 동일한 태그가 AI 소스로 저장되어 있는 상황
+        VideoTag existingVideoTag = mock(VideoTag.class);
+        given(existingVideoTag.getTag()).willReturn(tag1);
+
+        given(videoMetadataRepository.findByVideoId(videoId)).willReturn(Optional.of(metadata));
+        given(tagRepository.findByTagNameIn(event.aiTags())).willReturn(List.of(tag1));
+        given(videoTagRepository.findAllByVideoMetadataIdAndSource(metadata.getId(), com.ott.common.persistence.enums.TagSource.AI))
+                .willReturn(List.of(existingVideoTag));
+        given(videoAiAnalysisRepository.findById(videoId)).willReturn(Optional.empty());
+
+        // when
+        videoAiAnalysisService.processAnalysisResult(event);
+
+        // then
+        // 태그 저장은 호출되지 않음 (Skip)
+        verify(videoTagRepository, never()).save(any(VideoTag.class));
+        
+        // 나머지 과정은 정상 진행
+        verify(videoAiAnalysisRepository).save(any(VideoAiAnalysis.class));
         verify(eventPublisher).publishEvent(any(VideoIndexRequestedEvent.class));
     }
 }
