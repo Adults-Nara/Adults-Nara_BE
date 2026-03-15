@@ -29,7 +29,7 @@ public class MonthlyStatsService {
                 .findByUserIdAndYearMonth(userId, year, month);
 
         if (reports.isEmpty()) {
-            throw new BusinessException(ErrorCode.NOT_FOUND);
+            throw new BusinessException(ErrorCode.MONTHLY_REPORT_NOT_FOUND);
         }
 
         List<TagWatchStatsResponse> tagStats = reports.stream()

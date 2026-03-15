@@ -48,16 +48,18 @@ public class BatchTriggerController {
             
             log.info("[triggerMonthlyStatsBatch] 배치 서버 호출: {}", url);
             
-            String response = restTemplate.postForObject(url, null, String.class);
+            BatchExecutionResponse response = restTemplate.postForObject(url, null, BatchExecutionResponse.class);
             
-            log.info("[triggerMonthlyStatsBatch] 배치 실행 완료: {}", response);
+            log.info("[triggerMonthlyStatsBatch] 배치 실행 완료: jobExecutionId={}, status={}", 
+                    response.jobExecutionId(), response.status());
             
             BatchTriggerResult result = new BatchTriggerResult(
                     "TRIGGERED",
                     targetMonth.getYear(),
                     targetMonth.getMonthValue(),
                     targetMonth.toString(),
-                    "배치가 성공적으로 실행되었습니다: " + targetMonth.getYear() + "년 " + targetMonth.getMonthValue() + "월"
+                    String.format("배치가 성공적으로 실행되었습니다 (Job ID: %d, Status: %s)", 
+                            response.jobExecutionId(), response.status())
             );
 
             return ApiResponse.success(result);
@@ -68,6 +70,18 @@ public class BatchTriggerController {
         }
     }
 
+    /**
+     * 배치 서버 응답 DTO
+     */
+    public record BatchExecutionResponse(
+            Long jobExecutionId,
+            String status,
+            String yearMonth
+    ) {}
+
+    /**
+     * API 응답 DTO
+     */
     public record BatchTriggerResult(
             String status,
             Integer year,
