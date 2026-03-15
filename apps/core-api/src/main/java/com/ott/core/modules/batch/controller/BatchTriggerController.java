@@ -19,6 +19,8 @@ import java.time.YearMonth;
 @Tag(name = "배치 API", description = "수동 배치 실행 API (시연용)")
 public class BatchTriggerController {
 
+    private final RestTemplate restTemplate;
+
     @Value("${batch.server.url:http://localhost:8082}")
     private String batchServerUrl;
 
@@ -39,7 +41,6 @@ public class BatchTriggerController {
                 targetMonth.getYear(), targetMonth.getMonthValue());
 
         try {
-            RestTemplate restTemplate = new RestTemplate();
             String url = batchServerUrl + "/api/batch/trigger?yearMonth=" + targetMonth.toString();
             
             log.info("[triggerMonthlyStatsBatch] 배치 서버 호출: {}", url);
