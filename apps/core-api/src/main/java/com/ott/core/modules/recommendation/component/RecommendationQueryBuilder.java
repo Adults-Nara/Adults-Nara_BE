@@ -26,7 +26,7 @@ public class RecommendationQueryBuilder {
     // ==========================================
     // [메인 피드용] 유저 취향 벡터 기반 kNN 쿼리
     // ==========================================
-    public NativeQuery buildMainPersonalizedKnnQuery(List<Double> userVector, VideoType videoType, int page, int size) {
+    public NativeQuery buildMainPersonalizedKnnQuery(List<Float> userVector, VideoType videoType, int page, int size) {
         // 벡터가 없으면 Fallback 쿼리 반환 로직을 Service에서 처리
 
         int cappedSize = Math.min(size, 100); // 보안 방어 로직: size 상한선을 100으로 제한
@@ -37,11 +37,10 @@ public class RecommendationQueryBuilder {
         // 후보군 넉넉히 잡되, DoS 방지를 위해 최대 500으로 제한
         int numCandidates = Math.min(Math.max(50, cappedSize * 5), 500);
 
-        List<Float> floatVector = userVector.stream().map(Double::floatValue).toList();
         Query knnQuery = Query.of(q -> q
                 .knn(k -> k
                         .field("embedding")
-                        .queryVector(floatVector)
+                        .queryVector(userVector)
                         .k(cappedSize)
                         .numCandidates(numCandidates)
                         .filter(filterQuery)

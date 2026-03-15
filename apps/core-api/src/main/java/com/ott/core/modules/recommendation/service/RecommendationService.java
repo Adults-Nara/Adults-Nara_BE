@@ -60,7 +60,7 @@ public class RecommendationService {
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, VideoType videoType, int page, int size) {
 
-        List<Double> userVector = userVectorService.getUserVector(userId);
+        List<Float> userVector = userVectorService.getUserVector(userId);
 
         NativeQuery searchQuery;
         if (userVector == null || userVector.isEmpty()) {

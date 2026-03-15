@@ -47,25 +47,16 @@ public class RedisConfig {
     // 384차원 AI 임베딩 벡터 전용 RedisTemplate
     // =========================================================================
     @Bean
-    public RedisTemplate<String, List<Double>> redisVectorTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, List<Double>> template = new RedisTemplate<>();
+    public RedisTemplate<String, List<Float>> redisVectorTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, List<Float>> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
-
-        // Key는 단순 문자열 직렬화
         template.setKeySerializer(new StringRedisSerializer());
 
-        // 1. ObjectMapper 생성
         ObjectMapper mapper = new ObjectMapper();
+        CollectionType listType = mapper.getTypeFactory().constructCollectionType(List.class, Float.class);
+        Jackson2JsonRedisSerializer<List<Float>> serializer = new Jackson2JsonRedisSerializer<>(mapper, listType);
 
-        // 2. [주의] Jackson의 CollectionType을 사용하여 List<Double> 타입 정의
-        CollectionType listType = mapper.getTypeFactory().constructCollectionType(List.class, Double.class);
-
-        // 3. Spring Boot 3.x 방식: 생성자에서 ObjectMapper와 Type을 한 번에 주입 (setObjectMapper 안 씀!)
-        Jackson2JsonRedisSerializer<List<Double>> serializer = new Jackson2JsonRedisSerializer<>(mapper, listType);
-
-        // Value 직렬화 설정
         template.setValueSerializer(serializer);
-
         return template;
     }
 }
