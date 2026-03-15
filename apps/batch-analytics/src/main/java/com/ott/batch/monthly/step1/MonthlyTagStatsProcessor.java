@@ -31,13 +31,13 @@ public class MonthlyTagStatsProcessor implements ItemProcessor<TagStatDto, Month
     @Override
     public MonthlyReportDto process(TagStatDto item) {
         return MonthlyReportDto.builder()
-                .userId(item.getUserId())
+                .userId(item.userId())
                 .statsYear(statsYear)
                 .statsMonth(statsMonth)
-                .tagId(item.getTagId())
-                .tagName(item.getTagName())
-                .totalWatchSeconds(item.getTotalWatchSeconds())
-                .watchCount(item.getWatchCount())
+                .tagId(item.tagId())
+                .tagName(item.tagName())
+                .totalWatchSeconds(item.totalWatchSeconds())
+                .watchCount(item.watchCount())
                 .build();
     }
 }

@@ -6,7 +6,6 @@ import com.ott.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -18,14 +17,18 @@ import java.time.YearMonth;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/batch")
-@RequiredArgsConstructor
 @Tag(name = "배치 API", description = "수동 배치 실행 API (시연용)")
 public class BatchTriggerController {
 
     private final RestTemplate restTemplate;
+    private final String batchServerUrl;
 
-    @Value("${batch.server.url:http://localhost:8082}")
-    private String batchServerUrl;
+    public BatchTriggerController(
+            RestTemplate restTemplate,
+            @Value("${batch.server.url:http://localhost:8082}") String batchServerUrl) {
+        this.restTemplate = restTemplate;
+        this.batchServerUrl = batchServerUrl;
+    }
 
     @Operation(
         summary = "월간 통계 배치 수동 실행",
