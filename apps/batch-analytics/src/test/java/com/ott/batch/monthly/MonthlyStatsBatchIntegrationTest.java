@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.OffsetDateTime;
 import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.*;
@@ -34,24 +33,26 @@ class MonthlyStatsBatchIntegrationTest {
     @DisplayName("월간 통계 배치 Job이 정상적으로 실행된다")
     void runMonthlyStatsBatch() throws Exception {
         // Given
-        OffsetDateTime now = OffsetDateTime.now();
-        YearMonth currentMonth = YearMonth.from(now);
+        YearMonth currentMonth = YearMonth.now();
         String currentYearMonth = currentMonth.toString();
-        OffsetDateTime monthStart = currentMonth.atDay(1).atStartOfDay().atOffset(now.getOffset());
-        OffsetDateTime monthEnd = currentMonth.plusMonths(1).atDay(1).atStartOfDay().atOffset(now.getOffset());
 
         JobParameters jobParameters = new JobParametersBuilder()
                 .addString("yearMonth", currentYearMonth)
-                .addString("rangeFrom", monthStart.toString())
-                .addString("rangeTo", monthEnd.toString())
                 .addLong("timestamp", System.currentTimeMillis())
                 .toJobParameters();
 
         // When
         JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
 
-        // Then
+        // Then: 배치 Job이 정상적으로 실행되는지 확인
         assertThat(jobExecution).isNotNull();
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jobExecution.getAllFailureExceptions()).isEmpty();
+        
+        // Step 실행 확인
+        assertThat(jobExecution.getStepExecutions()).hasSize(1);
+        StepExecution stepExecution = jobExecution.getStepExecutions().iterator().next();
+        assertThat(stepExecution.getStepName()).isEqualTo("monthlyTagStatsStep");
+        assertThat(stepExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
     }
 }

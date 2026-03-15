@@ -61,8 +61,4 @@ public class MonthlyWatchReport extends BaseEntity {
         this.watchCount = watchCount;
     }
 
-    public void update(Long totalWatchSeconds, Integer watchCount) {
-        this.totalWatchSeconds = totalWatchSeconds;
-        this.watchCount = watchCount;
-    }
 }
