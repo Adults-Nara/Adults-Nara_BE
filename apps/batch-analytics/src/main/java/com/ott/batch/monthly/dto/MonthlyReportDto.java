@@ -3,10 +3,8 @@ package com.ott.batch.monthly.dto;
 import com.ott.common.persistence.entity.MonthlyWatchReport;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 @Builder
 public class MonthlyReportDto {
     private Long id;
@@ -20,7 +18,6 @@ public class MonthlyReportDto {
 
     public MonthlyWatchReport toEntity() {
         return MonthlyWatchReport.builder()
-                .id(id)
                 .userId(userId)
                 .statsYear(statsYear)
                 .statsMonth(statsMonth)
