@@ -9,9 +9,11 @@ import com.ott.core.modules.recommendation.component.RecommendationQueryBuilder;
 import com.ott.core.modules.recommendation.component.VideoFeedEnricher;
 import com.ott.core.modules.recommendation.dto.VideoFeedResponseDto;
 import com.ott.core.modules.search.document.VideoDocument;
+import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
@@ -31,6 +33,7 @@ public class RecommendationService {
     private final ElasticsearchOperations elasticsearchOperations;
     private final RecommendationQueryBuilder queryBuilder;
     private final VideoFeedEnricher feedEnricher;
+    private final WatchHistoryRepository watchHistoryRepository;
     private final Executor executor;
 
     public RecommendationService(
@@ -39,12 +42,14 @@ public class RecommendationService {
             ElasticsearchOperations elasticsearchOperations,
             RecommendationQueryBuilder queryBuilder,
             VideoFeedEnricher feedEnricher,
+            WatchHistoryRepository watchHistoryRepository,
             @Qualifier("watchHistoryTaskExecutor") Executor executor) {
         this.userPreferenceService = userPreferenceService;
         this.userVectorService = userVectorService;
         this.elasticsearchOperations = elasticsearchOperations;
         this.queryBuilder = queryBuilder;
         this.feedEnricher = feedEnricher;
+        this.watchHistoryRepository = watchHistoryRepository;
         this.executor = executor;
     }
 
@@ -55,18 +60,26 @@ public class RecommendationService {
     private static final double AD_INJECTION_PROBABILITY = 1.0; //개발단계 테스트를 위해 광고 확률 100처 원래는 0.4
     private static final int MAX_AD_INSERT_INDEX = 6;
 
+    // 유저의 최근 시청 이력 200개를 가져와서 String 리스트로 반환
+    private List<String> getRecentWatchedVideoIds(Long userId) {
+        if (userId == null) return new ArrayList<>();
+        // 성능을 위해 딱 최근 200개만 가져옵니다.
+        List<Long> watchedIds = watchHistoryRepository.findRecentWatchedVideoIds(userId, PageRequest.of(0, 200));
+        return watchedIds.stream().map(String::valueOf).toList();
+    }
     // =========================================================================
     // kNN 벡터 검색 적용
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, VideoType videoType, int page, int size) {
-
         List<Float> userVector = userVectorService.getUserVector(userId);
+
+        List<String> excludedIds = getRecentWatchedVideoIds(userId);
 
         NativeQuery searchQuery;
         if (userVector == null || userVector.isEmpty()) {
-            searchQuery = queryBuilder.buildFallbackQuery(videoType, page, size);
+            searchQuery = queryBuilder.buildFallbackQuery(videoType, page, size, excludedIds);
         } else {
-            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, videoType, page, size);
+            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, videoType, page, size, excludedIds);
         }
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
@@ -82,22 +95,23 @@ public class RecommendationService {
         int organicSize = shouldInjectAd ? size - 1 : size; // 일반 영상 개수 할당
         int personalSize = (int) Math.round(organicSize * FEED_RATIO_PERSONAL);
         int popularSize = (int) Math.round(organicSize * FEED_RATIO_POPULAR);
-        int randomSize = organicSize - personalSize - popularSize;
 
         List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, USER_PREFERENCE_TAG_LIMIT);
+        List<String> excludedIds = getRecentWatchedVideoIds(userId);
+        int fallbackFetchSize = organicSize + 5; //Over-fetching
         // 취향 영상 (개인화)
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
-                                ? queryBuilder.buildPopularQuery(videoType, page, personalSize)
-                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, page, personalSize))
+                                ? queryBuilder.buildPopularQuery(videoType, page, personalSize, excludedIds)
+                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, page, personalSize, excludedIds))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildPopularQuery(videoType, page, popularSize + 5))
+                        executeSearch(queryBuilder.buildPopularQuery(videoType, page, fallbackFetchSize, excludedIds))
                 , executor);
         // 랜덤 영상
         CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildRandomQuery(videoType, page, randomSize + 5))
+                        executeSearch(queryBuilder.buildRandomQuery(videoType, page, fallbackFetchSize, excludedIds))
                 , executor);
 
         // 광고 영상
@@ -115,9 +129,10 @@ public class RecommendationService {
         for (VideoDocument doc : personalFuture.join()) {
             if (seenVideoIds.add(doc.getVideoId())) organicFeed.add(doc);
         }
+        // 백필링 핵심 로직: 취향 영상에서 부족했던 개수(Shortfall)를 구해서 인기 영상의 몫으로 넘겨줌
+        int personalShortfall = Math.max(0, personalSize - organicFeed.size());
+        int targetSizeAfterPopular = organicFeed.size() + popularSize + personalShortfall;
 
-        // 2. 인기 영상 담기 (목표 사이즈를 채울 때까지)
-        int targetSizeAfterPopular = personalSize + popularSize;
         for (VideoDocument doc : popularFuture.join()) {
             if (organicFeed.size() < targetSizeAfterPopular && seenVideoIds.add(doc.getVideoId())) {
                 organicFeed.add(doc);
@@ -130,27 +145,18 @@ public class RecommendationService {
                 organicFeed.add(doc);
             }
         }
-        // 4. 자연스러운 위치에 광고 주입
-        if (shouldInjectAd) {
-            List<VideoDocument> adDocs = adFuture.join();
+        // 4. 광고 주입
+        if (shouldInjectAd && !adFuture.join().isEmpty()) {
+            VideoDocument adDoc = adFuture.join().get(0);
+            int maxInsertIndex = Math.min(organicFeed.size(), MAX_AD_INSERT_INDEX);
+            int insertIndex = maxInsertIndex > 1 ? ThreadLocalRandom.current().nextInt(1, maxInsertIndex) : 1;
 
-            if (!adDocs.isEmpty()) {
-                VideoDocument adDoc = adDocs.get(0);
-
-                int maxInsertIndex = Math.min(organicFeed.size(), MAX_AD_INSERT_INDEX);
-
-                // ThreadLocalRandom.current().nextInt(origin, bound) -> origin 이상 bound 미만
-                int insertIndex = maxInsertIndex > 1
-                        ? ThreadLocalRandom.current().nextInt(1, maxInsertIndex)
-                        : 1;
-
-                if (insertIndex > organicFeed.size()) {
-                    insertIndex = organicFeed.size();
-                }
-
-                organicFeed.add(insertIndex, adDoc);
+            if (insertIndex > organicFeed.size()) {
+                insertIndex = organicFeed.size();
             }
+            organicFeed.add(insertIndex, adDoc);
         }
+
         return feedEnricher.enrich(organicFeed, userId);
     }
 
@@ -164,8 +170,11 @@ public class RecommendationService {
             return List.of();
         }
 
+        List<String> excludedIds = new ArrayList<>(getRecentWatchedVideoIds(currentUserId));
+        excludedIds.add(String.valueOf(videoId));
+
         List<FieldValue> tagValues = currentVideo.getTags().stream().map(FieldValue::of).toList();
-        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, currentVideo.getVideoId(), videoType, page, size);
+        NativeQuery searchQuery = queryBuilder.buildRelatedQuery(tagValues, videoType, page, size, excludedIds);
 
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
         return feedEnricher.enrich(rawDocuments, currentUserId);
