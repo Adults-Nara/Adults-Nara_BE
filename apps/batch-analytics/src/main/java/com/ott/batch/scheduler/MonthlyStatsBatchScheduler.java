@@ -27,9 +27,9 @@ public class MonthlyStatsBatchScheduler {
     private final Job monthlyStatsJob;
 
     /**
-     * 매월 1일 02:00 KST 자동 실행
+     * 매월 1일 03:00 KST 자동 실행
      */
-    @Scheduled(cron = "0 0 2 1 * ?", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 3 1 * ?", zone = "Asia/Seoul")
     public void runMonthlyStatsBatch() {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
 
