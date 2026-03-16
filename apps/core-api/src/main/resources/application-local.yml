@@ -1,46 +1,57 @@
 spring:
+  application:
+    name: core-api
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:asn}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://localhost:5432/asn
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
 
   elasticsearch:
-    uris: ${ES_URL:http://localhost:9200}
-    username: ${ES_USERNAME:}
-    password: ${ES_PASSWORD:}
+    uris: http://localhost:9200
 
-app:
-  kafka:
-    topics:
-      mediaTranscode: ${KAFKA_TOPIC_MEDIA_TRANSCODE:media.transcode.requested}
-
-logging:
-  level:
-    org.hibernate.SQL: debug
-
-# 카카오 OAuth (우리 커스텀 설정 — Spring OAuth2 Client 아님)
-oauth2:
-  kakao:
-    client-id: ${KAKAO_CLIENT_ID}
-    client-secret: ${KAKAO_CLIENT_SECRET}
-    redirect-uri: https://localhost:3000/login/callback
-  state:
-    secret: ${OAUTH_STATE_SECRET}
-    cookie-secure: true
-    validate: true
+server:
+  port: 8080
 
 jwt:
-  secret: ${JWT_SECRET}
-# Batch Server
+  secret: test-secret-key-for-local-development-only-do-not-use-in-production
+  access-token-validity: 3600000
+  refresh-token-validity: 604800000
+
+kakao:
+  client-id: test-kakao-client-id
+  client-secret: test-kakao-client-secret
+  redirect-uri: http://localhost:3000/oauth/callback/kakao
+
+oauth:
+  state-secret: test-state-secret
+
+s3:
+  bucket: asn-local-bucket
+
+cloudfront:
+  domain: d123456.cloudfront.net
+  key-pair-id: test-key-pair-id
+  private-key-pem-b64: test-private-key

@@ -1,6 +1,5 @@
 package com.ott.core.modules.stats.service;
 
-
 import com.ott.common.persistence.entity.MonthlyWatchReport;
 import com.ott.core.modules.stats.dto.MonthlyStatsResponse;
 import com.ott.core.modules.stats.dto.TagStatsDto;
@@ -24,10 +23,10 @@ public class MonthlyStatsService {
 
     public MonthlyStatsResponse getMonthlyStats(Long userId, Integer year, Integer month) {
         List<MonthlyWatchReport> reports = monthlyWatchReportRepository
-                .findByUserIdAndStatsYearAndStatsMonth(userId, year, month);
+                .findByUserIdAndStatsYearAndStatsMonthOrderByTotalWatchSecondsDesc(userId, year, month);
 
         List<TagStatsDto> tags = reports.isEmpty()
-                ? Collections.emptyList()  // 빈 배열 반환
+                ? Collections.emptyList()
                 : reports.stream()
                         .map(report -> new TagStatsDto(
                                 report.getTagId(),
@@ -44,7 +43,6 @@ public class MonthlyStatsService {
 
         boolean hasPrevious = monthlyWatchReportRepository
                 .existsByUserIdAndStatsYearAndStatsMonth(userId, previousMonth.getYear(), previousMonth.getMonthValue());
-        
         boolean hasNext = !nextMonth.isAfter(now) && monthlyWatchReportRepository
                 .existsByUserIdAndStatsYearAndStatsMonth(userId, nextMonth.getYear(), nextMonth.getMonthValue());
 

@@ -10,9 +10,9 @@ import java.util.List;
 public interface MonthlyWatchReportRepository extends JpaRepository<MonthlyWatchReport, Long> {
 
     /**
-     * 특정 사용자의 특정 년월 통계 조회
+     * 특정 사용자의 특정 년월 통계 조회 (시청 시간 내림차순)
      */
-    List<MonthlyWatchReport> findByUserIdAndStatsYearAndStatsMonth(
+    List<MonthlyWatchReport> findByUserIdAndStatsYearAndStatsMonthOrderByTotalWatchSecondsDesc(
             Long userId,
             Integer statsYear,
             Integer statsMonth
