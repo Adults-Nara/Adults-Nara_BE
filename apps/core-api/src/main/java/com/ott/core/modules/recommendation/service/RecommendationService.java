@@ -72,16 +72,30 @@ public class RecommendationService {
     // =========================================================================
     public List<VideoFeedResponseDto> getPersonalizedFeed(Long userId, VideoType videoType, int page, int size) {
         List<Float> userVector = userVectorService.getUserVector(userId);
-
         List<String> excludedIds = getRecentWatchedVideoIds(userId);
 
         NativeQuery searchQuery;
+        // 1. 유저의 벡터가 없는 경우
         if (userVector == null || userVector.isEmpty()) {
-            searchQuery = queryBuilder.buildFallbackQuery(videoType, page, size, excludedIds);
-        } else {
-            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, videoType, page, size, excludedIds);
-        }
 
+            // 유저의 취향 태그(userPreferences)를 가져옴.
+            List<TagScoreDto> userPreferences = userPreferenceService.getTopPreferences(userId, USER_PREFERENCE_TAG_LIMIT);
+
+            if (userPreferences == null || userPreferences.isEmpty()) {
+                // 1-A. 벡터도 없고, 누른 좋아요도 아예 없다면 -> 단순 인기/최신순
+                searchQuery = queryBuilder.buildFallbackQuery(videoType, page, size, excludedIds);
+                log.info("[MainFeed] 벡터/태그 없음 -> Fallback 쿼리 수행 (userId: {})", userId);
+            } else {
+                // 1-B. 벡터는 없지만, 좋아요를 눌러서 쌓인 태그 점수가 있다면 -> 태그 룰베이스 추천
+                searchQuery = queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, page, size, excludedIds);
+                log.info("[MainFeed] 벡터 없음 -> 태그 룰베이스 쿼리 수행 (userId: {})", userId);
+            }
+
+        } else {
+            // 2. 유저의 벡터가 있는 경우 -> AI kNN 검색
+            searchQuery = queryBuilder.buildMainPersonalizedKnnQuery(userVector, videoType, page, size, excludedIds);
+            log.debug("[MainFeed] AI 벡터 kNN 검색 수행 (userId: {})", userId);
+        }
         List<VideoDocument> rawDocuments = executeSearch(searchQuery);
         return feedEnricher.enrich(rawDocuments, userId);
     }
