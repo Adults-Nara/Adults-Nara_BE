@@ -6,7 +6,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
@@ -44,6 +44,3 @@ oauth2:
 jwt:
   secret: ${JWT_SECRET}
 # Batch Server
-batch:
-  server:
-    url: http://localhost:8082

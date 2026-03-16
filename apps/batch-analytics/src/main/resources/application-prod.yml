@@ -1,21 +1,43 @@
 spring:
+  profiles:
+    active: prod
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
 
   jpa:
     hibernate:
       ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   batch:
-    jdbc:
-      initialize-schema: never  # prod에서는 migration으로 직접 관리
     job:
       enabled: false
+    jdbc:
+      initialize-schema: never
 
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+
+# Batch 실행 모드
+# oneshot: 배치 실행 후 종료 (기본값)
+# server: 종료하지 않음 (디버깅용)
+batch:
+  mode: ${BATCH_MODE:oneshot}
+
+logging:
+  level:
+    com.ott: INFO
+    org.springframework.batch: INFO
