@@ -33,9 +33,6 @@ dependencies {
     // Spring Batch
     implementation("org.springframework.boot:spring-boot-starter-batch")
     
-    // Redis (Batch 메타데이터용)
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.batch:spring-batch-test")
