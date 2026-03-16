@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -52,15 +53,19 @@ public class BatchAnalyticsApplication implements ApplicationRunner {
                 .addLong("timestamp", System.currentTimeMillis())
                 .toJobParameters();
 
-        JobExecution jobExecution = jobLauncher.run(monthlyStatsJob, jobParameters);
+        try {
+            JobExecution jobExecution = jobLauncher.run(monthlyStatsJob, jobParameters);
 
-        log.info("[BatchAnalyticsApplication] 배치 실행 완료: status={}", jobExecution.getStatus());
+            log.info("[BatchAnalyticsApplication] 배치 실행 완료: status={}", jobExecution.getStatus());
 
-        if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
-            log.error("[BatchAnalyticsApplication] 배치 실행 실패! status={}", jobExecution.getStatus());
-            jobExecution.getAllFailureExceptions()
-                    .forEach(e -> log.error("배치 실패 상세 원인:", e));
-            throw new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
+            if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
+                log.error("[BatchAnalyticsApplication] 배치 실행 실패! status={}", jobExecution.getStatus());
+                jobExecution.getAllFailureExceptions()
+                        .forEach(e -> log.error("배치 실패 상세 원인:", e));
+                throw new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
+            }
+        } catch (JobInstanceAlreadyCompleteException e) {
+            log.info("[BatchAnalyticsApplication] 이미 완료된 배치 작업입니다. yearMonth={}", yearMonth);
         }
     }
 }
