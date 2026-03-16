@@ -93,6 +93,7 @@ public class RankingService {
                 String profileUrl = (uploader != null) ? uploader.getProfileImageUrl() : "";
                 int progress = progressMap.getOrDefault(videoId, 0);
 
+                Double realTimeScore = scoreMap.get(videoId);
                 // DTO의 of 메서드 호출
                 responseList.add(RankingResponse.of(
                         currentRank++,
