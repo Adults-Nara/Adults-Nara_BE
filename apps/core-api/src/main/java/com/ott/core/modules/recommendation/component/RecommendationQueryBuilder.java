@@ -88,7 +88,7 @@ public class RecommendationQueryBuilder {
                 .query(baseActiveVideoQuery(videoType, excludedVideoIds))
                 .functions(functions)
                 .scoreMode(FunctionScoreMode.Sum)
-                .boostMode(FunctionBoostMode.Multiply)
+                .boostMode(FunctionBoostMode.Replace)
         )._toQuery();
 
         return NativeQuery.builder()
@@ -184,7 +184,7 @@ public class RecommendationQueryBuilder {
                 .query(baseAdQuery)
                 .functions(functions)
                 .scoreMode(FunctionScoreMode.Sum) // 태그 점수들을 합산
-                .boostMode(FunctionBoostMode.Multiply) // 베이스 스코어에 곱함
+                .boostMode(FunctionBoostMode.Replace) 
         )._toQuery();
 
         return NativeQuery.builder()
