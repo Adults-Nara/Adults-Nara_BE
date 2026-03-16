@@ -15,17 +15,20 @@ import java.util.List;
 @Component
 public class RecommendationQueryBuilder {
 
+    private void applyBaseActiveVideoFilters(BoolQuery.Builder b, VideoType videoType, List<String> excludedVideoIds) {
+        b.filter(f -> f.term(t -> t.field("deleted").value(false)))
+                .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
+                .filter(f -> f.term(t -> t.field("isAd").value(false)));
+
+        if (excludedVideoIds != null && !excludedVideoIds.isEmpty()) {
+            List<FieldValue> values = excludedVideoIds.stream().map(FieldValue::of).toList();
+            b.mustNot(mn -> mn.terms(t -> t.field("_id").terms(tf -> tf.value(values))));
+        }
+    }
+
     private Query baseActiveVideoQuery(VideoType videoType, List<String> excludedVideoIds) {
         return Query.of(q -> q.bool(b -> {
-            b.filter(f -> f.term(t -> t.field("deleted").value(false)))
-                    .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
-                    .filter(f -> f.term(t -> t.field("isAd").value(false)));
-
-            // 이미 본 영상 ID가 있다면 must_not으로 원천 차단
-            if (excludedVideoIds != null && !excludedVideoIds.isEmpty()) {
-                List<FieldValue> values = excludedVideoIds.stream().map(FieldValue::of).toList();
-                b.mustNot(mn -> mn.terms(t -> t.field("_id").terms(tf -> tf.value(values))));
-            }
+            applyBaseActiveVideoFilters(b, videoType, excludedVideoIds);
             return b;
         }));
     }
@@ -130,20 +133,10 @@ public class RecommendationQueryBuilder {
     // ==========================================
     public NativeQuery buildRelatedQuery(List<FieldValue> tagValues, VideoType videoType, int page, int limit, List<String> excludedVideoIds) {
 
-        // 람다 안에서 동적으로 조건을 조립
         Query relatedQuery = Query.of(q -> q.bool(b -> {
-            b.must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))))
-                    .filter(f -> f.term(t -> t.field("deleted").value(false)))
-                    .filter(f -> f.term(t -> t.field("videoType").value(videoType.name())))
-                    .filter(f -> f.term(t -> t.field("isAd").value(false)));
-
-            // 제외할 ID가 있다면 must_not 조건을 추가로 조립
-            if (excludedVideoIds != null && !excludedVideoIds.isEmpty()) {
-                List<FieldValue> values = excludedVideoIds.stream().map(FieldValue::of).toList();
-                b.mustNot(mn -> mn.terms(t -> t.field("_id").terms(tf -> tf.value(values))));
-            }
-
-            return b; // 완성된 빌더 반환
+            applyBaseActiveVideoFilters(b, videoType, excludedVideoIds);
+            b.must(m -> m.terms(t -> t.field("tags").terms(tf -> tf.value(tagValues))));
+            return b;
         }));
 
         return NativeQuery.builder()

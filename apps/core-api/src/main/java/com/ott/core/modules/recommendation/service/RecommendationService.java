@@ -43,7 +43,7 @@ public class RecommendationService {
             RecommendationQueryBuilder queryBuilder,
             VideoFeedEnricher feedEnricher,
             WatchHistoryRepository watchHistoryRepository,
-            @Qualifier("watchHistoryTaskExecutor") Executor executor) {
+            @Qualifier("searchTaskExecutor") Executor executor) {
         this.userPreferenceService = userPreferenceService;
         this.userVectorService = userVectorService;
         this.elasticsearchOperations = elasticsearchOperations;
@@ -102,16 +102,16 @@ public class RecommendationService {
         // 취향 영상 (개인화)
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
-                                ? queryBuilder.buildPopularQuery(videoType, page, personalSize, excludedIds)
-                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, page, personalSize, excludedIds))
+                                ? queryBuilder.buildFallbackQuery(videoType, 0, personalSize, excludedIds)
+                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, 0, personalSize, excludedIds))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildPopularQuery(videoType, page, fallbackFetchSize, excludedIds))
+                        executeSearch(queryBuilder.buildPopularQuery(videoType, 0, fallbackFetchSize, excludedIds))
                 , executor);
         // 랜덤 영상
         CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildRandomQuery(videoType, page, fallbackFetchSize, excludedIds))
+                        executeSearch(queryBuilder.buildRandomQuery(videoType, 0, fallbackFetchSize, excludedIds))
                 , executor);
 
         // 광고 영상
@@ -146,15 +146,18 @@ public class RecommendationService {
             }
         }
         // 4. 광고 주입
-        if (shouldInjectAd && !adFuture.join().isEmpty()) {
-            VideoDocument adDoc = adFuture.join().get(0);
-            int maxInsertIndex = Math.min(organicFeed.size(), MAX_AD_INSERT_INDEX);
-            int insertIndex = maxInsertIndex > 1 ? ThreadLocalRandom.current().nextInt(1, maxInsertIndex) : 1;
+        if (shouldInjectAd) {
+            List<VideoDocument> adDocs = adFuture.join();
+            if (!adDocs.isEmpty()) {
+                VideoDocument adDoc = adDocs.get(0);
+                int maxInsertIndex = Math.min(organicFeed.size(), MAX_AD_INSERT_INDEX);
+                int insertIndex = maxInsertIndex > 1 ? ThreadLocalRandom.current().nextInt(1, maxInsertIndex) : 1;
 
-            if (insertIndex > organicFeed.size()) {
-                insertIndex = organicFeed.size();
+                if (insertIndex > organicFeed.size()) {
+                    insertIndex = organicFeed.size();
+                }
+                organicFeed.add(insertIndex, adDoc);
             }
-            organicFeed.add(insertIndex, adDoc);
         }
 
         return feedEnricher.enrich(organicFeed, userId);
