@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.YearMonth;
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -25,16 +24,14 @@ public class MonthlyStatsService {
         List<MonthlyWatchReport> reports = monthlyWatchReportRepository
                 .findByUserIdAndStatsYearAndStatsMonthOrderByTotalWatchSecondsDesc(userId, year, month);
 
-        List<TagStatsDto> tags = reports.isEmpty()
-                ? Collections.emptyList()
-                : reports.stream()
-                        .map(report -> new TagStatsDto(
-                                report.getTagId(),
-                                report.getTagName(),
-                                report.getTotalWatchSeconds(),
-                                report.getWatchCount()
-                        ))
-                        .toList();
+        List<TagStatsDto> tags = reports.stream()
+                .map(report -> new TagStatsDto(
+                        report.getTagId(),
+                        report.getTagName(),
+                        report.getTotalWatchSeconds(),
+                        report.getWatchCount()
+                ))
+                .toList();
 
         YearMonth currentMonth = YearMonth.of(year, month);
         YearMonth previousMonth = currentMonth.minusMonths(1);
