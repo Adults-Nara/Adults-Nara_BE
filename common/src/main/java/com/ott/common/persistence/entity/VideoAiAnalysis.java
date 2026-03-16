@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -24,6 +27,7 @@ public class VideoAiAnalysis {
     @Column(name = "subtitle_url", length = 1000)
     private String subtitleUrl;
 
+    @JdbcTypeCode(SqlTypes.VECTOR)
     @Column(name = "embedding", columnDefinition = "vector(384)")
     private float[] embedding;
 
