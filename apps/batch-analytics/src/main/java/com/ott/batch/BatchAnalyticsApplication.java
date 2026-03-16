@@ -73,6 +73,7 @@ public class BatchAnalyticsApplication implements ApplicationRunner {
                 RuntimeException exceptionToThrow = new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
                 if (!failureExceptions.isEmpty()) {
                     exceptionToThrow.initCause(failureExceptions.get(0));
+                    failureExceptions.stream().skip(1).forEach(exceptionToThrow::addSuppressed);
                 }
                 throw exceptionToThrow;
             }
