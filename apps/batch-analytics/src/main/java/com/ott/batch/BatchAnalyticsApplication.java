@@ -9,15 +9,20 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.time.YearMonth;
+import java.util.List;
 
 @Slf4j
 @SpringBootApplication(scanBasePackages = {
         "com.ott.batch",
         "com.ott.common"
 })
+@EntityScan(basePackages = "com.ott.common.persistence.entity")
+@EnableJpaRepositories(basePackages = "com.ott.batch.repository")
 @RequiredArgsConstructor
 public class BatchAnalyticsApplication implements ApplicationRunner {
 
@@ -42,8 +47,9 @@ public class BatchAnalyticsApplication implements ApplicationRunner {
         log.info("========================================");
 
         // 환경변수 또는 커맨드 라인에서 yearMonth 추출 (기본값: 전월)
-        String yearMonth = args.containsOption("yearMonth")
-                ? args.getOptionValues("yearMonth").get(0)
+        List<String> yearMonthValues = args.getOptionValues("yearMonth");
+        String yearMonth = (yearMonthValues != null && !yearMonthValues.isEmpty())
+                ? yearMonthValues.get(0)
                 : System.getenv().getOrDefault("YEAR_MONTH", YearMonth.now().minusMonths(1).toString());
 
         log.info("[BatchAnalyticsApplication] 대상 기간: {}", yearMonth);
@@ -60,9 +66,15 @@ public class BatchAnalyticsApplication implements ApplicationRunner {
 
             if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
                 log.error("[BatchAnalyticsApplication] 배치 실행 실패! status={}", jobExecution.getStatus());
-                jobExecution.getAllFailureExceptions()
-                        .forEach(e -> log.error("배치 실패 상세 원인:", e));
-                throw new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
+                
+                List<Throwable> failureExceptions = jobExecution.getAllFailureExceptions();
+                failureExceptions.forEach(e -> log.error("배치 실패 상세 원인:", e));
+
+                RuntimeException exceptionToThrow = new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
+                if (!failureExceptions.isEmpty()) {
+                    exceptionToThrow.initCause(failureExceptions.get(0));
+                }
+                throw exceptionToThrow;
             }
         } catch (JobInstanceAlreadyCompleteException e) {
             log.info("[BatchAnalyticsApplication] 이미 완료된 배치 작업입니다. yearMonth={}", yearMonth);
