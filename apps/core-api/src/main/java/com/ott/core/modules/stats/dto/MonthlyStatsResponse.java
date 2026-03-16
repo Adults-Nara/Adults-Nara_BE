@@ -1,20 +1,17 @@
 package com.ott.core.modules.stats.dto;
 
-import com.ott.core.modules.usertag.dto.TagWatchStatsResponse;
+import lombok.Builder;
+
 import java.util.List;
 
+@Builder
 public record MonthlyStatsResponse(
-        Integer statsYear,
-        Integer statsMonth,
-        List<TagWatchStatsResponse> tagWatchStats,
-        NavigationInfo navigation
-) {
-    public record NavigationInfo(
-            Integer prevYear,
-            Integer prevMonth,
-            Integer nextYear,
-            Integer nextMonth,
-            Boolean hasPrev,
-            Boolean hasNext
-    ) {}
-}
+        Integer year,
+        Integer month,
+        Long userId,
+        List<TagStatsDto> tags,
+        Boolean hasPrevious,
+        Boolean hasNext,
+        String previousMonth,
+        String nextMonth
+) {}
