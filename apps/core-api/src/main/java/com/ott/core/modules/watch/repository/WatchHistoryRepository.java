@@ -74,4 +74,7 @@ public interface WatchHistoryRepository extends JpaRepository<WatchHistory, Long
             @Param("userId") Long userId,
             @Param("videoIds") List<Long> videoIds
     );
+    // 유저가 최근에 시청한 영상의 ID만 빠르게 조회
+    @Query("SELECT v.videoId FROM WatchHistory w JOIN w.videoMetadata v WHERE w.user.id = :userId ORDER BY w.updatedAt DESC")
+    List<Long> findRecentWatchedVideoIds(@Param("userId") Long userId, Pageable pageable);
 }
