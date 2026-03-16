@@ -102,16 +102,16 @@ public class RecommendationService {
         // 취향 영상 (개인화)
         CompletableFuture<List<VideoDocument>> personalFuture = CompletableFuture.supplyAsync(() ->
                         executeSearch(userPreferences.isEmpty()
-                                ? queryBuilder.buildFallbackQuery(videoType, 0, personalSize, excludedIds)
-                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, 0, personalSize, excludedIds))
+                                ? queryBuilder.buildFallbackQuery(videoType, page, personalSize, excludedIds)
+                                : queryBuilder.buildMainPersonalizedQuery(userPreferences, videoType, page, personalSize, excludedIds))
                 , executor);
         // 인기 영상
         CompletableFuture<List<VideoDocument>> popularFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildPopularQuery(videoType, 0, fallbackFetchSize, excludedIds))
+                        executeSearch(queryBuilder.buildPopularQuery(videoType, page, fallbackFetchSize, excludedIds))
                 , executor);
         // 랜덤 영상
         CompletableFuture<List<VideoDocument>> randomFuture = CompletableFuture.supplyAsync(() ->
-                        executeSearch(queryBuilder.buildRandomQuery(videoType, 0, fallbackFetchSize, excludedIds))
+                        executeSearch(queryBuilder.buildRandomQuery(videoType, page, fallbackFetchSize, excludedIds, userId))
                 , executor);
 
         // 광고 영상

@@ -117,10 +117,15 @@ public class RecommendationQueryBuilder {
                 .build();
     }
 
-    public NativeQuery buildRandomQuery(VideoType videoType, int page, int limit, List<String> excludedVideoIds) {
+    public NativeQuery buildRandomQuery(VideoType videoType, int page, int limit, List<String> excludedVideoIds, Long userId) {
+        String randomSeed = userId + "_" + java.time.LocalDate.now().toString();
+
         Query randomQuery = FunctionScoreQuery.of(fsq -> fsq
                 .query(baseActiveVideoQuery(videoType, excludedVideoIds))
-                .functions(FunctionScore.of(f -> f.randomScore(rs -> rs)))
+                .functions(FunctionScore.of(f -> f.randomScore(rs -> rs
+                        .seed(randomSeed)
+                        .field("_seq_no")
+                )))
         )._toQuery();
 
         return NativeQuery.builder()
