@@ -43,4 +43,3 @@ oauth2:
 
 jwt:
   secret: ${JWT_SECRET}
-# Batch Server
