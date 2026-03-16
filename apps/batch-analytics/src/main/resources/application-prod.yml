@@ -3,19 +3,20 @@ spring:
     url: ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: none
+    show-sql: false
 
   batch:
-    jdbc:
-      initialize-schema: never  # prod에서는 migration으로 직접 관리
     job:
       enabled: false
+    jdbc:
+      initialize-schema: never
 
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+logging:
+  level:
+    com.ott: INFO
+    org.springframework.batch: INFO
