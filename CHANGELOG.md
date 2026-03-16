@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.19](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.18...v0.9.19) (2026-03-16)
+
+
+### Bug Fixes
+
+* 배치 트리거 변경 ([07327f7](https://github.com/Adults-Nara/Adults-Nara_BE/commit/07327f71f20e8c967f2974b2629ecd25ba323137))
+* 스케줄러 시간 수정 ([bd3f61e](https://github.com/Adults-Nara/Adults-Nara_BE/commit/bd3f61e37ae398cdc7c7688a5c87bfefb9b2c9e6))
+* 스케쥴러 제거 ([d42a7d4](https://github.com/Adults-Nara/Adults-Nara_BE/commit/d42a7d4208510ff1272ca52cadbe7ac4dc1e6b5e))
+* 코드리뷰 반영 ([2473dbf](https://github.com/Adults-Nara/Adults-Nara_BE/commit/2473dbf59597b4f83df66b33c00b17cb74ceb7fe))
+
 ## [0.9.18](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.17...v0.9.18) (2026-03-16)
 
 
