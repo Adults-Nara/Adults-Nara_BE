@@ -17,10 +17,12 @@ import static org.assertj.core.api.Assertions.*;
 /**
  * 월간 통계 배치 통합 테스트
  * 
- * Note: H2에서 PostgreSQL ON CONFLICT 문법을 지원하지 않아 비활성화
- * 실제 배치 검증은 로컬/개발 환경에서 수동으로 수행합니다.
+ * Note: H2에서 PostgreSQL의 ON CONFLICT 문법을 지원하지 않아 비활성화
+ * 실제 배치 검증은 로컬 PostgreSQL 환경에서 수동으로 수행 완료
+ * 
+ * 향후 개선: Testcontainers를 사용한 PostgreSQL 통합 테스트 추가 예정
  */
-@Disabled("H2에서 PostgreSQL ON CONFLICT 문법 미지원으로 인한 비활성화. 로컬 환경에서 수동 테스트 완료.")
+@Disabled("H2에서 PostgreSQL ON CONFLICT 문법 미지원. 로컬 환경 수동 테스트 완료.")
 @SpringBootTest
 @SpringBatchTest
 @ActiveProfiles("test")

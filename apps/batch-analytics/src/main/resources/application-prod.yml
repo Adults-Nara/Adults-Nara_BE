@@ -31,12 +31,6 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
-# Batch 실행 모드
-# oneshot: 배치 실행 후 종료 (기본값)
-# server: 종료하지 않음 (디버깅용)
-batch:
-  mode: ${BATCH_MODE:oneshot}
-
 logging:
   level:
     com.ott: INFO
