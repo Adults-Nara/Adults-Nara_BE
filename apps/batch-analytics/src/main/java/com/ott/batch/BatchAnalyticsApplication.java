@@ -57,7 +57,9 @@ public class BatchAnalyticsApplication implements ApplicationRunner {
         log.info("[BatchAnalyticsApplication] 배치 실행 완료: status={}", jobExecution.getStatus());
 
         if (jobExecution.getStatus() != BatchStatus.COMPLETED) {
-            log.error("[BatchAnalyticsApplication] 배치 실행 실패!");
+            log.error("[BatchAnalyticsApplication] 배치 실행 실패! status={}", jobExecution.getStatus());
+            jobExecution.getAllFailureExceptions()
+                    .forEach(e -> log.error("배치 실패 상세 원인:", e));
             throw new RuntimeException("배치 실행 실패: " + jobExecution.getStatus());
         }
     }
