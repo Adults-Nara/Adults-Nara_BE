@@ -62,9 +62,14 @@ public class TranscodingWorkerConsumer {
             Video video = videoUpdater.readByVideo(evt.videoId());
 
             // 이미 READY면 스킵 (중복/재처리 방지)
-            // 삭제된 경우 스킵
-            if (video.getProcessingStatus() == ProcessingStatus.READY || video.isDeleted()) {
+            if (video.getProcessingStatus() == ProcessingStatus.READY) {
                 logger.info("[transcode] 이미 READY. skip videoId={}", evt.videoId());
+                return;
+            }
+
+            // 삭제된 경우 스킵
+            if (video.isDeleted()) {
+                logger.info("[transcode] {} 삭제된 영상입니다.", evt.videoId());
                 return;
             }
 
