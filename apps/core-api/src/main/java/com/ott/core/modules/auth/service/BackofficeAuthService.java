@@ -13,6 +13,7 @@ import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -185,7 +186,7 @@ public class BackofficeAuthService {
 
             log.info("[백오피스 회원가입] 업로더 계정 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
             return UserResponse.from(user);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException e) {
             // race condition: 동시 요청이 existsByEmail을 동시에 통과한 경우
             log.warn("[백오피스 회원가입] 이메일 중복 - race condition 감지: {}", request.email());
             throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
