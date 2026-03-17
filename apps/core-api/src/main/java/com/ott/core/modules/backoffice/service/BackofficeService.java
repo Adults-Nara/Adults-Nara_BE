@@ -11,6 +11,7 @@ import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.*;
 import com.ott.core.modules.backoffice.repository.UserQueryRepository;
 import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
+import com.ott.core.modules.search.event.VideoIndexDeletedEvent;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
@@ -19,6 +20,7 @@ import com.ott.core.modules.video.repository.VideoRepository;
 import com.ott.core.modules.video.service.S3ObjectStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -45,6 +47,7 @@ public class BackofficeService {
     private final S3ObjectStorage s3ObjectStorage;
     private final StringRedisTemplate stringRedisTemplate;
 
+    private final ApplicationEventPublisher eventPublisher;
     private static final String KEY_RANKING = "video:ranking";
 
     @Value("${aws.s3.source-bucket}")
@@ -125,6 +128,10 @@ public class BackofficeService {
         }
 
         videoRepository.softDeleteByIds(request.videoIds());
+        // ES 삭제 이벤트 발행
+        for (Long videoId : request.videoIds()) {
+            eventPublisher.publishEvent(new VideoIndexDeletedEvent(videoId));
+        }
 
         // 커밋 이후 실행
         List<Long> ids = List.copyOf(request.videoIds());

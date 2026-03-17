@@ -88,6 +88,17 @@ public class VideoSearchSyncService {
             throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR, e);
         }
     }
+    // 엘라스틱서치에서 문서 즉시 삭제
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
+    public void deleteFromElasticsearch(Long videoId) {
+        try {
+            videoSearchRepository.deleteById(videoId);
+            log.info("[Search] ES 검색 문서 삭제 완료 (백오피스 삭제 연동): videoId={}", videoId);
+        } catch (Exception e) {
+            log.error("[Search] ES 검색 문서 삭제 실패: videoId={}, 원인: {}", videoId, e.getMessage());
+            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR, e);
+        }
+    }
 
     // 최종 실패 시 호출됨 (Event 객체 대신 videoId를 직접 받음)
     @Recover
