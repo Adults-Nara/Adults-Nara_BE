@@ -18,6 +18,7 @@
     "description": { "type": "text", "analyzer": "korean_nori_analyzer" },
     "videoType": { "type": "keyword" },
     "tags": { "type": "keyword" },
+    "matchedTags": { "type": "keyword" },
     "viewCount": { "type": "integer" },
     "likeCount": { "type": "integer" },
     "deleted": { "type": "boolean" },

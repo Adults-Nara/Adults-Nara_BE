@@ -53,9 +53,12 @@ public class VideoSearchService {
                             .fuzziness("AUTO")
                     )
             );
+            boolQueryBuilder.should(s -> s
+                    .match(m -> m.field("matchedTags").query(keyword).boost(5.0f))
+            );
         }
 
-        // [FILTER] 비디오 타입 필터 (예: SHORT, NORMAL) - 캐싱 적용되어 매우 빠름
+        // [FILTER] 비디오 타입 필터
         if (videoType != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("videoType").value(videoType.name())));
         }
@@ -63,6 +66,9 @@ public class VideoSearchService {
         // [FILTER] 태그 필터 (정확히 일치하는 태그)
         if (tag != null && !tag.isBlank()) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("tags").value(tag)));
+            boolQueryBuilder.should(s -> s
+                    .term(t -> t.field("matchedTags").value(tag).boost(10.0f))
+            );
         }
 
         // 쿼리 조립
