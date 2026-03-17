@@ -85,6 +85,9 @@ public class BackofficeService {
                     .toList();
             videoTagRepository.saveAll(videoTags);
         }
+        if (request.otherVideoUrl() != null) {
+            videoMetadata.setOtherVideoUrl(request.otherVideoUrl());
+        }
 
         if (image != null && !image.isEmpty()) {
             String thumbnailExtension = image.getOriginalFilename().substring(image.getOriginalFilename().lastIndexOf("."));
