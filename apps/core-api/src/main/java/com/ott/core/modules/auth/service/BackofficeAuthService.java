@@ -168,7 +168,8 @@ public class BackofficeAuthService {
      */
     @Transactional
     public UserResponse signupUploader(BackofficeSignupRequest request) {
-        if (userRepository.findByEmail(request.email()).isPresent()) {
+        // 탈퇴/삭제된 이메일 포함 중복 체크 - 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
+        if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
         }
 
@@ -207,11 +208,12 @@ public class BackofficeAuthService {
     }
 
     /**
-     * 이메일 중복 체크
+     * 이메일 중복 체크 - 탈퇴(deleted=true) 유저 포함
+     * 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
      */
     @Transactional(readOnly = true)
     public boolean isEmailExists(String email) {
-        return userRepository.existsByEmailAndNotDeleted(email);
+        return userRepository.existsByEmail(email);
     }
 
     // ====== Private Methods ======
