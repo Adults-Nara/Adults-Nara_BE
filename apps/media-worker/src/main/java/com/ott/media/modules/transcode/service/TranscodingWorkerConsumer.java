@@ -83,6 +83,12 @@ public class TranscodingWorkerConsumer {
             Path hlsRoot = workRoot.resolve("hls"); // 여기 아래에 360p/720p/...
             ffmpegTranscoder.transcodeToHlsTs(input, hlsRoot, SEGMENT_SECONDS, RENDITIONS);
 
+            Video verifyVideoDeleted = videoUpdater.readByVideo(evt.videoId());
+            if (verifyVideoDeleted.isDeleted()) {
+                logger.info("[transcode] {} 삭제된 영상입니다.", evt.videoId());
+                return;
+            }
+
             // 업로드 (세그먼트 → variant → master 순)
             String outputBaseKey = outputBasePrefix
                     + evt.videoId()
