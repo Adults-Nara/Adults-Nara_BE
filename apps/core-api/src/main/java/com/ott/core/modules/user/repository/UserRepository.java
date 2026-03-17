@@ -35,8 +35,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * 백오피스 회원가입/이메일 중복체크에서 사용
      * 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
      */
-    @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email")
-    boolean existsByEmail(@Param("email") String email);
+    boolean existsByEmail(String email);
 
     Optional<User> findByEmail(String email);
 
