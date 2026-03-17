@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.22](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.21...v0.9.22) (2026-03-17)
+
+
+### Bug Fixes
+
+* 이메일 중복 체크 로직 수정 ([1ba5e98](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1ba5e9805c223899a57fb4cb0664b721b53f51b2))
+* 이메일 중복체크 수정 ([dec9b90](https://github.com/Adults-Nara/Adults-Nara_BE/commit/dec9b90d2810c4c304ebfae1e6200ef86965636e))
+* 코드 리뷰 수정 ([ca33c6c](https://github.com/Adults-Nara/Adults-Nara_BE/commit/ca33c6c7b31de8cf907ef91b20aca26e082ea83a))
+* 트랜스코딩 작업 중 영상 삭제시 처리 로직 수정 ([9704d20](https://github.com/Adults-Nara/Adults-Nara_BE/commit/9704d2008f3a87b9f0edd4b6e1e7c8f25cd02c63))
+* 트랜스코딩 작업 중 영상 삭제시 처리 로직 수정2 ([1a7d1e9](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1a7d1e9be42d5f914b71e15cbcf730d65d8a5344))
+* 트랜스코딩 작업 중 영상 삭제시 처리 로직 수정3 ([af6e4e2](https://github.com/Adults-Nara/Adults-Nara_BE/commit/af6e4e22554aee14ca21c7d51bc223e08351e34a))
+
 ## [0.9.21](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.20...v0.9.21) (2026-03-17)
 
 
