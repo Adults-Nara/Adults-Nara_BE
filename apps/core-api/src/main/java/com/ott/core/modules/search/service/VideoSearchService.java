@@ -42,7 +42,6 @@ public class VideoSearchService {
 
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
-        // [필수 필터] 삭제되지 않은 영상만 노출
         boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)));
 
         // [MUST] 검색어 매칭 (제목 3배 가중치, 내용은 1배)
@@ -54,9 +53,12 @@ public class VideoSearchService {
                             .fuzziness("AUTO")
                     )
             );
+            boolQueryBuilder.should(s -> s
+                    .match(m -> m.field("matchedTags").query(keyword).boost(5.0f))
+            );
         }
 
-        // [FILTER] 비디오 타입 필터 (예: SHORT, NORMAL) - 캐싱 적용되어 매우 빠름
+        // [FILTER] 비디오 타입 필터
         if (videoType != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("videoType").value(videoType.name())));
         }
@@ -64,6 +66,9 @@ public class VideoSearchService {
         // [FILTER] 태그 필터 (정확히 일치하는 태그)
         if (tag != null && !tag.isBlank()) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("tags").value(tag)));
+            boolQueryBuilder.should(s -> s
+                    .term(t -> t.field("matchedTags").value(tag).boost(10.0f))
+            );
         }
 
         // 쿼리 조립
@@ -92,7 +97,6 @@ public class VideoSearchService {
         // 4. 로그인한 유저라면 시청 이력 한 번에(IN 쿼리) 조회
         Map<Long, Integer> progressMap = new HashMap<>();
         if (currentUserId != null) {
-            // (주의: repository에 findByUserIdAndVideoIdIn 메서드가 있다고 가정)
             List<WatchHistory> histories = watchHistoryRepository.findWithVideoMetadataByUserIdAndVideoIdIn(currentUserId, videoIds);
             for (WatchHistory wh : histories) {
                 Integer duration = wh.getVideoMetadata().getDuration();
@@ -125,7 +129,8 @@ public class VideoSearchService {
         }
 
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-        boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)));
+        boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)))
+                .filter(f -> f.term(t -> t.field("isAd").value(false)));
         // 초성 검사
         boolean isOnlyChosung = keyword.matches("^[ㄱ-ㅎㄲㄸㅃㅆㅉ\\s]+$");
 

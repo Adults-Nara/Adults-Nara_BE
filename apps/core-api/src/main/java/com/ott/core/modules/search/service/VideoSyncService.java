@@ -3,6 +3,7 @@ package com.ott.core.modules.search.service;
 import com.ott.common.persistence.entity.VideoAiAnalysis;
 import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.entity.VideoTag;
+import com.ott.common.persistence.enums.TagSource;
 import com.ott.core.modules.ai.repository.VideoAiAnalysisRepository;
 import com.ott.core.modules.search.document.VideoDocument;
 import com.ott.core.modules.search.repository.VideoSearchRepository;
@@ -17,8 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,33 +65,41 @@ public class VideoSyncService {
             // 부모 태그까지 FETCH JOIN 하는 쿼리 사용 (N+1 해결)
             List<VideoTag> allTagsForChunk = videoTagRepository.findWithTagAndParentByVideoMetadataIdIn(metadataIds);
 
-            // 부모 태그를 포함하도록 Grouping 로직 완벽 수정
-            Map<Long, List<String>> tagsByVideoId = allTagsForChunk.stream()
-                    .collect(Collectors.groupingBy(
-                            vt -> vt.getVideoMetadata().getId(),
-                            Collectors.mapping(VideoTag::getTag, Collectors.toList())
-                    ))
-                    .entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            e -> e.getValue().stream()
-                                    .flatMap(tag -> tag.getParent() != null
-                                            ? Stream.of(tag.getTagName(), tag.getParent().getTagName())
-                                            : Stream.of(tag.getTagName()))
-                                    .distinct()
-                                    .toList()
-                    ));
+            Map<Long, List<VideoTag>> tagsByMetadataId = allTagsForChunk.stream()
+                    .collect(Collectors.groupingBy(vt -> vt.getVideoMetadata().getId()));
 
             List<VideoAiAnalysis> aiAnalysisChunk = videoAiAnalysisRepository.findAllById(videoIds);
             Map<Long, VideoAiAnalysis> aiAnalysisByVideoId = aiAnalysisChunk.stream()
                     .collect(Collectors.toMap(VideoAiAnalysis::getId, Function.identity()));
-            // 비디오 엔티티를 ES용 문서로 변환
+
+            // 비디오 엔티티를 ES용 문서로 변환하면서 matchedTags 계산
             List<VideoDocument> documents = videoSlice.stream().map(video -> {
 
-                // 미리 만들어둔 메모리 맵(tagsByVideoId)에서 ID로 태그를 꺼낸다.
-                List<String> tagNames = tagsByVideoId.getOrDefault(video.getId(), java.util.List.of());
+                List<VideoTag> vTags = tagsByMetadataId.getOrDefault(video.getId(), List.of());
+
+                Map<TagSource, Set<String>> tagsBySource = vTags.stream()
+                        .collect(Collectors.groupingBy(VideoTag::getSource,
+                                Collectors.flatMapping(vt -> vt.getTag().getParent() != null
+                                                ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
+                                                : Stream.of(vt.getTag().getTagName()),
+                                        Collectors.toSet())));
+
+                Set<String> userTags = tagsBySource.getOrDefault(TagSource.USER, Set.of());
+                Set<String> aiTags = tagsBySource.getOrDefault(TagSource.AI, Set.of());
+
+                // 3. 교집합 추출
+                List<String> matchedTags = new ArrayList<>(userTags);
+                matchedTags.retainAll(aiTags);
+
+                // 4. 합집합 추출
+                Set<String> allTagsSet = new HashSet<>(userTags);
+                allTagsSet.addAll(aiTags);
+                List<String> distinctAllTags = new ArrayList<>(allTagsSet);
+
                 VideoAiAnalysis aiAnalysis = aiAnalysisByVideoId.get(video.getVideoId());
-                return VideoDocument.from(video, tagNames, aiAnalysis);
+
+                // 5. 4개의 파라미터를 정확히 전달!
+                return VideoDocument.from(video, distinctAllTags, matchedTags, aiAnalysis);
 
             }).toList();
 
@@ -101,7 +109,6 @@ public class VideoSyncService {
 
             log.info("[ES Sync] {}번째 페이지({}건) 인덱싱 완료...", page, documents.size());
 
-            // 다음 페이지가 있는지 확인하고 넘어가기
             hasNext = videoSlice.hasNext();
             page++;
         }

@@ -7,7 +7,7 @@ import lombok.Builder;
 @Builder
 public record RankingResponse (
     int rank,
-    double rankingScore,
+    long rankingScore,
     String videoId,
     String thumbnailSrc,
     String title,
@@ -20,11 +20,11 @@ public record RankingResponse (
     VideoType videoType
 
 ) {
-    public static RankingResponse of ( int rank, VideoMetadata metadata, Double score, String uploader, String
-        profileUrl,int progress){
+    public static RankingResponse of ( int rank, VideoMetadata metadata, Double score, String uploader, String profileUrl, int progress) {
+        long realBookmarkCount = (score != null) ? score.longValue() : metadata.getBookmarkCount();
         return RankingResponse.builder()
                 .rank(rank)
-                .rankingScore(score != null ? score : metadata.getBookmarkCount())
+                .rankingScore(realBookmarkCount)
                 .videoId(String.valueOf(metadata.getVideoId()))
                 .thumbnailSrc(metadata.getThumbnailUrl())
                 .title(metadata.getTitle())
@@ -32,7 +32,6 @@ public record RankingResponse (
                 .uploaderProfileImageUrl(profileUrl)
                 .progress(progress)
                 .duration(metadata.getDuration())
-
                 .views(metadata.getViewCount())
                 .date(metadata.getCreatedAt() != null ? metadata.getCreatedAt().toString() : null)
                 .videoType(metadata.getVideoType())
