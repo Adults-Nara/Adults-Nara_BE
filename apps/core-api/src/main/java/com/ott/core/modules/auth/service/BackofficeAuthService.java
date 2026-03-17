@@ -165,6 +165,11 @@ public class BackofficeAuthService {
 
     /**
      * 업로더 회원가입 (자체 가입)
+     *
+     * 이메일 중복 체크 후 저장 사이의 race condition 대비:
+     * - 동시 요청이 existsByEmail을 동시에 통과하더라도
+     *   DB unique 제약에서 DataIntegrityViolationException 발생
+     *   → BusinessException(USER_DUPLICATE_EMAIL)으로 변환하여 500 방지
      */
     @Transactional
     public UserResponse signupUploader(BackofficeSignupRequest request) {
@@ -173,13 +178,18 @@ public class BackofficeAuthService {
             throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
         }
 
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
+        try {
+            String passwordHash = passwordEncoder.encode(request.password());
+            User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
+            userRepository.save(user);
 
-        userRepository.save(user);
-
-        log.info("[백오피스 회원가입] 업로더 계정 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
-        return UserResponse.from(user);
+            log.info("[백오피스 회원가입] 업로더 계정 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
+            return UserResponse.from(user);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // race condition: 동시 요청이 existsByEmail을 동시에 통과한 경우
+            log.warn("[백오피스 회원가입] 이메일 중복 - race condition 감지: {}", request.email());
+            throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
+        }
     }
 
     /**
