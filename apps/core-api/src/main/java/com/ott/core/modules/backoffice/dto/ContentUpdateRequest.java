@@ -8,6 +8,7 @@ public record ContentUpdateRequest(
         String title,
         String description,
         Visibility visibility,
-        List<Long> tagIds
+        List<Long> tagIds,
+        String otherVideoUrl
 ) {
 }
