@@ -123,8 +123,8 @@ public class VideoSearchService {
         }
 
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-        boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)));
-        boolQueryBuilder.filter(f -> f.term(t -> t.field("isAd").value(false)));
+        boolQueryBuilder.filter(f -> f.term(t -> t.field("deleted").value(false)))
+                .filter(f -> f.term(t -> t.field("isAd").value(false)));
         // 초성 검사
         boolean isOnlyChosung = keyword.matches("^[ㄱ-ㅎㄲㄸㅃㅆㅉ\\s]+$");
 
