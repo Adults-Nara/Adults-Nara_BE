@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.20](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.19...v0.9.20) (2026-03-17)
+
+
+### Bug Fixes
+
+* 전월 기록 없을 시 빈 배열 반환 ([5635ec5](https://github.com/Adults-Nara/Adults-Nara_BE/commit/5635ec5765e2650e78ccad021fbc4dc2410a457d))
+* 코드 리뷰 반영 ([3d21dd3](https://github.com/Adults-Nara/Adults-Nara_BE/commit/3d21dd3b819c5bfa39376cbac98424acca98327a))
+
 ## [0.9.19](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.18...v0.9.19) (2026-03-16)
 
 
