@@ -146,7 +146,7 @@ public class RecommendationQueryBuilder {
                 .query(baseActiveVideoQuery(videoType, excludedVideoIds))
                 .functions(FunctionScore.of(f -> f.randomScore(rs -> rs
                         .seed(randomSeed)
-                        .field("_seq_no")
+                        .field("videoId")
                 )))
         )._toQuery();
 

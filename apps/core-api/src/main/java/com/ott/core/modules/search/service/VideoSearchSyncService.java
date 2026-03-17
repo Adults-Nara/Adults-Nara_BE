@@ -20,11 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,24 +51,17 @@ public class VideoSearchSyncService {
             VideoMetadata metadata = metadataOpt.get();
 
             // Tag 대신 VideoTag를 가져와야 Source(USER/AI) 구분이 가능
-            // (Bulk Sync에서 쓰시던 N+1 방지용 메서드를 재활용합니다)
             List<VideoTag> videoTags = videoTagRepository.findWithTagAndParentByVideoMetadataIdIn(List.of(metadata.getId()));
 
-            // USER가 등록한 태그 추출 (부모 태그 포함)
-            Set<String> userTags = videoTags.stream()
-                    .filter(vt -> vt.getSource() == TagSource.USER)
-                    .flatMap(vt -> vt.getTag().getParent() != null
-                            ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
-                            : Stream.of(vt.getTag().getTagName()))
-                    .collect(Collectors.toSet());
+            Map<TagSource, Set<String>> tagsBySource = videoTags.stream()
+                    .collect(Collectors.groupingBy(VideoTag::getSource,
+                            Collectors.flatMapping(vt -> vt.getTag().getParent() != null
+                                            ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
+                                            : Stream.of(vt.getTag().getTagName()),
+                                    Collectors.toSet())));
 
-            // AI가 추출한 태그 추출
-            Set<String> aiTags = videoTags.stream()
-                    .filter(vt -> vt.getSource() == TagSource.AI)
-                    .flatMap(vt -> vt.getTag().getParent() != null
-                            ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
-                            : Stream.of(vt.getTag().getTagName()))
-                    .collect(Collectors.toSet());
+            Set<String> userTags = tagsBySource.getOrDefault(TagSource.USER, Set.of());
+            Set<String> aiTags = tagsBySource.getOrDefault(TagSource.AI, Set.of());
 
             // 교집합 계산
             List<String> matchedTags = new ArrayList<>(userTags);

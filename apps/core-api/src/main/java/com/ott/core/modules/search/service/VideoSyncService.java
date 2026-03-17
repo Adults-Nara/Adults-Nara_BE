@@ -18,10 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -80,30 +77,24 @@ public class VideoSyncService {
 
                 List<VideoTag> vTags = tagsByMetadataId.getOrDefault(video.getId(), List.of());
 
-                // 1. USER가 등록한 태그 추출 (부모 태그 포함)
-                Set<String> userTags = vTags.stream()
-                        .filter(vt -> vt.getSource() == TagSource.USER)
-                        .flatMap(vt -> vt.getTag().getParent() != null
-                                ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
-                                : Stream.of(vt.getTag().getTagName()))
-                        .collect(Collectors.toSet());
+                Map<TagSource, Set<String>> tagsBySource = vTags.stream()
+                        .collect(Collectors.groupingBy(VideoTag::getSource,
+                                Collectors.flatMapping(vt -> vt.getTag().getParent() != null
+                                                ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
+                                                : Stream.of(vt.getTag().getTagName()),
+                                        Collectors.toSet())));
 
-                // 2. AI가 등록한 태그 추출 (부모 태그 포함)
-                Set<String> aiTags = vTags.stream()
-                        .filter(vt -> vt.getSource() == TagSource.AI)
-                        .flatMap(vt -> vt.getTag().getParent() != null
-                                ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
-                                : Stream.of(vt.getTag().getTagName()))
-                        .collect(Collectors.toSet());
+                Set<String> userTags = tagsBySource.getOrDefault(TagSource.USER, Set.of());
+                Set<String> aiTags = tagsBySource.getOrDefault(TagSource.AI, Set.of());
 
                 // 3. 교집합 추출
                 List<String> matchedTags = new ArrayList<>(userTags);
                 matchedTags.retainAll(aiTags);
 
                 // 4. 합집합 추출
-                List<String> allTags = new ArrayList<>(userTags);
-                allTags.addAll(aiTags);
-                List<String> distinctAllTags = allTags.stream().distinct().toList();
+                Set<String> allTagsSet = new HashSet<>(userTags);
+                allTagsSet.addAll(aiTags);
+                List<String> distinctAllTags = new ArrayList<>(allTagsSet);
 
                 VideoAiAnalysis aiAnalysis = aiAnalysisByVideoId.get(video.getVideoId());
 

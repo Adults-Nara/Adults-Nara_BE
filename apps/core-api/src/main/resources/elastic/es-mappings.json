@@ -30,6 +30,8 @@
       "dims": 384,
       "index": true,
       "similarity": "cosine"
-    }
+    },
+    "isAd": { "type": "boolean" },
+    "summary": { "type": "text", "analyzer": "korean_nori_analyzer" }
   }
 }
