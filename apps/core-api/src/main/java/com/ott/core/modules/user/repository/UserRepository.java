@@ -30,6 +30,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email AND u.deleted = false")
     boolean existsByEmailAndNotDeleted(@Param("email") String email);
 
+    /**
+     * 이메일 존재 여부 확인 - 탈퇴(deleted=true) 유저 포함
+     * 백오피스 회원가입/이메일 중복체크에서 사용
+     * 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
+     */
+    boolean existsByEmail(String email);
+
     Optional<User> findByEmail(String email);
 
     // ====== 탈퇴 유저 포함 조회 (재가입 처리용) ======
