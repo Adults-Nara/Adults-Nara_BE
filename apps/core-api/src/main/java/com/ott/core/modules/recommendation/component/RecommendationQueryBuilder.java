@@ -66,24 +66,46 @@ public class RecommendationQueryBuilder {
     public NativeQuery buildMainPersonalizedQuery(List<TagScoreDto> userPreferences, VideoType videoType, int page, int size, List<String> excludedVideoIds) {
         List<FunctionScore> functions = new ArrayList<>();
 
-        // 가중치 1: 태그 점수
-        for (TagScoreDto pref : userPreferences) {
-            if (pref.score() <= 0) continue;
-            functions.add(FunctionScore.of(f -> f
-                    .filter(fq -> fq.term(t -> t.field("tags").value(pref.tagName())))
-                    .weight(pref.score())
-            ));
+        // [비율 1] AI 태그 일치 정도 (유저 취향 매칭)
+        if (userPreferences != null) {
+            for (TagScoreDto pref : userPreferences) {
+                if (pref.score() <= 0) continue;
+
+                // 1-A. 일반 태그 매칭 (기본 점수 부여)
+                functions.add(FunctionScore.of(f -> f
+                        .filter(fq -> fq.term(t -> t.field("tags").value(pref.tagName())))
+                        .weight(pref.score())
+                ));
+
+                // 1-B.  AI와 사람이 교차 검증한 고품질 태그(matchedTags)에 일치하면 점수 한 번 더 부여(가중치 2배 효과)
+                functions.add(FunctionScore.of(f -> f
+                        .filter(fq -> fq.term(t -> t.field("matchedTags").value(pref.tagName())))
+                        .weight(pref.score())
+                ));
+            }
         }
 
-        // 가중치 2: 대중성 (조회수 Log1p 적용)
+        // [비율 2] 조회수 (Log 스케일 적용)
+        // 1만 회 = 약 9점, 10만 회 = 약 11점 (태그 점수와 스케일이 비슷해짐)
         functions.add(FunctionScore.of(f -> f
                 .fieldValueFactor(fv -> fv
                         .field("viewCount")
                         .modifier(FieldValueFactorModifier.Log1p)
-                        .factor(0.1)
+                        .factor(1.0)
                 )
         ));
 
+        // [비율 3] 인기순 / 좋아요 수 (Log 스케일 적용)
+        // 보통 좋아요가 조회수보다 1/10 수준으로 적게 달리므로 factor를 1.2로 살짝 높여 밸런스를 맞춤
+        functions.add(FunctionScore.of(f -> f
+                .fieldValueFactor(fv -> fv
+                        .field("likeCount")
+                        .modifier(FieldValueFactorModifier.Log1p)
+                        .factor(1.2)
+                )
+        ));
+
+        // 스코어 조립: 이 3가지 점수를 모두 공평하게 더합니다(Sum).
         Query functionScoreQuery = FunctionScoreQuery.of(fsq -> fsq
                 .query(baseActiveVideoQuery(videoType, excludedVideoIds))
                 .functions(functions)
