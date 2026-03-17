@@ -13,6 +13,7 @@ import com.ott.core.modules.user.dto.response.UserResponse;
 import com.ott.core.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -165,20 +166,31 @@ public class BackofficeAuthService {
 
     /**
      * 업로더 회원가입 (자체 가입)
+     *
+     * 이메일 중복 체크 후 저장 사이의 race condition 대비:
+     * - 동시 요청이 existsByEmail을 동시에 통과하더라도
+     *   DB unique 제약에서 DataIntegrityViolationException 발생
+     *   → BusinessException(USER_DUPLICATE_EMAIL)으로 변환하여 500 방지
      */
     @Transactional
     public UserResponse signupUploader(BackofficeSignupRequest request) {
-        if (userRepository.findByEmail(request.email()).isPresent()) {
+        // 탈퇴/삭제된 이메일 포함 중복 체크 - 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
+        if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
         }
 
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
+        try {
+            String passwordHash = passwordEncoder.encode(request.password());
+            User user = new User(request.email(), request.nickname(), passwordHash, UserRole.UPLOADER);
+            userRepository.save(user);
 
-        userRepository.save(user);
-
-        log.info("[백오피스 회원가입] 업로더 계정 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
-        return UserResponse.from(user);
+            log.info("[백오피스 회원가입] 업로더 계정 생성 - userId: {}, email: {}", user.getId(), user.getEmail());
+            return UserResponse.from(user);
+        } catch (DataIntegrityViolationException e) {
+            // race condition: 동시 요청이 existsByEmail을 동시에 통과한 경우
+            log.warn("[백오피스 회원가입] 이메일 중복 - race condition 감지: {}", request.email());
+            throw new BusinessException(ErrorCode.USER_DUPLICATE_EMAIL);
+        }
     }
 
     /**
@@ -207,11 +219,12 @@ public class BackofficeAuthService {
     }
 
     /**
-     * 이메일 중복 체크
+     * 이메일 중복 체크 - 탈퇴(deleted=true) 유저 포함
+     * 탈퇴한 이메일은 본인 포함 누구도 재사용 불가
      */
     @Transactional(readOnly = true)
     public boolean isEmailExists(String email) {
-        return userRepository.existsByEmailAndNotDeleted(email);
+        return userRepository.existsByEmail(email);
     }
 
     // ====== Private Methods ======
