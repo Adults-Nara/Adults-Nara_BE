@@ -48,6 +48,9 @@ public class VideoDocument {
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 
+    @Field(type = FieldType.Keyword)
+    private List<String> matchedTags;
+
     @Field(type = FieldType.Dense_Vector, dims = 384, similarity = "cosine", index = true)
     private List<Float> embedding;
 
@@ -72,7 +75,7 @@ public class VideoDocument {
     @Field(type = FieldType.Date, format = DateFormat.date_time, pattern = "uuuu-MM-dd'T'HH:mm:ss.SSSXXX")
     private OffsetDateTime createdAt;
 
-    public static VideoDocument from(VideoMetadata metadata, List<String> tagNames, VideoAiAnalysis aiAnalysis) {
+    public static VideoDocument from(VideoMetadata metadata, List<String> tagNames, List<String> matchedTags, VideoAiAnalysis aiAnalysis) {
         List<Float> embeddingList = null;
         if (aiAnalysis != null && aiAnalysis.getEmbedding() != null) {
             embeddingList = new ArrayList<>(aiAnalysis.getEmbedding().length);
@@ -89,6 +92,7 @@ public class VideoDocument {
                 .description(metadata.getDescription())
                 .videoType(metadata.getVideoType())
                 .tags(tagNames)
+                .matchedTags(matchedTags)
                 .summary(aiAnalysis != null ? aiAnalysis.getSummary() : null)
                 .embedding(embeddingList)
                 .viewCount(metadata.getViewCount())
