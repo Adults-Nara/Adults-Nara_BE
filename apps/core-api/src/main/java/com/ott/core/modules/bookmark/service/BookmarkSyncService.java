@@ -4,6 +4,7 @@ import com.ott.common.persistence.entity.VideoMetadata;
 import com.ott.common.persistence.enums.VideoType;
 import com.ott.core.modules.bookmark.repository.BookmarkRepository;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,15 +28,28 @@ public class BookmarkSyncService {
     private static final String KEY_DIRTY = "video:dirty:bookmark"; // Set
     private static final String KEY_PROCESSING = "video:processing:bookmark"; // Set (안전 큐)
 
+
+    // =========================================================================
+    // 장애 복구 로직을 스케줄러에서 빼내어 서버 기동 시 1회만 실행!
+    // =========================================================================
+    @PostConstruct
+    public void recoverProcessingQueueOnStartup() {
+        log.info("[SyncService] 🚀 서버 기동 중: 이전 작업의 잔여 북마크 동기화 큐(Processing) 복구 검사...");
+
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PROCESSING))) {
+            // Processing에 남은 데이터를 다시 Dirty로 합치고 안전하게 삭제
+            stringRedisTemplate.opsForSet().unionAndStore(KEY_DIRTY, KEY_PROCESSING, KEY_DIRTY);
+            stringRedisTemplate.delete(KEY_PROCESSING);
+            log.warn("[SyncService] 🚨 비정상 종료로 남겨진 북마크 동기화 대기열 복구 완료!");
+        } else {
+            log.info("[SyncService] ✅ 복구할 잔여 큐 없음. 깔끔합니다.");
+        }
+    }
+
     /**
      * Redis에 저장된 북마크 카운트를 DB(VideoMetadata)에 동기화하는 비즈니스 로직
      */
     public void syncBookmarkCounts() {
-        // 1. [장애 복구] 이전 작업 중 서버가 뻗었다면 다시 합침
-        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PROCESSING))) {
-            stringRedisTemplate.opsForSet().unionAndStore(KEY_DIRTY, KEY_PROCESSING, KEY_DIRTY);
-            stringRedisTemplate.delete(KEY_PROCESSING);
-        }
 
         if (Boolean.FALSE.equals(stringRedisTemplate.hasKey(KEY_DIRTY))) {
             return; // 동기화할 데이터가 없으면 조용히 종료
@@ -64,10 +78,10 @@ public class BookmarkSyncService {
 
                 // 3. Redis ZSet에서 현재 이 비디오의 북마크 카운트를 가져옵니다.
                 Double score = stringRedisTemplate.opsForZSet().score(KEY_RANKING_LONG, videoIdStr);
-
                 if (score == null) {
                     score = stringRedisTemplate.opsForZSet().score(KEY_RANKING_SHORT, videoIdStr);
                 }
+
                 if (score != null) {
                     // 4. Repository에 이미 @Transactional이 있으므로 안전하게 업데이트 됨
                     videoMetadataRepository.updateBookmarkCount(videoId, score.intValue());

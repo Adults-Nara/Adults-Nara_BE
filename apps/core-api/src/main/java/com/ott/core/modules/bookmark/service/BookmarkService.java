@@ -70,11 +70,9 @@ public class BookmarkService {
                 delta = 1;
             }
 
-            // 1. DB 저장이 완료된 후, 실제 북마크 개수를 다시 셉니다. (가장 정확한 팩트 데이터)
-            long realCount = bookmarkRepository.countByVideoId(videoId);
-            updateRedis(metadata, delta, realCount);
+            updateRedis(metadata, delta);
 
-            log.info("[Bookmark] 비디오 {} 북마크 변경 완료. 현재 총 카운트: {} (스케줄러 대기열 적재 완료)", videoId, realCount);
+            log.info("[Bookmark] 비디오 {} 북마크 변경 완료. 현재 총 카운트: {} (스케줄러 대기열 적재 완료)", videoId, delta);
 
         } catch (DataIntegrityViolationException e) {
             log.warn("[Bookmark] 동시 요청으로 인한 중복 방어 - userId: {}, videoId: {}", userId, videoId);
@@ -87,15 +85,15 @@ public class BookmarkService {
         return bookmarkRepository.existsByUserIdAndVideoMetadata_VideoId(userId, videoId);
     }
 
-    private void updateRedis(VideoMetadata metadata, int delta, long realCount) {
+    private void updateRedis(VideoMetadata metadata, int delta) {
         String videoIdStr = String.valueOf(metadata.getVideoId());
 
         // 화면 표시용 카운트 (Hash) -> 상세 페이지에서 보여줄 숫자
         stringRedisTemplate.opsForHash().increment(KEY_VIDEO_COUNT, videoIdStr, delta);
 
-        // 2. 인기 차트용 점수 (Sorted Set) -> 타입에 맞춰서 가장 정확한 최신 카운트로 덮어쓰기!
+        // 기존 점수에 +1 / -1 을 더해줌
         String targetRankingKey = (metadata.getVideoType() == VideoType.LONG) ? KEY_RANKING_LONG : KEY_RANKING_SHORT;
-        stringRedisTemplate.opsForZSet().add(targetRankingKey, videoIdStr, realCount);
+        stringRedisTemplate.opsForZSet().incrementScore(targetRankingKey, videoIdStr, delta);
 
         // 3. [Write-Back] 변경 감지 목록에 추가 -> 스케줄러가 이 Set을 뒤져서 DB에 반영함.
         stringRedisTemplate.opsForSet().add(KEY_DIRTY_DATA, videoIdStr);
