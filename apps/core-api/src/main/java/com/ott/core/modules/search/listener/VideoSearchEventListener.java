@@ -31,7 +31,7 @@ public class VideoSearchEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleVideoIndexDelete(VideoIndexDeletedEvent event) {
-        log.info("[Search Listener] 비디오 삭제 이벤트 수신: videoId={}", event.videoId());
-        videoSearchSyncService.deleteFromElasticsearch(event.videoId());
+        log.info("[Search Listener] 비디오 삭제 이벤트 수신: videoId={}", event.videoIds());
+        videoSearchSyncService.deleteFromElasticsearch(event.videoIds());
     }
 }

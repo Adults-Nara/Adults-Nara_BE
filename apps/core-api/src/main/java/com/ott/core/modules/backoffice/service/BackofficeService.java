@@ -129,9 +129,7 @@ public class BackofficeService {
 
         videoRepository.softDeleteByIds(request.videoIds());
         // ES 삭제 이벤트 발행
-        for (Long videoId : request.videoIds()) {
-            eventPublisher.publishEvent(new VideoIndexDeletedEvent(videoId));
-        }
+        eventPublisher.publishEvent(new VideoIndexDeletedEvent(List.copyOf(request.videoIds())));
 
         // 커밋 이후 실행
         List<Long> ids = List.copyOf(request.videoIds());

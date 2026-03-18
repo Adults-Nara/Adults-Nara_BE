@@ -90,13 +90,13 @@ public class VideoSearchSyncService {
     }
     // 엘라스틱서치에서 문서 즉시 삭제
     @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
-    public void deleteFromElasticsearch(Long videoId) {
+    public void deleteFromElasticsearch(List<Long> videoIds) {
         try {
-            videoSearchRepository.deleteById(videoId);
-            log.info("[Search] ES 검색 문서 삭제 완료 (백오피스 삭제 연동): videoId={}", videoId);
+            videoSearchRepository.deleteAllById(videoIds);
+            log.info("[Search] ES 검색 문서 삭제 완료 (백오피스 삭제 연동): videoId={}", videoIds);
         } catch (Exception e) {
-            log.error("[Search] ES 검색 문서 삭제 실패: videoId={}, 원인: {}", videoId, e.getMessage());
-            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR, e);
+            log.error("[Search] ES 검색 문서 삭제 실패: videoId={}, 원인: {}", videoIds, e.getMessage());
+            throw new BusinessException(ErrorCode.ELASTICSEARCH_DELETE_ERROR, e);
         }
     }
 
@@ -104,5 +104,9 @@ public class VideoSearchSyncService {
     @Recover
     public void recover(Exception e, Long videoId) {
         log.error("🚨 [Search] ES 검색 문서 동기화 최종 실패! 수동 복구(배치 동기화)가 필요합니다. - videoId: {}, 원인: {}", videoId, e.getMessage());
+    }
+    @Recover
+    public void recoverDelete(Exception e, List<Long> videoIds) {
+        log.error("🚨 [Search] ES 검색 문서 벌크 삭제 최종 실패! 고스트 데이터 수동 삭제가 필요합니다. - videoIds: {}, 원인: {}", videoIds, e.getMessage());
     }
 }
