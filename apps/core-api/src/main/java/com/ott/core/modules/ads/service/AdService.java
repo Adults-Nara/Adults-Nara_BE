@@ -9,8 +9,9 @@ import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,11 +33,17 @@ public class AdService {
             return getRandomAd();
         }
 
-        int randomIndex = ThreadLocalRandom.current().nextInt(videoTags.size());
-        VideoTag videoTag = videoTags.get(randomIndex);
+        Collections.shuffle(videoTags); // 태그를 무작위 순서로 시도
 
-        long tagId = videoTag.getTag().getId();
-        return videoMetadataRepository.findRelatedRandomAd(tagId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AD_NOT_FOUND));
+        for (VideoTag videoTag : videoTags) {
+            long tagId = videoTag.getTag().getId();
+            Optional<VideoMetadata> ad = videoMetadataRepository.findRelatedRandomAd(tagId);
+            if (ad.isPresent()) {
+                return ad.get(); // 첫 번째로 찾은 연관 광고 반환
+            }
+        }
+
+        // 모든 태그에서 연관 광고를 찾지 못한 경우
+        return getRandomAd();
     }
 }

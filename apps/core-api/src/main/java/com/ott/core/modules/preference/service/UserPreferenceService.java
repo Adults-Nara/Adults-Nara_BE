@@ -8,14 +8,18 @@ import com.ott.common.util.IdGenerator;
 import com.ott.core.modules.preference.dto.TagScoreDto;
 import com.ott.core.modules.preference.repository.UserPreferenceRepository;
 import com.ott.core.modules.tag.repository.VideoTagRepository;
+import com.ott.core.modules.usertag.event.UserTagsUpdatedEvent;
 import com.ott.core.modules.video.repository.VideoMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -33,6 +37,7 @@ public class UserPreferenceService {
     private final VideoMetadataRepository videoMetadataRepository;
     private final StringRedisTemplate stringRedisTemplate;
 
+    private static final double TAG_BONUS = 10.0;
     private static final double SCORE_SUPERLIKE = 5.0; // 왕따봉
     private static final double SCORE_LIKE = 4.0;      // 좋아요
     private static final double SCORE_DISLIKE = -5.0;      // 좋아요
@@ -44,6 +49,35 @@ public class UserPreferenceService {
      * - Redis ZSet에 점수 반영 (실시간 추천용)
      * - DB에 점수 누적 저장 (데이터 보존용)
      */
+
+    @Async("searchTaskExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void handleUserTagsUpdated(UserTagsUpdatedEvent event) {
+        String redisKey = "user:" + event.userId() + ":preference";
+
+        // 관심 태그 점수 +10점
+        for (String tagName : event.addedTagNames()) {
+            stringRedisTemplate.opsForZSet().incrementScore(redisKey, tagName, TAG_BONUS);
+            log.info("[Preference] 명시적 선호 태그 추가 반영: 유저({}), 태그({}), 점수(+{})",
+                    event.userId(), tagName, TAG_BONUS);
+        }
+
+        // 관심 태그에서 해제
+        for (String tagName : event.removedTagNames()) {
+            Double currentScore = stringRedisTemplate.opsForZSet().score(redisKey, tagName);
+
+            if (currentScore != null) {
+                // 점수 차감 후 0점 이하라면 Redis에서 깨끗하게 지워서 메모리 확보
+                if (currentScore - TAG_BONUS <= 0) {
+                    stringRedisTemplate.opsForZSet().remove(redisKey, tagName);
+                } else {
+                    stringRedisTemplate.opsForZSet().incrementScore(redisKey, tagName, -TAG_BONUS);
+                }
+                log.info("[Preference] 명시적 선호 태그 해제 반영: 유저({}), 태그({}), 점수(-{})",
+                        event.userId(), tagName, TAG_BONUS);
+            }
+        }
+    }
 
     @Transactional
     public void reflectWatchScore(Long userId, Long videoId, Integer watchSeconds, boolean isCompleted) {
