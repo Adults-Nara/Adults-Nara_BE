@@ -50,7 +50,7 @@ public class UserPreferenceService {
      * - DB에 점수 누적 저장 (데이터 보존용)
      */
 
-    @Async
+    @Async("searchTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleUserTagsUpdated(UserTagsUpdatedEvent event) {
         String redisKey = "user:" + event.userId() + ":preference";

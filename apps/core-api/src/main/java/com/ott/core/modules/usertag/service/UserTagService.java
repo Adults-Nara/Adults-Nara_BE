@@ -71,6 +71,8 @@ public class UserTagService {
 
         if (!toDelete.isEmpty()) {
             userTagRepository.deleteByUserIdAndTagIdIn(userId, toDelete);
+            List<Tag> deletedTags = tagRepository.findAllById(toDelete);
+            removedTagNames.addAll(deletedTags.stream().map(Tag::getTagName).toList());
         }
 
         if (!toAdd.isEmpty()) {
@@ -87,6 +89,7 @@ public class UserTagService {
                             .build())
                     .toList();
             userTagRepository.saveAll(userTagList);
+            addedTagNames.addAll(tagList.stream().map(Tag::getTagName).toList());
         }
         if (!addedTagNames.isEmpty() || !removedTagNames.isEmpty()) {
             eventPublisher.publishEvent(new UserTagsUpdatedEvent(userId, addedTagNames, removedTagNames));
