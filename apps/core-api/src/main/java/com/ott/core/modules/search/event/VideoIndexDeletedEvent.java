@@ -1,4 +1,6 @@
 package com.ott.core.modules.search.event;
 
-public record VideoIndexDeletedEvent(Long videoId) {
+import java.util.List;
+
+public record VideoIndexDeletedEvent(List<Long> videoIds) {
 }

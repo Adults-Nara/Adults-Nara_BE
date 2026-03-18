@@ -1,5 +1,6 @@
 package com.ott.core.modules.search.listener;
 
+import com.ott.core.modules.search.event.VideoIndexDeletedEvent;
 import com.ott.core.modules.search.event.VideoIndexRequestedEvent;
 import com.ott.core.modules.search.service.VideoSearchSyncService;
 import lombok.RequiredArgsConstructor;
@@ -24,5 +25,13 @@ public class VideoSearchEventListener {
     public void handleVideoIndexRequest(VideoIndexRequestedEvent event) {
         // 복잡한 껍데기(Proxy) 충돌 없이, 서비스 메서드를 깨끗하게 호출!
         videoSearchSyncService.syncToElasticsearch(event.videoId());
+    }
+
+    // 삭제 이벤트 수신 처리
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void handleVideoIndexDelete(VideoIndexDeletedEvent event) {
+        log.info("[Search Listener] 비디오 삭제 이벤트 수신: videoId={}", event.videoIds());
+        videoSearchSyncService.deleteFromElasticsearch(event.videoIds());
     }
 }
