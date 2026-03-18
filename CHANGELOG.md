@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.23](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.22...v0.9.23) (2026-03-18)
+
+
+### Bug Fixes
+
+* release ([f44664a](https://github.com/Adults-Nara/Adults-Nara_BE/commit/f44664a8e4d8381edce055f22484a4c20029dd68))
+
 ## [0.9.22](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.21...v0.9.22) (2026-03-17)
 
 
