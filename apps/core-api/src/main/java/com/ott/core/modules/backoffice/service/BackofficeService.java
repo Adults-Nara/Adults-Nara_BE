@@ -80,10 +80,12 @@ public class BackofficeService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -110,7 +112,7 @@ public class BackofficeService {
             videoMetadata.setThumbnailUrl("https://" + cloudFrontDomain + "/" + thumbnailKey);
         }
 
-        boolean currentVisible = isVisible(request.visibility() != null ? request.visibility() : "TRUE");
+        boolean currentVisible = isVisible(video.getVisibility());
         eventPublisher.publishEvent(new VideoUpdatedEvent(videoId, currentVisible));
 
         return new ContentUpdateResponse(String.valueOf(videoId));

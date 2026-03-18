@@ -1,5 +1,6 @@
 package com.ott.core.modules.search.listener;
 
+import com.ott.core.modules.backoffice.event.VideoDeletedEvent;
 import com.ott.core.modules.backoffice.event.VideoUpdatedEvent;
 import com.ott.core.modules.backoffice.event.VideoVisibilityChangedEvent;
 import com.ott.core.modules.search.event.VideoIndexDeletedEvent;
@@ -44,10 +45,10 @@ public class VideoSearchEventListener {
     }
 
     // 삭제 이벤트 수신 처리
-    @Async
+    @Async("searchTaskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
-    public void handleVideoIndexDelete(VideoIndexDeletedEvent event) {
-        log.info("[Search Listener] 비디오 삭제 이벤트 수신: videoId={}", event.videoIds());
+    public void handleVideoDeleted(VideoDeletedEvent event) {
+        log.info("[Search Listener] 비디오 삭제 이벤트 수신. ES 벌크 삭제 시작.");
         videoSearchSyncService.deleteFromElasticsearch(event.videoIds());
     }
 
@@ -56,9 +57,7 @@ public class VideoSearchEventListener {
     public void handleVideoVisibilityChanged(VideoVisibilityChangedEvent event) {
         log.info("[Search Listener] 비디오 상태변경 이벤트 수신: videoIds={}, visible={}", event.videoIds(), event.isVisible());
         if (event.isVisible()) {
-            for (Long videoId : event.videoIds()) {
-                videoSearchSyncService.syncToElasticsearch(videoId);
-            }
+            videoSearchSyncService.bulkSyncToElasticsearch(event.videoIds());
         } else {
             videoSearchSyncService.deleteFromElasticsearch(event.videoIds());
         }

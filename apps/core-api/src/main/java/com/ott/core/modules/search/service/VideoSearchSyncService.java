@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -106,7 +107,67 @@ public class VideoSearchSyncService {
         log.error("🚨 [Search] ES 검색 문서 동기화 최종 실패! 수동 복구(배치 동기화)가 필요합니다. - videoId: {}, 원인: {}", videoId, e.getMessage());
     }
     @Recover
-    public void recoverDelete(Exception e, List<Long> videoIds) {
-        log.error("🚨 [Search] ES 검색 문서 벌크 삭제 최종 실패! 고스트 데이터 수동 삭제가 필요합니다. - videoIds: {}, 원인: {}", videoIds, e.getMessage());
+    public void recoverBulk(Exception e, List<Long> videoIds) {
+        log.error("🚨 [Search] ES 벌크 작업(동기화/삭제) 최종 실패! 수동 복구가 필요합니다. - videoIds: {}, 원인: {}", videoIds, e.getMessage());
+    }
+
+    // =========================================================================
+    // 벌크 동기화 메서드 (N+1 성능 문제 해결)
+    // =========================================================================
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Retryable(value = {Exception.class}, maxAttempts = 3, backoff = @Backoff(delay = 2000))
+    public void bulkSyncToElasticsearch(List<Long> videoIds) {
+        if (videoIds == null || videoIds.isEmpty()) return;
+
+        log.info("[Search] ES 검색 문서 벌크 동기화 시작: 대상 {}건", videoIds.size());
+        try {
+            // 1. 메타데이터 일괄 조회
+            List<VideoMetadata> metadataList = videoMetadataRepository.findAllByVideoIdIn(videoIds);
+            if (metadataList.isEmpty()) return;
+
+            List<Long> metadataIds = metadataList.stream().map(VideoMetadata::getId).toList();
+
+            // 2. 태그 및 AI 데이터 일괄 조회 (N+1 방어)
+            List<VideoTag> allTags = videoTagRepository.findWithTagAndParentByVideoMetadataIdIn(metadataIds);
+            Map<Long, List<VideoTag>> tagsByMetadataId = allTags.stream()
+                    .collect(Collectors.groupingBy(vt -> vt.getVideoMetadata().getId()));
+
+            List<VideoAiAnalysis> aiAnalysisList = videoAiAnalysisRepository.findAllById(videoIds);
+            Map<Long, VideoAiAnalysis> aiAnalysisMap = aiAnalysisList.stream()
+                    .collect(Collectors.toMap(VideoAiAnalysis::getId, Function.identity()));
+
+            // 3. Document 일괄 조립
+            List<VideoDocument> documents = metadataList.stream().map(metadata -> {
+                List<VideoTag> vTags = tagsByMetadataId.getOrDefault(metadata.getId(), List.of());
+
+                Map<TagSource, Set<String>> tagsBySource = vTags.stream()
+                        .collect(Collectors.groupingBy(VideoTag::getSource,
+                                Collectors.flatMapping(vt -> vt.getTag().getParent() != null
+                                                ? Stream.of(vt.getTag().getTagName(), vt.getTag().getParent().getTagName())
+                                                : Stream.of(vt.getTag().getTagName()),
+                                        Collectors.toSet())));
+
+                Set<String> userTags = tagsBySource.getOrDefault(TagSource.USER, Set.of());
+                Set<String> aiTags = tagsBySource.getOrDefault(TagSource.AI, Set.of());
+
+                List<String> matchedTags = new ArrayList<>(userTags);
+                matchedTags.retainAll(aiTags);
+
+                Set<String> allTagsSet = new HashSet<>(userTags);
+                allTagsSet.addAll(aiTags);
+                List<String> distinctTagNames = new ArrayList<>(allTagsSet);
+
+                VideoAiAnalysis aiAnalysis = aiAnalysisMap.get(metadata.getVideoId());
+                return VideoDocument.from(metadata, distinctTagNames, matchedTags, aiAnalysis);
+            }).toList();
+
+            // 4. ES 벌크 저장 (한 번의 통신으로 끝!)
+            videoSearchRepository.saveAll(documents);
+            log.info("[Search] ES 검색 문서 벌크 동기화 완료: {}건", documents.size());
+
+        } catch (Exception e) {
+            log.error("[Search] ES 벌크 동기화 실패", e);
+            throw new BusinessException(ErrorCode.ELASTICSEARCH_SYNC_ERROR, e);
+        }
     }
 }
