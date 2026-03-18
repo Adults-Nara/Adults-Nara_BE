@@ -37,6 +37,6 @@ public class AdService {
 
         long tagId = videoTag.getTag().getId();
         return videoMetadataRepository.findRelatedRandomAd(tagId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AD_NOT_FOUND));
+                .orElseGet(this::getRandomAd);
     }
 }
