@@ -1,17 +1,14 @@
 package com.ott.common.outbox.scheduler;
 
-import com.ott.common.outbox.entity.OutboxEvent;
 import com.ott.common.outbox.enums.OutboxStatus;
 import com.ott.common.outbox.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -19,36 +16,28 @@ import java.util.concurrent.TimeUnit;
 public class OutboxPublisher {
 
     private final OutboxEventRepository outboxEventRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final OutboxEventProcessor outboxEventProcessor;
 
-    private static final int MAX_RETRY = 3;
-
+    /**
+     * PENDING 상태의 이벤트 ID 목록을 조회한 뒤,
+     * 이벤트별로 OutboxEventProcessor에 처리를 위임한다.
+     *
+     * <p>
+     * 이 메서드 자체는 @Transactional을 갖지 않으며, 트랜잭션은 이벤트 1건 단위로
+     * OutboxEventProcessor.process() 안에서만 열린다. Kafka 장애 시에도
+     * DB 커넥션이 전체 배치 동안 묶이는 문제가 발생하지 않는다.
+     * </p>
+     */
     @Scheduled(fixedDelay = 1000)
-    @Transactional
     public void publishPendingEvents() {
-        List<OutboxEvent> events = outboxEventRepository
-                .findTop100ByStatusOrderByCreatedAtAsc(OutboxStatus.PENDING);
+        List<Long> pendingIds = outboxEventRepository
+                .findIdsByStatus(OutboxStatus.PENDING, PageRequest.of(0, 100));
 
-        for (OutboxEvent event : events) {
+        for (Long id : pendingIds) {
             try {
-                kafkaTemplate.send(event.getTopic(), event.getAggregateId(), event.getPayload())
-                        .get(5, TimeUnit.SECONDS);
-
-                event.markPublished();
-
-                log.info("[outbox] 발행 성공: topic={}, aggregateId={}, eventType={}",
-                        event.getTopic(), event.getAggregateId(), event.getEventType());
+                outboxEventProcessor.process(id);
             } catch (Exception e) {
-                event.incrementRetry();
-
-                if (event.getRetryCount() >= MAX_RETRY) {
-                    event.markFailed();
-                    log.error("[outbox] 최대 재시도 초과, FAILED 처리: topic={}, aggregateId={}",
-                            event.getTopic(), event.getAggregateId(), e);
-                } else {
-                    log.warn("[outbox] 발행 실패 (retry={}): topic={}, aggregateId={}",
-                            event.getRetryCount(), event.getTopic(), event.getAggregateId(), e);
-                }
+                log.error("[outbox] 이벤트 처리 중 예외 발생, 다음 이벤트로 계속 진행: id={}", id, e);
             }
         }
     }
