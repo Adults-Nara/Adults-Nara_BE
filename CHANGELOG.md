@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.10.0...v1.0.0) (2026-03-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* v1.0.0 정식 릴리즈
+
+### Features
+
+* v1.0.0 정식 릴리즈 ([1394ffd](https://github.com/Adults-Nara/Adults-Nara_BE/commit/1394ffd3735b29ceefac4e5686c3315a82cd9f0f))
+
 ## [0.10.0](https://github.com/Adults-Nara/Adults-Nara_BE/compare/v0.9.23...v0.10.0) (2026-03-18)
 
 
