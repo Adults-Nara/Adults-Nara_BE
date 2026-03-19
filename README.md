@@ -18,6 +18,9 @@
     - [3. 검색: 한글 특화 검색](#3-검색-한글-특화-검색)
     - [4. 실시간 인기차트: Bookmark 기반 Top 10](#4-실시간-인기차트-bookmark-기반-top-10)
     - [5. 영상: 업로드 / 트랜스코딩 / 재생(권한)](#5-영상-업로드--트랜스코딩--재생권한)
+    - [6. 인증: Kakao OAuth2 소셜 로그인](#6-인증-kakao-oauth2-소셜-로그인)
+    - [7. 인증: 백오피스 JWT](#7-인증-백오피스-jwt-httponly-cookie--rtr)
+    - [8. 배치: Spring Batch 월간 시청 통계](#8-배치-spring-batch-월간-시청-통계)
 - [🛠️ 기술 스택 근거](#-기술-스택-근거)
     - [1. Message Broker: Apache Kafka vs RabbitMQ](#1-message-broker-apache-kafka-vs-rabbitmq)
     - [2. 검색 엔진 선정: Elasticsearch vs OpenSearch](#2--검색-엔진-선정-elasticsearch-vs-opensearch)
@@ -323,6 +326,216 @@
 ![video](docs/images/video.png)
 
 ---
+
+### 6. 인증: Kakao OAuth2 소셜 로그인
+
+#### ① 요구사항 (문제/목표)
+- 사용자가 별도 회원가입 없이 카카오 계정으로 간편 로그인할 수 있어야 함
+- 로그인 성공 후 자체 JWT를 발급하여 이후 API 인증에 활용
+- ADMIN role을 포함한 권한 정보를 JWT claim에 명시적으로 포함해야 함
+- 로컬 환경과 배포 환경에서 redirect URI가 다르게 동작해야 함
+- 탈퇴 후 재가입 시 기존 계정 복원 여부에 대한 정책이 필요함
+
+#### ② 설계 전략
+- Spring Security OAuth2 Client 기반 Authorization Code Flow 적용
+- 카카오 인증 완료 후 자체 JWT (Access Token + Refresh Token) 발급
+- `OAuth2UserService`를 구현하여 카카오 사용자 정보 후처리
+- 환경별 redirect URI 분리 설정으로 로컬/배포 환경 대응
+- 재가입 시 `restore()` 메서드로 기존 계정 복원 처리
+
+#### ③ 인증 흐름
+```
+1. 사용자가 "카카오로 로그인" 클릭
+2. 서버가 카카오 인가 URL로 리다이렉트
+3. 사용자가 카카오에서 로그인 및 동의
+4. 카카오가 Authorization Code를 redirect_uri로 전달
+5. 서버가 Authorization Code로 카카오 Access Token 요청
+6. 카카오 Access Token으로 사용자 정보 조회
+7. 자체 JWT 발급 (userId, role, exp 포함)
+8. HttpOnly Cookie로 클라이언트에 전달
+```
+
+#### ④ 설정 구조
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
+            authorization-grant-type: authorization_code
+            scope: profile_nickname, account_email
+```
+
+#### ⑤ 트러블슈팅
+
+| 이슈 | 원인 | 해결 |
+|---|---|---|
+| 배포 후 로그인 불가 | redirect URI 불일치 | 환경별 URI 분리 설정 |
+| 신규 유저 저장 실패 | Flyway 마이그레이션 컬럼 누락 | 마이그레이션 스크립트 추가 |
+| ADMIN 권한 미적용 | JWT claim에 role 누락 | role 명시적 포함 처리 |
+
+---
+
+### 7. 인증: 백오피스 JWT (HttpOnly Cookie + RTR)
+
+#### ① 요구사항 (문제/목표)
+- 백오피스(업로더/관리자)는 일반 사용자와 분리된 자체 인증 체계가 필요함
+- 토큰이 클라이언트에 노출되면 XSS 공격으로 탈취 가능 → 브라우저에서 숨겨야 함
+- Refresh Token이 탈취되는 시나리오에 대응해야 함
+- 로컬 환경과 배포 환경에서 Cookie Secure 정책이 달라야 함
+- 컨트롤러에서 토큰을 직접 파싱하는 방식은 Spring Security 원칙에 위배됨
+
+#### ② 설계 전략
+
+**HttpOnly Cookie**
+- Access Token과 Refresh Token 모두 HttpOnly Cookie로 전달
+- JS에서 접근 불가 → XSS 공격으로 토큰 탈취 방지
+- SameSite 설정으로 CSRF 기본 방어
+
+**RTR (Refresh Token Rotation)**
+- Refresh Token을 Redis에 저장하고 만료 관리
+- 갱신 시 새 Refresh Token 발급 + 기존 토큰 즉시 무효화
+- 이미 무효화된 토큰으로 재요청 감지 시 전체 세션 강제 종료
+
+**환경별 Cookie Secure 분기**
+```java
+ResponseCookie.from("refreshToken", token)
+    .httpOnly(true)
+    .secure(isProduction)  // 로컬: false, 배포: true
+    .sameSite("Lax")
+    .path("/")
+    .build();
+```
+
+**Authentication 위임 리팩토링**
+```java
+// Before: 토큰 직접 파싱
+String userId = jwtProvider.getUserId(token);
+
+// After: Spring Security 위임
+String userId = authentication.getName();
+```
+
+#### ③ RTR 흐름
+```
+정상 흐름:
+1. Access Token 만료
+2. Refresh Token으로 갱신 요청
+3. Redis에서 토큰 유효성 검증
+4. 새 Access Token + 새 Refresh Token 발급
+5. 기존 Refresh Token Redis에서 삭제
+
+재사용 감지:
+1. 이미 무효화된 Refresh Token 요청
+2. Redis에 없는 토큰 확인 → 탈취 의심
+3. 해당 유저 모든 Refresh Token 무효화
+4. 재로그인 요구
+```
+
+#### ④ 핵심 설계 결정
+
+> 토큰을 브라우저에서 숨기고, 탈취되더라도 재사용을 차단한다
+
+| 전략 | 방어 대상 | 방식 |
+|---|---|---|
+| HttpOnly Cookie | XSS | JS 접근 차단 |
+| RTR | 토큰 탈취 후 재사용 | 1회 사용 후 무효화 |
+| SameSite=Lax | CSRF | 타 도메인 요청 차단 |
+
+#### ⑤ 트러블슈팅
+
+| 이슈 | 원인 | 해결 |
+|---|---|---|
+| 로컬에서 Cookie 미전송 | Secure 플래그가 HTTPS만 허용 | 환경별 Secure 플래그 분기 |
+| 권한 체크 실패 | 토큰 직접 파싱 방식 불일치 | `Authentication.getName()` 위임 |
+| Redis ZADD 오류 | 빈 리스트 전달 | 빈 컬렉션 방어 로직 추가 |
+
+---
+
+### 8. 배치: Spring Batch 월간 시청 통계
+
+#### ① 요구사항 (문제/목표)
+- 매월 전체 사용자의 시청 이력과 태그 데이터를 집계하여 월간 통계 리포트 생성
+- 마이페이지에서 주제별 시청 시간 순위 확인 가능
+- 대규모 데이터를 메모리 효율적으로 처리해야 함
+- 중복 실행에도 데이터 정합성이 보장되어야 함
+- 월 1회 실행을 위해 서버를 상시 유지하는 것은 비효율적
+
+#### ② 아키텍처 전환
+
+**Before: 상시 서버 + 스케줄러**
+```
+배치 서버 (EC2 항상 실행)
+└── @Scheduled (매월 1일 03:00)
+    └── 배치 처리
+문제: 월 1회 실행을 위해 서버 한 달 내내 유지
+```
+
+**After: EventBridge + ECS Fargate One-shot**
+```
+EventBridge Scheduler (매월 1일 03:00 KST)
+→ ECS Fargate 컨테이너 실행
+→ Spring Batch 처리
+→ 컨테이너 자동 종료
+장점: 실행 시간에만 비용 발생
+```
+
+#### ③ 배치 파이프라인 구조
+```
+Job: monthlyWatchStatsJob
+└── Step: monthlyWatchStatsStep (Chunk-oriented)
+    ├── ItemReader    : 전월 시청 이력 + 태그 데이터 조회
+    ├── ItemProcessor : 사용자별 태그별 시청 시간 집계
+    └── ItemWriter    : monthly_watch_report UPSERT 적재
+```
+
+**UPSERT로 멱등성 보장**
+```sql
+INSERT INTO monthly_watch_report (user_id, tag_id, year_month, watch_duration)
+VALUES (:userId, :tagId, :yearMonth, :duration)
+ON CONFLICT (user_id, tag_id, year_month)
+DO UPDATE SET
+    watch_duration = :duration,
+    updated_at = NOW();
+```
+
+#### ④ ApplicationRunner One-shot 패턴
+```java
+@Component
+public class BatchAnalyticsApplication implements ApplicationRunner {
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        JobParameters params = new JobParametersBuilder()
+            .addString("targetMonth", getLastMonth())
+            .toJobParameters();
+
+        jobLauncher.run(monthlyWatchStatsJob, params);
+        SpringApplication.exit(applicationContext, () -> 0);
+    }
+}
+```
+
+#### ⑤ EventBridge Cron 설정
+```
+cron(0 18 1 * ? *)
+→ UTC 18:00 = KST 03:00
+→ 매월 1일 새벽 3시 자동 실행
+```
+
+#### ⑥ 트러블슈팅
+
+| 이슈 | 원인 | 해결 |
+|---|---|---|
+| 배치 미실행 | Spring Batch 메타 테이블 누락 | Flyway 마이그레이션 추가 |
+| 통계 적재 실패 | NOT NULL 컬럼 기본값 없음 | 기본값 처리 및 nullable 정책 수정 |
+| 순환 모듈 의존성 | batch-analytics가 core-api 직접 참조 | common 모듈 persistence 레이어만 참조 |
+| H2 테스트 실패 | PostgreSQL 전용 SQL 문법 | Testcontainers로 실 환경 구성 |
+
+---
+
 ## 🛠️ 기술 스택 근거
 
 ### 1. Message Broker: Apache Kafka vs RabbitMQ

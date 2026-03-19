@@ -8,12 +8,15 @@ import com.ott.common.persistence.entity.UserTag;
 import com.ott.core.modules.tag.repository.TagRepository;
 import com.ott.core.modules.user.repository.UserRepository;
 import com.ott.core.modules.usertag.dto.TagWatchStatsResponse;
+import com.ott.core.modules.usertag.event.UserTagsUpdatedEvent;
 import com.ott.core.modules.usertag.repository.UserTagRepository;
 import com.ott.core.modules.watch.repository.WatchHistoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -25,6 +28,8 @@ public class UserTagService {
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
     private final WatchHistoryRepository watchHistoryRepository;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void saveOnboardingTags(Long userId, List<Long> tagIds) {
@@ -43,6 +48,9 @@ public class UserTagService {
                         .build()).toList();
 
         userTagRepository.saveAll(userTagList);
+
+        List<String> addedTagNames = tagList.stream().map(Tag::getTagName).toList();
+        eventPublisher.publishEvent(new UserTagsUpdatedEvent(userId, addedTagNames, List.of()));
     }
 
     @Transactional
@@ -58,8 +66,13 @@ public class UserTagService {
                 .filter(id -> !currentTagIds.contains(id))
                 .toList();
 
+        List<String> removedTagNames = new ArrayList<>();
+        List<String> addedTagNames = new ArrayList<>();
+
         if (!toDelete.isEmpty()) {
             userTagRepository.deleteByUserIdAndTagIdIn(userId, toDelete);
+            List<Tag> deletedTags = tagRepository.findAllById(toDelete);
+            removedTagNames.addAll(deletedTags.stream().map(Tag::getTagName).toList());
         }
 
         if (!toAdd.isEmpty()) {
@@ -76,6 +89,10 @@ public class UserTagService {
                             .build())
                     .toList();
             userTagRepository.saveAll(userTagList);
+            addedTagNames.addAll(tagList.stream().map(Tag::getTagName).toList());
+        }
+        if (!addedTagNames.isEmpty() || !removedTagNames.isEmpty()) {
+            eventPublisher.publishEvent(new UserTagsUpdatedEvent(userId, addedTagNames, removedTagNames));
         }
     }
 

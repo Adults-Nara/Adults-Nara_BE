@@ -58,10 +58,6 @@ public interface VideoMetadataRepository extends JpaRepository<VideoMetadata, Lo
     @Query("UPDATE VideoMetadata v SET v.bookmarkCount = CASE WHEN :count < 0 THEN 0 ELSE :count END WHERE v.videoId = :videoId")
     void updateBookmarkCount(@Param("videoId") Long videoId, @Param("count") int count);
 
-    @Transactional
-    @Query("SELECT v FROM VideoMetadata v WHERE v.bookmarkCount > 0")
-    List<VideoMetadata> findAllWithBookmarks();
-
     // =========================================================================
 
     // COUNT 쿼리 없이 딱 (요청한 사이즈 + 1)개만 가져와서 다음 페이지 여부만 판단하는 Slice
