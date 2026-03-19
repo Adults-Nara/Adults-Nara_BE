@@ -10,9 +10,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableRetry
 @EnableScheduling
 @EnableAsync
-@SpringBootApplication
-@EntityScan(basePackages = "com.ott.common.persistence.entity")
-@EnableJpaRepositories(basePackages = "com.ott.core")
+@SpringBootApplication(scanBasePackages = {"com.ott.core", "com.ott.common.outbox"})
+@EntityScan(basePackages = {"com.ott.common.persistence.entity", "com.ott.common.outbox.entity"})
+@EnableJpaRepositories(basePackages = {"com.ott.core", "com.ott.common.outbox.repository"})
 public class CoreApiApplication {
     public static void main(String[] args) {
         SpringApplication.run(CoreApiApplication.class, args);
