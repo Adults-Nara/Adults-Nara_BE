@@ -9,6 +9,9 @@ import com.ott.common.persistence.entity.VideoTag;
 import com.ott.common.persistence.enums.BanStatus;
 import com.ott.common.persistence.enums.UserRole;
 import com.ott.core.modules.backoffice.dto.*;
+import com.ott.core.modules.backoffice.event.VideoDeletedEvent;
+import com.ott.core.modules.backoffice.event.VideoUpdatedEvent;
+import com.ott.core.modules.backoffice.event.VideoVisibilityChangedEvent;
 import com.ott.core.modules.backoffice.repository.UserQueryRepository;
 import com.ott.core.modules.backoffice.repository.VideoMetadataQueryRepository;
 import com.ott.core.modules.search.event.VideoIndexDeletedEvent;
@@ -46,7 +49,6 @@ public class BackofficeService {
     private final UserRepository userRepository;
     private final S3ObjectStorage s3ObjectStorage;
     private final StringRedisTemplate stringRedisTemplate;
-
     private final ApplicationEventPublisher eventPublisher;
     private static final String KEY_RANKING = "video:ranking";
 
@@ -64,6 +66,11 @@ public class BackofficeService {
         return videoMetadataQueryRepository.findAdminContents(keyword, pageable);
     }
 
+    private boolean isVisible(Object visibility) {
+        if (visibility == null) return false;
+        String visStr = visibility.toString().toUpperCase();
+        return !(visStr.equals("FALSE") || visStr.equals("PRIVATE") || visStr.equals("HIDDEN"));
+    }
 
     @Transactional
     public ContentUpdateResponse updateContent(long userId, boolean isAdmin, Long videoId, MultipartFile image, ContentUpdateRequest request) {
@@ -73,10 +80,12 @@ public class BackofficeService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
+
         if (request.title() != null) videoMetadata.setTitle(request.title());
         if (request.description() != null) videoMetadata.setDescription(request.description());
         if (request.visibility() != null) {
-            Video video = videoRepository.findById(videoId).orElseThrow(() -> new BusinessException(ErrorCode.VIDEO_NOT_FOUND));
             video.setVisibility(request.visibility());
         }
         if (request.tagIds() != null) {
@@ -102,6 +111,9 @@ public class BackofficeService {
             }
             videoMetadata.setThumbnailUrl("https://" + cloudFrontDomain + "/" + thumbnailKey);
         }
+
+        boolean currentVisible = isVisible(video.getVisibility());
+        eventPublisher.publishEvent(new VideoUpdatedEvent(videoId, currentVisible));
 
         return new ContentUpdateResponse(String.valueOf(videoId));
     }
@@ -129,7 +141,7 @@ public class BackofficeService {
 
         videoRepository.softDeleteByIds(request.videoIds());
         // ES 삭제 이벤트 발행
-        eventPublisher.publishEvent(new VideoIndexDeletedEvent(List.copyOf(request.videoIds())));
+        eventPublisher.publishEvent(new VideoDeletedEvent(List.copyOf(request.videoIds())));
 
         // 커밋 이후 실행
         List<Long> ids = List.copyOf(request.videoIds());
@@ -162,6 +174,9 @@ public class BackofficeService {
         }
 
         videoRepository.updateVisibilityByIds(request.visibility(), OffsetDateTime.now(), request.videoIds());
+        // 상태변경 ES 알림
+        boolean visible = isVisible(request.visibility());
+        eventPublisher.publishEvent(new VideoVisibilityChangedEvent(List.copyOf(request.videoIds()), visible));
 
         return new ContentStatusUpdateResponse(request.videoIds().stream().map(String::valueOf).toList());
     }
