@@ -24,6 +24,12 @@ dependencies {
     implementation("io.hypersistence:hypersistence-utils-hibernate-60:3.5.1") // TSID
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 
+    // Outbox 패턴: OutboxPublisher, OutboxEventRepository 컴파일에 필요
+    compileOnly("org.springframework.data:spring-data-jpa:3.4.2")
+    compileOnly("org.springframework:spring-tx:6.2.2")
+    compileOnly("org.springframework:spring-context:6.2.2")
+    compileOnly("org.springframework.kafka:spring-kafka:3.3.2")
+
     api ("org.projectlombok:lombok:1.18.34")
     annotationProcessor ("org.projectlombok:lombok:1.18.34")
 
