@@ -26,9 +26,8 @@
     - [2. 검색 엔진 선정: Elasticsearch vs OpenSearch](#2--검색-엔진-선정-elasticsearch-vs-opensearch)
     - [3. 데이터 동기화 파이프라인: Spring Boot(Application Layer) vs Logstash](#3--데이터-동기화-파이프라인-spring-bootapplication-layer-vs-logstash)
     - [4. 사용자 취향 점수 실시간 집계: Redis ZSet vs RDBMS vs Batch](#4--사용자-취향-점수-실시간-집계-redis-zset-vs-rdbms-vs-batch)
-    - [5. DB 데이터 백업/적재: JPA save() vs Native Query(Upsert)](#5--db-데이터-백업적재-jpa-save-vs-native-queryupsert)
-    - [6. 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER](#6--추천-서빙-es--redis-zset-vs-python-ml-vs-redis-sinter)
-    - [7. 영상 시청: CloudFront + S3](#7--영상-시청-cloudfront--s3)
+    - [5. 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER](#6--추천-서빙-es--redis-zset-vs-python-ml-vs-redis-sinter)
+    - [6. 영상 시청: CloudFront + S3](#7--영상-시청-cloudfront--s3)
 ---
 
 ## 🏢 아키텍처 설계
@@ -623,27 +622,7 @@ cron(0 18 1 * ? *)
 
 ---
 
-### 5. 🗄️ DB 데이터 백업/적재: JPA `save()` vs Native Query(Upsert)
-
-#### ① 요구사항(문제/목표)
-- 대량/반복 적재에서 DB I/O 최소화
-- 동시성 상황에서도 중복/경합을 안전하게 처리
-
-#### ② 대안 비교
-- **JPA `save()`**: 존재 여부 확인(SELECT) 후 INSERT/UPDATE로 **쿼리 2회** 발생 가능
-- **Native Upsert(ON CONFLICT 등)**: **단일 쿼리**로 Insert/Update 처리, 경쟁 상태 감소
-
-#### ③ 결정
-- ✅ **Native Query Upsert 채택**
-
-#### ④ 선정 근거
-- **쿼리 수 감소**: 2회 → 1회로 I/O 절감
-- **동시성 안전**: 경합 구간을 DB 레벨 upsert로 흡수
-- **처리량 개선**: 대량 적재 시 TPS/지연시간에 직접 이득
-
----
-
-### 6. 🧠 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER
+### 5. 🧠 추천 서빙: ES + Redis ZSet vs Python ML vs Redis SINTER
 
 #### ① 요구사항(문제/목표)
 - 좋아요/시청 행동이 다음 피드에 **1초 이내 반영**
@@ -666,7 +645,7 @@ cron(0 18 1 * ? *)
 
 ---
 
-### 7. 🎬 영상 시청: CloudFront + S3
+### 6. 🎬 영상 시청: CloudFront + S3
 
 #### ① 요구사항(문제/목표)
 - HLS는 **세그먼트 단위 다수 요청** → **지연시간(latency)** 이 체감 품질을 좌우
